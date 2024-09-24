@@ -17,20 +17,31 @@ using Interpolations
 using OceanBasins
 using NaNStatistics
 
-
 include("plotting_functions.jl")
 
+# model = "ACCESS-ESM1-5"
+model = "ACCESS-CM2"
+# model = "ACCESS1-3"
+
+# CMIP_version = "CMIP5"
+CMIP_version = "CMIP6"
+
+experiment = "historical"
+
+time_window = "Jan1990-Dec1999"
+
 # Gadi directory for input files
-inputdirfun(member) = "/scratch/xv83/TMIP/data/ACCESS-ESM1-5/historical/$member/Jan1990-Dec1999"
+inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 
 # find all members for which the inputdir contains umo.nc, vmo.nc, mlotst.nc, volcello.nc, and areacello.nc
 requiredvariables = ["umo", "vmo", "mlotst", "volcello", "areacello", "agessc"]
 hasrequireddata(member, variable_name) = isfile(joinpath(inputdirfun(member), "$variable_name.nc"))
 hasrequireddata(member) = all(variable_name -> hasrequireddata(member, variable_name), requiredvariables)
-members = readdir("/scratch/xv83/TMIP/data/ACCESS-ESM1-5/historical")
+members = readdir("/scratch/xv83/TMIP/data/$model/$experiment")
 
-# sort members by r, i, p, f
-memmber_regex = r"r(\d+)i(\d+)p(\d+)f(\d+)"
+# sort members by r, i, p[, f]
+
+memmber_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
 parse_member(member) = parse.(Int, match(memmber_regex, member).captures)
 members = sort(members, by = x -> parse_member(x))
 dataavailability = DataFrame(
@@ -121,7 +132,7 @@ for member in members[dataavailability.has_it_all]
         data = Γinyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
-            "origin" => "ideal_mean_age computed from ACCESS-ESM1-5 historical $member Jan1990-Dec1999",
+            "origin" => "ideal_mean_age computed from $model $experiment $member $(time_window)",
             "units" => "yr",
         )
     )
@@ -133,7 +144,7 @@ for member in members[dataavailability.has_it_all]
         data = Γoutyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
-            "origin" => "mean_reemergence_time computed from ACCESS-ESM1-5 historical $member Jan1990-Dec1999",
+            "origin" => "mean_reemergence_time computed from $model $experiment $member $(time_window)",
             "units" => "yr",
         )
     )
@@ -156,7 +167,7 @@ for member in members[dataavailability.has_it_all]
     # Interpolate `Γinyr3D` to the given `depth`
     itp = interpolate((lev, ), [Γinyr3D[:,:,i] for i in axes(Γinyr3D, 3)], Gridded(Linear()))
     Γinyr2D = itp(depth)
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 ideal mean age (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) ideal mean age (yr) at $depth m"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -178,12 +189,12 @@ for member in members[dataavailability.has_it_all]
     fig = Figure(size = (1200, 1800), fontsize = 18)
     Γdown = rich("Γ", superscript("↓"))
     Γup = rich("Γ", superscript("↑"))
-    title = rich("ACCESS-ESM1-5 historical $member Jan1990-Dec1999 ", Γdown, " (yr) at $depth m")
+    title = rich("$model $experiment $member $(time_window) ", Γdown, " (yr) at $depth m")
     colorrange = (0, 1500)
     colormap = :viridis
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
     plt1 = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 agessc (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) agessc (yr) at $depth m"
     ax = Axis(fig[2,1]; title, xtickformat, ytickformat)
     plt2 = plotmap!(ax, agessc2D, modelgrid; colorrange, colormap)
     Colorbar(fig[1:2,2], plt1, label="Ideal mean age (yr)")
@@ -345,7 +356,7 @@ for member in members[dataavailability.has_it_all]
     Label(fig[2, 0], text = "agessc", fontsize=20, tellheight=false, rotation=π/2)
     Label(fig[3, 0], text = "Difference", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 ideal age"
+    title = "$model $experiment $member $(time_window) ideal age"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
@@ -442,7 +453,7 @@ for member in members[dataavailability.has_it_all]
     end
     Label(fig[1, 0], text = "Transport matrix", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 reemergence time"
+    title = "$model $experiment $member $(time_window) reemergence time"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     rowgap!(fig.layout, 10)
@@ -456,7 +467,7 @@ for member in members[dataavailability.has_it_all]
 
     # Plot mean age at the seafloor level
     Γinyrseafloor = seafloorvalue(Γinyr3D, wet3D)
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 mean age at seafloor"
+    title = "$model $experiment $member $(time_window) mean age at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -474,7 +485,7 @@ for member in members[dataavailability.has_it_all]
 
     # Plot reemergence time at the seafloor level
     Γoutyrseafloor = seafloorvalue(Γoutyr3D, wet3D)
-    title = "ACCESS-ESM1-5 historical $member Jan1990-Dec1999 reemergence time at seafloor"
+    title = "$model $experiment $member $(time_window) reemergence time at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
