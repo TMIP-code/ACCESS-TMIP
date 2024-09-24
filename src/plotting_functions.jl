@@ -74,3 +74,12 @@ end
 zlim = (6000, 0)
 ztick = 0:1000:6000
 zticklabel = map(x -> string.(x), ztick)
+
+# find the seafloor level
+function seafloorvalue(x3D, wet3D, i, j)
+    k = findlast(wet3D[i,j,:])
+    isnothing(k) ? NaN : x3D[i,j,k]
+end
+function seafloorvalue(x3D, wet3D)
+    [seafloorvalue(x3D, wet3D, i, j) for i in axes(x3D, 1), j in axes(x3D, 2)]
+end
