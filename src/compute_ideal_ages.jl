@@ -211,7 +211,18 @@ for member in members[dataavailability.has_it_all]
 
 
 
-
+    modulo_cmap = [
+        0.   30.    0.   30.
+        15.  100.    0.  100.
+        25.   30.    0.  100.
+        26.    0.    0.  100.
+        34.    0.    0.   60.
+        50.    0.  100.  100.
+        60.    0.   50.    0.
+        75.  100.  100.    0.
+        90.  100.    0.    0.
+       100.   40.    0.    0.
+    ]
 
 
     # Plot zonal averages
