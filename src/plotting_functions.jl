@@ -71,6 +71,16 @@ function zonalaverage(x3D, modelgrid; mask = 1)
     return dropdims(x2D, dims = 1)
 end
 
+function horizontalaverage(x3D, modelgrid; mask = 1)
+    # unpack modelgrid
+    (; v3D) = modelgrid
+
+    # create zonal average
+    x2D = nansum(x3D .* v3D .* mask, dims = (1, 2)) ./ nansum(mask .* v3D, dims = (1, 2))
+
+    return dropdims(x2D, dims = (1, 2))
+end
+
 zlim = (6000, 0)
 ztick = 0:1000:6000
 zticklabel = map(x -> string.(x), ztick)
