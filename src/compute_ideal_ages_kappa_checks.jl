@@ -16,21 +16,22 @@ using GeoMakie
 using Interpolations
 using OceanBasins
 using NaNStatistics
+using Format
 
 include("plotting_functions.jl")
 
-model = "ACCESS-ESM1-5"
+# model = "ACCESS-ESM1-5"
 # model = "ACCESS-CM2"
-# model = "ACCESS1-3"
+model = "ACCESS1-3"
 
-# CMIP_version = "CMIP5"
-CMIP_version = "CMIP6"
+# CMIP_version = "CMIP6"
+CMIP_version = "CMIP5"
 
-# experiment = "historical"
-experiment = "piControl"
+experiment = "historical"
+# experiment = "piControl"
 
-# time_window = "Jan1990-Dec1999"
-time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
+time_window = "Jan1990-Dec1999"
+# time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
 # time_window = "Jan1420-Dec1449" # <- last 30 years of ACCESS-CM2 piControl
 
 
@@ -42,7 +43,6 @@ requiredvariables = ["umo", "vmo", "mlotst", "volcello", "areacello", "agessc"]
 hasrequireddata(member, variable_name) = isfile(joinpath(inputdirfun(member), "$variable_name.nc"))
 hasrequireddata(member) = all(variable_name -> hasrequireddata(member, variable_name), requiredvariables)
 members = readdir("/scratch/xv83/TMIP/data/$model/$experiment")
-
 # sort members by r, i, p[, f]
 
 memmber_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
@@ -55,12 +55,20 @@ dataavailability = DataFrame(
 )
 show(dataavailability; allrows = true)
 
+κHs = 500.0 .* [1/2, 1, 2] # m^2/s
+κVdeeps = 3e-5 .* [1/2, 1, 2] # m^2/s
+fe = FormatExpr("{1:0.0e}")
 
-
-for member in members[dataavailability.has_it_all]
-# member = last(members)
+# for member in members[dataavailability.has_it_all]
+# for member in members[dataavailability.has_it_all], κH in κHs, κVdeep in κVdeeps
+for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in κVdeeps
+    # member = last(members)
 
     inputdir = inputdirfun(member)
+    κVdeep_str = "kVdeep" * format(fe, κVdeep)
+    κH_str = "kH" * format(fe, κH)
+    outputdir = joinpath(inputdir, κH_str, κVdeep_str)
+    mkpath(outputdir)
 
     # Load umo, vmo, mlotst, volcello, and areacello
     umo_ds = open_dataset(joinpath(inputdir, "umo.nc"))
@@ -81,12 +89,12 @@ for member in members[dataavailability.has_it_all]
     indices = makeindices(modelgrid.v3D)
 
     # Make transport matrix
-    @warn "using κVdeep = 3e-5"
+    @warn "using κVdeep = $κVdeep, κH = $κH"
     (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; u, mlotst, modelgrid, indices,
         ρ = 1025.0,
-        κH = 500.0, # m^2/s
+        κH, # m^2/s
         κVML = 0.1, # m^2/s
-        κVdeep = 3e-5, # m^2/s
+        κVdeep, # m^2/s
     )
 
     # unpack model grid
@@ -137,6 +145,8 @@ for member in members[dataavailability.has_it_all]
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
             "origin" => "ideal_mean_age computed from $model $experiment $member $(time_window)",
+            "kVdeep" => κVdeep,
+            "kH" => κH,
             "units" => "yr",
         )
     )
@@ -149,6 +159,8 @@ for member in members[dataavailability.has_it_all]
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
             "origin" => "mean_reemergence_time computed from $model $experiment $member $(time_window)",
+            "kVdeep" => κVdeep,
+            "kH" => κH,
             "units" => "yr",
         )
     )
@@ -156,12 +168,12 @@ for member in members[dataavailability.has_it_all]
     Γout_ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Save Γinyr3D to netCDF file
-    outputfile = joinpath(inputdir, "ideal_mean_age.nc")
+    outputfile = joinpath(outputdir, "ideal_mean_age.nc")
     @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
     savedataset(Γin_ds, path = outputfile, driver = :netcdf, overwrite = true)
 
     # Save Γoutyr3D to netCDF file
-    outputfile = joinpath(inputdir, "mean_reemergence_time.nc")
+    outputfile = joinpath(outputdir, "mean_reemergence_time.nc")
     @info "Saving mean reemergence time as netCDF file:\n  $(outputfile)"
     savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
 
@@ -171,7 +183,7 @@ for member in members[dataavailability.has_it_all]
     # Interpolate `Γinyr3D` to the given `depth`
     itp = interpolate((lev, ), [Γinyr3D[:,:,i] for i in axes(Γinyr3D, 3)], Gridded(Linear()))
     Γinyr2D = itp(depth)
-    title = "$model $experiment $member $(time_window) ideal mean age (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ideal mean age (yr) at $depth m"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -181,7 +193,7 @@ for member in members[dataavailability.has_it_all]
     plt = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
     Colorbar(fig[1,2], plt, label="Ideal mean age (yr)")
     # save plot
-    outputfile = joinpath(inputdir, "ideal_mean_age_v2.png")
+    outputfile = joinpath(outputdir, "ideal_mean_age_v2.png")
     @info "Saving ideal mean age as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
@@ -193,12 +205,12 @@ for member in members[dataavailability.has_it_all]
     fig = Figure(size = (1200, 1800), fontsize = 18)
     Γdown = rich("Γ", superscript("↓"))
     Γup = rich("Γ", superscript("↑"))
-    title = rich("$model $experiment $member $(time_window) ", Γdown, " (yr) at $depth m")
+    title = rich("$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ", Γdown, " (yr) at $depth m")
     colorrange = (0, 1500)
     colormap = :viridis
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
     plt1 = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
-    title = "$model $experiment $member $(time_window) agessc (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) agessc (yr) at $depth m"
     ax = Axis(fig[2,1]; title, xtickformat, ytickformat)
     plt2 = plotmap!(ax, agessc2D, modelgrid; colorrange, colormap)
     Colorbar(fig[1:2,2], plt1, label="Ideal mean age (yr)")
@@ -208,7 +220,7 @@ for member in members[dataavailability.has_it_all]
     plt3 = plotmap!(ax, Γinyr2D - agessc2D, modelgrid; colorrange, colormap)
     Colorbar(fig[3,2], plt3, label=rich("Δ", Γdown, " (yr)"))
     # save plot
-    outputfile = joinpath(inputdir, "ideal_mean_age_maps_vs_agessc_$(depth)m.png")
+    outputfile = joinpath(outputdir, "ideal_mean_age_maps_vs_agessc_$(depth)m.png")
     @info "Saving ideal mean age as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
@@ -371,7 +383,7 @@ for member in members[dataavailability.has_it_all]
     Label(fig[2, 0], text = "agessc", fontsize=20, tellheight=false, rotation=π/2)
     Label(fig[3, 0], text = "Difference", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "$model $experiment $member $(time_window) ideal age"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ideal age"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
@@ -396,7 +408,7 @@ for member in members[dataavailability.has_it_all]
 
     colgap!(fig.layout, 10)
     # save plot
-    outputfile = joinpath(inputdir, "ideal_age_ZAVGs.png")
+    outputfile = joinpath(outputdir, "ideal_age_ZAVGs.png")
     @info "Saving ideal age ZAVGs as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
@@ -468,21 +480,21 @@ for member in members[dataavailability.has_it_all]
     end
     Label(fig[1, 0], text = "Transport matrix", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "$model $experiment $member $(time_window) reemergence time"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) reemergence time"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     rowgap!(fig.layout, 10)
     colgap!(fig.layout, 10)
 
     # save plot
-    outputfile = joinpath(inputdir, "reemergence_time_ZAVGs.png")
+    outputfile = joinpath(outputdir, "reemergence_time_ZAVGs.png")
     @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
 
     # Plot mean age at the seafloor level
     Γinyrseafloor = seafloorvalue(Γinyr3D, wet3D)
-    title = "$model $experiment $member $(time_window) mean age at seafloor"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) mean age at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -492,7 +504,7 @@ for member in members[dataavailability.has_it_all]
     plt = plotmap!(ax, Γinyrseafloor, modelgrid; colorrange, colormap)
     Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
     # save plot
-    outputfile = joinpath(inputdir, "mean_age_at_seafloor.png")
+    outputfile = joinpath(outputdir, "mean_age_at_seafloor.png")
     @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
@@ -500,7 +512,7 @@ for member in members[dataavailability.has_it_all]
 
     # Plot reemergence time at the seafloor level
     Γoutyrseafloor = seafloorvalue(Γoutyr3D, wet3D)
-    title = "$model $experiment $member $(time_window) reemergence time at seafloor"
+    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) reemergence time at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -510,7 +522,7 @@ for member in members[dataavailability.has_it_all]
     plt = plotmap!(ax, Γoutyrseafloor, modelgrid; colorrange, colormap)
     Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
     # save plot
-    outputfile = joinpath(inputdir, "reemergence_time_at_seafloor.png")
+    outputfile = joinpath(outputdir, "reemergence_time_at_seafloor.png")
     @info "Saving mean reemergence time at seafloor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
