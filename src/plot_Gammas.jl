@@ -57,8 +57,8 @@ show(dataavailability; allrows = true)
 println()
 
 
-# for member in members[dataavailability.has_it_all]
-for member in [last(members)]
+for member in members[dataavailability.has_it_all]
+# for member in [last(members)]
 
     inputdir = inputdirfun(member)
 
