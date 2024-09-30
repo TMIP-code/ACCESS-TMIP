@@ -15,5 +15,5 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-# julia src/compute_ideal_ages.jl
+# julia src/compute_Gammas.jl
 julia src/compute_ideal_ages_kappa_checks.jl
