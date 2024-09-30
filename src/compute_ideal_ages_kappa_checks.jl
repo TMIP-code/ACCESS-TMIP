@@ -20,12 +20,12 @@ using Format
 
 include("plotting_functions.jl")
 
-# model = "ACCESS-ESM1-5"
+model = "ACCESS-ESM1-5"
 # model = "ACCESS-CM2"
-model = "ACCESS1-3"
+# model = "ACCESS1-3"
 
-# CMIP_version = "CMIP6"
-CMIP_version = "CMIP5"
+CMIP_version = "CMIP6"
+# CMIP_version = "CMIP5"
 
 experiment = "historical"
 # experiment = "piControl"
@@ -55,9 +55,11 @@ dataavailability = DataFrame(
 )
 show(dataavailability; allrows = true)
 
-κHs = 500.0 .* [1/2, 1, 2] # m^2/s
-κVdeeps = 3e-5 .* [1/2, 1, 2] # m^2/s
-fe = FormatExpr("{1:0.0e}")
+# κHs = 500.0 .* [1/2, 1, 2] # m^2/s
+# κVdeeps = 3e-5 .* [1/2, 1, 2] # m^2/s
+κHs = 500.0 .* [1, 2, 4, 10] # m^2/s
+# κVdeeps = 3e-5 .* [1, 2, 4, 10] # m^2/s
+κVdeeps = 3e-5 .* [10] # m^2/s
 
 # for member in members[dataavailability.has_it_all]
 # for member in members[dataavailability.has_it_all], κH in κHs, κVdeep in κVdeeps
@@ -65,8 +67,8 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # member = last(members)
 
     inputdir = inputdirfun(member)
-    κVdeep_str = "kVdeep" * format(fe, κVdeep)
-    κH_str = "kH" * format(fe, κH)
+    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+    κH_str = "kH" * format(κH, conversion="e")
     outputdir = joinpath(inputdir, κH_str, κVdeep_str)
     mkpath(outputdir)
 
@@ -89,7 +91,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     indices = makeindices(modelgrid.v3D)
 
     # Make transport matrix
-    @warn "using κVdeep = $κVdeep, κH = $κH"
+    @warn "using κVdeep = $κVdeep_str, κH = $κH_str"
     (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; u, mlotst, modelgrid, indices,
         ρ = 1025.0,
         κH, # m^2/s
@@ -183,7 +185,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # Interpolate `Γinyr3D` to the given `depth`
     itp = interpolate((lev, ), [Γinyr3D[:,:,i] for i in axes(Γinyr3D, 3)], Gridded(Linear()))
     Γinyr2D = itp(depth)
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ideal mean age (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ideal mean age (yr) at $depth m"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -205,12 +207,12 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     fig = Figure(size = (1200, 1800), fontsize = 18)
     Γdown = rich("Γ", superscript("↓"))
     Γup = rich("Γ", superscript("↑"))
-    title = rich("$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ", Γdown, " (yr) at $depth m")
+    title = rich("$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ", Γdown, " (yr) at $depth m")
     colorrange = (0, 1500)
     colormap = :viridis
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
     plt1 = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) agessc (yr) at $depth m"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) agessc (yr) at $depth m"
     ax = Axis(fig[2,1]; title, xtickformat, ytickformat)
     plt2 = plotmap!(ax, agessc2D, modelgrid; colorrange, colormap)
     Colorbar(fig[1:2,2], plt1, label="Ideal mean age (yr)")
@@ -383,7 +385,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     Label(fig[2, 0], text = "agessc", fontsize=20, tellheight=false, rotation=π/2)
     Label(fig[3, 0], text = "Difference", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) ideal age"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ideal age"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
@@ -480,7 +482,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     end
     Label(fig[1, 0], text = "Transport matrix", fontsize=20, tellheight=false, rotation=π/2)
 
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) reemergence time"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) reemergence time"
     Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
     rowgap!(fig.layout, 10)
@@ -494,7 +496,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     # Plot mean age at the seafloor level
     Γinyrseafloor = seafloorvalue(Γinyr3D, wet3D)
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) mean age at seafloor"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) mean age at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis
@@ -512,7 +514,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     # Plot reemergence time at the seafloor level
     Γoutyrseafloor = seafloorvalue(Γoutyr3D, wet3D)
-    title = "$model $experiment $member $(time_window) (κH=$κH, κVdeep=$κVdeep) reemergence time at seafloor"
+    title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) reemergence time at seafloor"
     # plot options
     colorrange = (0, 1500)
     colormap = :viridis

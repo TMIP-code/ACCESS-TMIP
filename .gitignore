@@ -25,3 +25,5 @@ Manifest.toml
 
 .vscode/
 output/
+*.jl.e*
+*.jl.o*
