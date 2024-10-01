@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#PBS -P gh0
+#PBS -P xv83
 #PBS -N ACCESS_Gamma
 #PBS -l ncpus=28
 #PBS -l mem=180GB
@@ -16,4 +16,4 @@ cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
 # julia src/compute_Gammas.jl
-julia src/compute_ideal_ages_kappa_checks.jl
+julia src/compute_and_plot_Gammas_varied_diffusivities.jl &> output/$PBS_JOBID.compute_and_plot_Gammas_varied_diffusivities.out

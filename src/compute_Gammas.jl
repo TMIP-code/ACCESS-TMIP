@@ -66,7 +66,7 @@ for member in members[dataavailability.has_it_all]
     mlotst = mlotst_ds["mlotst"] |> Array{Float64}
 
     # Make ualldirs
-    u = makeualldirections(; umo_ds, vmo_ds)
+    ϕ = facefluxesfrommasstransport(; umo_ds, vmo_ds)
 
     # Make makemodelgrid
     modelgrid = makemodelgrid(; areacello_ds, volcello_ds, mlotst_ds)
@@ -76,7 +76,7 @@ for member in members[dataavailability.has_it_all]
 
     # Make transport matrix
     @warn "using κVdeep = 3e-5"
-    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; u, mlotst, modelgrid, indices,
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, modelgrid, indices,
         ρ = 1025.0,
         κH = 500.0, # m^2/s
         κVML = 0.1, # m^2/s
