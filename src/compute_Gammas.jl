@@ -12,19 +12,33 @@ using LinearAlgebra
 using Unitful
 using Unitful: s, yr
 
-
-model = "ACCESS-ESM1-5"
-# model = "ACCESS-CM2"
+model = "ACCESS1-0"
 # model = "ACCESS1-3"
+# model = "ACCESS-CM2"
+# model = "ACCESS-ESM1-5"
+# model = "CESM2"
+# model = "CESM2-FV2"
+# model = "CESM2-WACCM-FV2"
+# model = "CMCC-CM2-HR4"
+# model = "CMCC-CM2-SR5"
+# model = "CMCC-ESM2"
+# model = "FGOALS-f3-L"
+# model = "FGOALS-g3"
+# model = "MPI-ESM-1-2-HAM"
+# model = "MPI-ESM1-2-HR"
+# model = "MPI-ESM1-2-LR"
+# model = "NorCPM1"
+# model = "NorESM2-LM"
+# model = "NorESM2-MM"
 
-# CMIP_version = "CMIP5"
-CMIP_version = "CMIP6"
+CMIP_version = "CMIP5"
+# CMIP_version = "CMIP6"
 
-# experiment = "historical"
-experiment = "piControl"
+experiment = "historical"
+# experiment = "piControl"
 
-# time_window = "Jan1990-Dec1999"
-time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
+time_window = "Jan1990-Dec1999"
+# time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
 # time_window = "Jan1420-Dec1449" # <- last 30 years of ACCESS-CM2 piControl
 
 
@@ -32,7 +46,7 @@ time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
 inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 
 # find all members for which the inputdir contains umo.nc, vmo.nc, mlotst.nc, volcello.nc, and areacello.nc
-requiredvariables = ["umo", "vmo", "mlotst", "volcello", "areacello", "agessc"]
+requiredvariables = ["umo", "vmo", "mlotst", "volcello", "areacello"]
 hasrequireddata(member, variable_name) = isfile(joinpath(inputdirfun(member), "$variable_name.nc"))
 hasrequireddata(member) = all(variable_name -> hasrequireddata(member, variable_name), requiredvariables)
 members = readdir("/scratch/xv83/TMIP/data/$model/$experiment")
@@ -63,25 +77,41 @@ for member in members[dataavailability.has_it_all]
     volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
     areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
 
-    mlotst = mlotst_ds["mlotst"] |> Array{Float64}
+    # Load variables in memory
+    umo = readcubedata(umo_ds.umo)
+    vmo = readcubedata(vmo_ds.vmo)
+    mlotst = readcubedata(mlotst_ds.mlotst)
+    areacello = readcubedata(areacello_ds.areacello)
+    volcello = readcubedata(volcello_ds.volcello)
+    lon = readcubedata(volcello_ds.lon)
+    lat = readcubedata(volcello_ds.lat)
+    lev = volcello_ds.lev
 
-    # Make ualldirs
-    ϕ = facefluxesfrommasstransport(; umo_ds, vmo_ds)
+    # Identify the vertices keys (vary across CMIPs / models)
+    volcello_keys = propertynames(volcello_ds)
+    lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+    lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+    lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+    lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+
+    # Some parameter values
+    ρ = 1035.0    # kg/m^3
+    κH = 500.0    # m^2/s
+    κVML = 0.1    # m^2/s
+    κVdeep = 1e-5 # m^2/s
 
     # Make makemodelgrid
-    modelgrid = makemodelgrid(; areacello_ds, volcello_ds, mlotst_ds)
+    modelgrid = makemodelgrid(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+    (; lon_vertices, lat_vertices) = modelgrid
+
+    # Make fuxes from all directions
+    ϕ = facefluxesfrommasstransport(; umo, vmo)
 
     # Make indices
     indices = makeindices(modelgrid.v3D)
 
     # Make transport matrix
-    @warn "using κVdeep = 3e-5"
-    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, modelgrid, indices,
-        ρ = 1025.0,
-        κH = 500.0, # m^2/s
-        κVML = 0.1, # m^2/s
-        κVdeep = 3e-5, # m^2/s
-    )
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, modelgrid, indices, ρ, κH, κVML, κVdeep)
 
     # unpack model grid
     (; lon, lat, zt, v3D,) = modelgrid
