@@ -12,7 +12,8 @@ using LinearAlgebra
 using Unitful
 using Unitful: s, yr
 
-model = "ACCESS1-0"
+@show model = ARGS[1]
+# model = "ACCESS1-0"
 # model = "ACCESS1-3"
 # model = "ACCESS-CM2"
 # model = "ACCESS-ESM1-5"
@@ -31,8 +32,8 @@ model = "ACCESS1-0"
 # model = "NorESM2-LM"
 # model = "NorESM2-MM"
 
-CMIP_version = "CMIP5"
-# CMIP_version = "CMIP6"
+# CMIP_version = "CMIP5"
+CMIP_version = "CMIP6"
 
 experiment = "historical"
 # experiment = "piControl"
@@ -63,7 +64,7 @@ dataavailability = DataFrame(
 )
 show(dataavailability; allrows = true)
 
-
+all(.!dataavailability.has_it_all) && @warn "Nothing to do: missing something for all members"
 
 for member in members[dataavailability.has_it_all]
 # for member in [last(members)]
@@ -100,21 +101,21 @@ for member in members[dataavailability.has_it_all]
     κVML = 0.1    # m^2/s
     κVdeep = 1e-5 # m^2/s
 
-    # Make makemodelgrid
-    modelgrid = makemodelgrid(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-    (; lon_vertices, lat_vertices) = modelgrid
+    # Make makegridmetrics
+    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+    (; lon_vertices, lat_vertices) = gridmetrics
 
     # Make fuxes from all directions
     ϕ = facefluxesfrommasstransport(; umo, vmo)
 
     # Make indices
-    indices = makeindices(modelgrid.v3D)
+    indices = makeindices(gridmetrics.v3D)
 
     # Make transport matrix
-    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, modelgrid, indices, ρ, κH, κVML, κVdeep)
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = modelgrid
+    (; lon, lat, zt, v3D,) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices

@@ -10,7 +10,7 @@ using DimensionalData
 # using SparseArrays
 # using LinearAlgebra
 using Unitful
-using Unitful: s, yr
+using Unitful: s, yr, m, kg
 using CairoMakie
 using GeoMakie
 using Interpolations
@@ -20,8 +20,8 @@ using Format
 
 include("plotting_functions.jl")
 
-# model = "ACCESS-ESM1-5"
-model = "ACCESS-CM2"
+model = "ACCESS-ESM1-5"
+# model = "ACCESS-CM2"
 # model = "ACCESS1-3"
 
 CMIP_version = model == "ACCESS1-3" ? "CMIP5" : "CMIP6"
@@ -62,10 +62,14 @@ dataavailability = DataFrame(
 show(dataavailability; allrows = true)
 println()
 
+# tx_trans_gm is located at the bottom of the east face of the cell. It's an "overturning diagnostic"
+
 
 # for member in members[dataavailability.has_it_all]
 # for member in [last(members)]
-member = first(members)
+# member = first(members)
+member = "r5i1p1f1" # <- presumably the ACCESS-ESM1-5 member which has GM transport available ("HI-05")
+# member = "r1i1p1" # <- presumably the ACCESS1-3 member that Matt Chamberlain used for GM transport
 
     inputdir = inputdirfun(member)
 
@@ -80,8 +84,8 @@ member = first(members)
 
     # Load the required variables
     # Note: mass transport is expected to live on the (u,v) coordinates of an Arakawa C-grid
-    umo = umo_ds.umo # mass transport across "east" cell face
-    vmo = vmo_ds.vmo # mass transport across "north" cell face
+    umo = readcubedata(umo_ds.umo) # mass transport across "east" cell face
+    vmo = readcubedata(vmo_ds.vmo) # mass transport across "north" cell face
     uo = uo_ds.uo # velocities
     vo = vo_ds.vo # velocities
     mlotst = mlotst_ds.mlotst # MLD
@@ -109,16 +113,6 @@ member = first(members)
     # Some parameter values
     ρ = 1035.0    # density (kg/m^3)
 
-    # Make arrays of the flux on each face for each grid cell
-    ϕ = facefluxesfrommasstransport(; umo, vmo)
-
-    # Make arrays of the flux from velocities as well
-    uo_lon = modify(Array, uo_ds.lon)
-    uo_lat = modify(Array, uo_ds.lat)
-    vo_lon = modify(Array, vo_ds.lon)
-    vo_lat = modify(Array, vo_ds.lat)
-    ϕbis = facefluxesfromvelocities(; uo, uo_lon, uo_lat, vo, vo_lon, vo_lat, gridmetrics, ρ)
-
     # unpack model grid
     (; lon, lat, zt, v3D,) = gridmetrics
     lev = zt
@@ -139,20 +133,112 @@ member = first(members)
 
 
 
+    # if model == "ACCESS-ESM1-5"
+
+    #     # Load the GM terms for ACCESS-ESM1-5
+    #     @info "Loading GM velocities from ACCESS-ESM1-5 data"
+    #     ACCESSESM15directory = "/g/data/p73/archive/CMIP6/ACCESS-ESM1-5/"
+    #     GMtermfilepaths = [joinpath(ACCESSESM15directory, "HI-05/history/ocn/ocean_month.nc-199$(i)1231") for i in 0:9]
+    #     FILLVALUE = -1f20
+    #     @info "  u GM"
+    #     ψGMᵢmonthly = replace(ncread(first(GMtermfilepaths), "tx_trans_gm") |> Array .|> Float64, FILLVALUE => 0.0)
+    #     ψGMᵢmean = dropdims(nanmean(iψGMᵢmonthly, dims=4), dims=4)
+    #     for filepath in GMtermfilepaths[2:end]
+    #         ψGMᵢmonthly .= replace(ncread(filepath, "tx_trans_gm") |> Array .|> Float64, FILLVALUE => 0.0)
+    #         ψGMᵢmean .+= dropdims(nanmean(ψGMᵢmonthly, dims=4), dims=4)
+    #     end
+    #     ψGMᵢmean ./= length(GMtermfilepaths)
+    #     @info "  v GM"
+    #     ψGMⱼmonthly = replace(ncread(first(GMtermfilepaths), "ty_trans_gm") |> Array .|> Float64, FILLVALUE => 0.0)
+    #     ψGMⱼmean = dropdims(nanmean(iψGMⱼmonthly, dims=4), dims=4)
+    #     for filepath in GMtermfilepaths[2:end]
+    #         ψGMⱼmonthly .= replace(ncread(filepath, "ty_trans_gm") |> Array .|> Float64, FILLVALUE => 0.0)
+    #         ψGMⱼmean .+= dropdims(nanmean(ψGMⱼmonthly, dims=4), dims=4)
+    #     end
+    #     ψGMⱼmean ./= length(GMtermfilepaths)
+    #     @info "  Taking vertical diff"
+    #     (nx, ny, _) = size(iψGMᵢmean)
+    #     ϕGMᵢmean = diff([fill(0.0, nx, ny, 1);;; ψGMᵢmean], dims=3)
+    #     ϕGMⱼmean = diff([fill(0.0, nx, ny, 1);;; ψGMⱼmean], dims=3)
+    #     GMmasstransport_fromACCESSESM15 = (; ϕGMᵢmean, ϕGMⱼmean)
+    #     @info "  u submeso"
+    #     ψsubmesoᵢmonthly = replace(ncread(first(GMtermfilepaths), "tx_trans_submeso") |> Array .|> Float64, FILLVALUE => 0.0)
+    #     ψsubmesoᵢmean = dropdims(nanmean(ψsubmesoᵢmonthly, dims=4), dims=4)
+    #     for filepath in GMtermfilepaths[2:end]
+    #         ψsubmesoᵢmonthly .= replace(ncread(filepath, "tx_trans_submeso") |> Array .|> Float64, FILLVALUE => 0.0)
+    #         ψsubmesoᵢmean .+= dropdims(nanmean(ψsubmesoᵢmonthly, dims=4), dims=4)
+    #     end
+    #     ψsubmesoᵢmean ./= length(GMtermfilepaths)
+    #     @info "  v submeso"
+    #     ψsubmesoⱼmonthly = replace(ncread(first(GMtermfilepaths), "ty_trans_submeso") |> Array .|> Float64, FILLVALUE => 0.0)
+    #     ψsubmesoⱼmean = dropdims(nanmean(ψsubmesoⱼmonthly, dims=4), dims=4)
+    #     for filepath in GMtermfilepaths[2:end]
+    #         ψsubmesoⱼmonthly .= replace(ncread(filepath, "ty_trans_submeso") |> Array .|> Float64, FILLVALUE => 0.0)
+    #         ψsubmesoⱼmean .+= dropdims(nanmean(ψsubmesoⱼmonthly, dims=4), dims=4)
+    #     end
+    #     ψsubmesoⱼmean ./= length(GMtermfilepaths)
+    #     @info "  Taking vertical diff"
+    #     (nx, ny, _) = size(iψsubmesoᵢmean)
+    #     ϕsubmesoᵢmean = diff([fill(0.0, nx, ny, 1);;; ψsubmesoᵢmean], dims=3)
+    #     ϕsubmesoⱼmean = diff([fill(0.0, nx, ny, 1);;; ψsubmesoⱼmean], dims=3)
+    #     submesomasstransport_fromACCESSESM15 = (; ϕsubmesoᵢmean, ϕsubmesoⱼmean)
+
+    # elseif model == "ACCESS1-3"
+
+    #     GMmasstransport_fromMattChamberlain = begin
+    #         # Extra stuff for GM terms
+    #         MattChamberlaindirectory = "/g/data/v19/mtc599/matrix/access1.3"
+    #         GMtermfilepath = joinpath(MattChamberlaindirectory, "historical/grid1990/transport.nc")
+    #         # Below is required because MC's directory names
+    #         @info """
+    #         Loading GM velocities from Matt Chamberlain's ACCESS1-3 data
+    #         from file: $GMtermfilepath
+    #         """
+    #         ϕGMᵢmean = ncread(GMtermfilepath, "tx_trans_gm") |> Array .|> Float64
+    #         ϕGMⱼmean = ncread(GMtermfilepath, "ty_trans_gm") |> Array .|> Float64
+    #         # Replace fill values with 0
+    #         Sv = 1e6m^3/s * 1000kg/m^3
+    #         ϕGMᵢmean = replace(ϕGMᵢmean, -1.0e34 => 0)
+    #         ϕGMⱼmean = replace(ϕGMⱼmean, -1.0e34 => 0)
+    #         # convert from Sverdrups to kg/s
+    #         ϕGMᵢmean = ustrip.(kg/s, ϕGMᵢmean * Sv)
+    #         ϕGMⱼmean = ustrip.(kg/s, ϕGMⱼmean * Sv)
+    #         # the GM fields are summed vertically, so we need their diff.
+    #         (nx, ny, _) = size(ϕGMᵢmean)
+    #         ϕGMᵢmean = diff([fill(0.0, nx, ny, 1);;; ϕGMᵢmean], dims=3)
+    #         ϕGMⱼmean = diff([fill(0.0, nx, ny, 1);;; ϕGMⱼmean], dims=3)
+    #         (; ϕGMᵢmean, ϕGMⱼmean)
+    #     end
+
+    # end
+
+
+    # Compute the fluxes without the GM terms
+    ϕ = facefluxesfrommasstransport(; umo, vmo)
+    # Compute the fluxes with the GM terms
+    umo = umo .+ ϕGMᵢmean
+    vmo = vmo .+ ϕGMⱼmean
+    ϕbis = facefluxesfrommasstransport(; umo, vmo)
+    # Compute the fluxes with the submseo terms
+    umo = umo .+ ϕsubmesoᵢmean
+    vmo = vmo .+ ϕsubmesoⱼmean
+    ϕter = facefluxesfrommasstransport(; umo, vmo)
+
+
     # Plot meriodional overturning circulation for each basin
 
-    levels = -20:20
-    colormap = cgrad(:curl, length(levels) + 1; categorical=true)
+    levels = -50:5:50
+    colormap = cgrad(:RdBu, length(levels) + 1; categorical=true, rev=true)
     extendlow = colormap[1]
     extendhigh = colormap[end]
     colormap = cgrad(colormap[2:end-1]; categorical=true)
 
-    fig = Figure(size = (1200, 600), fontsize = 18)
-    axs = Array{Any, 2}(undef, (2, 3))
-    contours = Array{Any, 2}(undef, (2, 3))
+    fig = Figure(size = (1200, 900), fontsize = 18)
+    axs = Array{Any, 2}(undef, (3, 3))
+    contours = Array{Any, 2}(undef, (3, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
-        for (irow, x3D) in enumerate((ϕ.north, ϕbis.north))
+        for (irow, x3D) in enumerate((ϕ.north, ϕbis.north, ϕter.north))
 
             x2D = dropdims(reverse(nancumsum(reverse(nansum(basin .* x3D, dims = 1), dims=3), dims = 3), dims=3), dims = 1) # kg/s
             x2Dmask = zonalaverage(1, gridmetrics; mask = basin) .> 0
@@ -219,16 +305,17 @@ member = first(members)
     colgap!(fig.layout, 15)
     title = "$model $experiment $member $(time_window) MOC"
     Label(fig[-1, 1:3]; text = title, fontsize = 20, tellwidth = false)
-    Label(fig[1, 0]; text = "from mass transports", rotation = π/2, tellheight = false)
-    Label(fig[2, 0]; text = "from velocities", rotation = π/2, tellheight = false)
+    ∬ = "∬"
+    dx = rich("d", rich("x", font=:italic))
+    dz = rich("d", rich("z", font=:italic))
+    Label(fig[1, 0]; text = rich(∬, " vmo ", dx, " ", dz), rotation = π/2, tellheight = false)
+    Label(fig[2, 0]; text = rich(∬, " vmo + GM ", dx, " ", dz), rotation = π/2, tellheight = false)
+    Label(fig[3, 0]; text = rich(∬, " vmo + GM + submeso ", dx, " ", dz), rotation = π/2, tellheight = false)
     fig
     # save plot
-    outputfile = joinpath(inputdir, "MOC.png")
+    outputfile = joinpath(inputdir, "MOC_withGM_and_submeso.png")
     @info "Saving MOC as image file:\n  $(outputfile)"
     save(outputfile, fig)
-
-
-
 
 
 

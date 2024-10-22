@@ -84,15 +84,15 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # Make ualldirs
     ϕ = facefluxesfrommasstransport(; umo_ds, vmo_ds)
 
-    # Make makemodelgrid
-    modelgrid = makemodelgrid(; areacello_ds, volcello_ds, mlotst_ds)
+    # Make makegridmetrics
+    gridmetrics = makegridmetrics(; areacello_ds, volcello_ds, mlotst_ds)
 
     # Make indices
-    indices = makeindices(modelgrid.v3D)
+    indices = makeindices(gridmetrics.v3D)
 
     # Make transport matrix
     @warn "using κVdeep = $κVdeep_str, κH = $κH_str"
-    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, modelgrid, indices,
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices,
         ρ = 1025.0,
         κH, # m^2/s
         κVML = 0.1, # m^2/s
@@ -100,7 +100,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     )
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = modelgrid
+    (; lon, lat, zt, v3D,) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -192,7 +192,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
-    plt = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
+    plt = plotmap!(ax, Γinyr2D, gridmetrics; colorrange, colormap)
     Colorbar(fig[1,2], plt, label="Ideal mean age (yr)")
     # save plot
     outputfile = joinpath(outputdir, "ideal_mean_age_v2.png")
@@ -211,15 +211,15 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     colorrange = (0, 1500)
     colormap = :viridis
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
-    plt1 = plotmap!(ax, Γinyr2D, modelgrid; colorrange, colormap)
+    plt1 = plotmap!(ax, Γinyr2D, gridmetrics; colorrange, colormap)
     title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) agessc (yr) at $depth m"
     ax = Axis(fig[2,1]; title, xtickformat, ytickformat)
-    plt2 = plotmap!(ax, agessc2D, modelgrid; colorrange, colormap)
+    plt2 = plotmap!(ax, agessc2D, gridmetrics; colorrange, colormap)
     Colorbar(fig[1:2,2], plt1, label="Ideal mean age (yr)")
     ax = Axis(fig[3,1]; title, xtickformat, ytickformat)
     colorrange = (-500, 500)
     colormap = :RdBu
-    plt3 = plotmap!(ax, Γinyr2D - agessc2D, modelgrid; colorrange, colormap)
+    plt3 = plotmap!(ax, Γinyr2D - agessc2D, gridmetrics; colorrange, colormap)
     Colorbar(fig[3,2], plt3, label=rich("Δ", Γdown, " (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "ideal_mean_age_maps_vs_agessc_$(depth)m.png")
@@ -274,7 +274,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
         for (irow, x3D) in enumerate((Γinyr3D, agessc3D))
 
-            x2D = zonalaverage(x3D, modelgrid; mask = basin)
+            x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
             ax = Axis(fig[irow, icol],
                 backgroundcolor=:lightgray,
@@ -327,7 +327,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         irow = 3
-        x2D = zonalaverage(Γinyr3D - agessc3D, modelgrid; mask = basin)
+        x2D = zonalaverage(Γinyr3D - agessc3D, gridmetrics; mask = basin)
 
         ax = Axis(fig[irow, icol],
             backgroundcolor=:lightgray,
@@ -427,7 +427,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     contours = Array{Any,2}(undef, (1, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
-        x2D = zonalaverage(Γoutyr3D, modelgrid; mask = basin)
+        x2D = zonalaverage(Γoutyr3D, gridmetrics; mask = basin)
         irow = 1
 
         ax = Axis(fig[irow, icol],
@@ -503,7 +503,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
-    plt = plotmap!(ax, Γinyrseafloor, modelgrid; colorrange, colormap)
+    plt = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
     Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "mean_age_at_seafloor.png")
@@ -521,7 +521,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
-    plt = plotmap!(ax, Γoutyrseafloor, modelgrid; colorrange, colormap)
+    plt = plotmap!(ax, Γoutyrseafloor, gridmetrics; colorrange, colormap)
     Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "reemergence_time_at_seafloor.png")

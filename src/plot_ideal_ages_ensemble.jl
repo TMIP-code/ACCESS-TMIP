@@ -86,14 +86,14 @@ for (model, CMIP_version) in zip(models, CMIP_versions)
 
         mlotst = mlotst_ds["mlotst"] |> Array{Float64}
 
-        # Make makemodelgrid
-        modelgrid = makemodelgrid(; areacello_ds, volcello_ds, mlotst_ds)
+        # Make makegridmetrics
+        gridmetrics = makegridmetrics(; areacello_ds, volcello_ds, mlotst_ds)
 
         # Make indices
-        indices = makeindices(modelgrid.v3D)
+        indices = makeindices(gridmetrics.v3D)
 
         # unpack model grid
-        (; lon, lat, zt, v3D,) = modelgrid
+        (; lon, lat, zt, v3D,) = gridmetrics
 
         zts[model][member] = zt
 
@@ -110,8 +110,8 @@ for (model, CMIP_version) in zip(models, CMIP_versions)
         basins = (; (basin_keys .=> basin_values)...)
 
         for (basin_key, mask) in pairs(basins)
-            Γinyr1Ds[model][member][basin_key] = horizontalaverage(Γinyr3D, modelgrid; mask)
-            agessc1Ds[model][member][basin_key] = horizontalaverage(agessc3D, modelgrid; mask)
+            Γinyr1Ds[model][member][basin_key] = horizontalaverage(Γinyr3D, gridmetrics; mask)
+            agessc1Ds[model][member][basin_key] = horizontalaverage(agessc3D, gridmetrics; mask)
         end
 
     end

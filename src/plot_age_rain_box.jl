@@ -93,8 +93,8 @@ for model in models
         lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
         lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
-        modelgrid = makemodelgrid(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-        (; lon, lat) = modelgrid
+        gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+        (; lon, lat) = gridmetrics
 
         # Save the global mean of the ideal mean age
         _FillValue = get(volcello.properties, "_FillValue", NaN)

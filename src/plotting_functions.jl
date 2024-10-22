@@ -28,15 +28,15 @@ ytickformat(y) = latticklabel.(y)
 
 loninsamewindow(l1, l2) = mod(l1 - l2 + 180, 360) + l2 - 180
 
-function plotmap!(ax, x2D, modelgrid; kwargs...)
+function plotmap!(ax, x2D, gridmetrics; kwargs...)
 
-    # unpack modelgrid
-    lonv = modelgrid.lon_vertices
-    latv = modelgrid.lat_vertices
-    lon = modelgrid.lon
+    # unpack gridmetrics
+    lonv = gridmetrics.lon_vertices
+    latv = gridmetrics.lat_vertices
+    lon = gridmetrics.lon
 
     # make sure quads are not too distorted
-    lon = mod.(modelgrid.lon .+ 180, 360) .- 180
+    lon = mod.(gridmetrics.lon .+ 180, 360) .- 180
     lonv = loninsamewindow.(lonv, reshape(lon, (1, size(lon)...)))
 
     # create quads
@@ -61,9 +61,9 @@ end
 
 OCEANS = oceanpolygons()
 
-function zonalaverage(x3D, modelgrid; mask = 1)
-    # unpack modelgrid
-    (; v3D) = modelgrid
+function zonalaverage(x3D, gridmetrics; mask = 1)
+    # unpack gridmetrics
+    (; v3D) = gridmetrics
 
     # create zonal average
     x2D = nansum(x3D .* v3D .* mask, dims = 1) ./ nansum(mask .* v3D, dims = 1)
@@ -71,9 +71,9 @@ function zonalaverage(x3D, modelgrid; mask = 1)
     return dropdims(x2D, dims = 1)
 end
 
-function horizontalaverage(x3D, modelgrid; mask = 1)
-    # unpack modelgrid
-    (; v3D) = modelgrid
+function horizontalaverage(x3D, gridmetrics; mask = 1)
+    # unpack gridmetrics
+    (; v3D) = gridmetrics
 
     # create zonal average
     x2D = nansum(x3D .* v3D .* mask, dims = (1, 2)) ./ nansum(mask .* v3D, dims = (1, 2))
