@@ -85,7 +85,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     ϕ = facefluxesfrommasstransport(; umo_ds, vmo_ds)
 
     # Make makegridmetrics
-    gridmetrics = makegridmetrics(; areacello_ds, volcello_ds, mlotst_ds)
+    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
 
     # Make indices
     indices = makeindices(gridmetrics.v3D)
@@ -245,9 +245,9 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     # Plot zonal averages
 
-    basin_keys = (:ATL, :PAC, :IND)
-    basin_strs = ("Atlantic", "Pacific", "Indian")
-    basin_functions = (isatlantic, ispacific, isindian)
+    basin_keys = (:ATL, :PAC, :IND, :GBL)
+    basin_strs = ("Atlantic", "Pacific", "Indian", "Global")
+    basin_functions = (isatlantic, ispacific, isindian, (x,y,z) -> trues(size(x)))
     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
     basins = (; (basin_keys .=> basin_values)...)
     basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]

@@ -87,7 +87,7 @@ for (model, CMIP_version) in zip(models, CMIP_versions)
         mlotst = mlotst_ds["mlotst"] |> Array{Float64}
 
         # Make makegridmetrics
-        gridmetrics = makegridmetrics(; areacello_ds, volcello_ds, mlotst_ds)
+        gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
 
         # Make indices
         indices = makeindices(gridmetrics.v3D)

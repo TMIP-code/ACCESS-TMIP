@@ -223,7 +223,7 @@ member = first(members)
     Label(fig[2, 0]; text = "from velocities", rotation = π/2, tellheight = false)
     fig
     # save plot
-    outputfile = joinpath(inputdir, "MOC.png")
+    outputfile = joinpath(inputdir, "$(model)_MOC.png")
     @info "Saving MOC as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
