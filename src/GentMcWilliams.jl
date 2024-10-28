@@ -76,3 +76,35 @@ function ϕfromACCESSESM15(gm_or_submeso, member, time_window)
     return ϕᵢmean, ϕⱼmean
 
 end
+
+
+
+
+
+function ϕfromACCESSESM15_Tilo(gm_or_submeso, member, time_window)
+
+    @assert gm_or_submeso ∈ ("gm", "submeso")
+
+    # Convert to the member number to be used in the file path by CSIRO
+    CSIRO_member = CMIP6member2CSIROmember(member)
+
+    # parse the time_window string to get the years
+    yearstart, yearend = parse_time_window(time_window)
+
+    # Load the GM terms for ACCESS-ESM1-5
+    files = ["/g/data/p73/archive/CMIP6/ACCESS-ESM1-5/$CSIRO_member/history/ocn/ocean_month.nc-$(year)1231" for year in yearstart:yearend]
+    @info "Loading GM velocities from ACCESS-ESM1-5 data"
+    @info "  u GM"
+    ψᵢmean = timeaverage(files, "tx_trans_$gm_or_submeso")
+    @info "  v GM"
+    ψⱼmean = timeaverage(files, "ty_trans_$gm_or_submeso")
+
+    # These are transport diagnostics at the bottom of the face cells, so need to diff to get mass transport
+    @info "  Taking vertical diff"
+    (nx, ny, _) = size(ψᵢmean)
+    ϕᵢmean = diff([fill(0.0, nx, ny, 1);;; ψᵢmean], dims=3)
+    ϕⱼmean = diff([fill(0.0, nx, ny, 1);;; ψⱼmean], dims=3)
+
+    return ϕᵢmean, ϕⱼmean
+
+end
