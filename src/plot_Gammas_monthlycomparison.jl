@@ -33,12 +33,10 @@ time_window = "Jan1990-Dec1999"
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 
 # Load umo, vmo, mlotst, volcello, and areacello
-mlotst_ds = open_dataset(joinpath(inputdir, "mlotst.nc"))
 volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
 
 # Load variables in memory
-mlotst = readcubedata(mlotst_ds.mlotst)
 areacello = readcubedata(areacello_ds.areacello)
 volcello = readcubedata(volcello_ds.volcello)
 lon = readcubedata(volcello_ds.lon)
@@ -95,8 +93,8 @@ colormap = cgrad(colormap[1:end-1]; categorical=true)
 
 # Plot Γ↓ zonal averages
 
-fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
 Nrows = length(strs)
+fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
 axs = Array{Any,2}(undef, (2Nrows - 1, 3))
 contours = Array{Any,2}(undef, (2Nrows - 1, 3))
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))

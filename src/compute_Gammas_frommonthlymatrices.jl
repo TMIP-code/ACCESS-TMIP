@@ -97,16 +97,26 @@ indices = makeindices(gridmetrics.v3D)
 
 
 yearly_T = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+yearly_Tadv = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+yearly_TκH = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+yearly_TκVML = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+yearly_TκVdeep = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
 yearly_weights = Dict{Int64, Float64}()
 
 years = 1990:1999
 months = 1:12
+# years = 1990:1991
+# months = 1:2
 
 for year in years
 
     println("year $year")
 
     monthly_T = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+    monthly_Tadv = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+    monthly_TκH = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+    monthly_TκVML = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+    monthly_TκVdeep = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
     monthly_weights = Dict{Int64, Float64}()
 
     for month in months
@@ -114,14 +124,14 @@ for year in years
         println("  month $month")
 
         # Load variables in memory
-        mlotst = readcubedata(mlotst_ds.mlotst[Ti=Near(Date(year, month, 15))])
-        umo = readcubedata(umo_ds.umo[Ti=Near(Date(year, month, 15))])
-        vmo = readcubedata(vmo_ds.vmo[Ti=Near(Date(year, month, 15))])
+        mlotst = readcubedata(mlotst_ds.mlotst[Ti=Date(year, month, 10)..Date(year, month, 20)])
+        umo = readcubedata(umo_ds.umo[Ti=Date(year, month, 10)..Date(year, month, 20)])
+        vmo = readcubedata(vmo_ds.vmo[Ti=Date(year, month, 10)..Date(year, month, 20)])
 
-        ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti=Near(Date(year, month, 15))])
-        ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti=Near(Date(year, month, 15))])
-        ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti=Near(Date(year, month, 15))])
-        ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti=Near(Date(year, month, 15))])
+        ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti=Date(year, month, 10)..Date(year, month, 20)])
+        ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti=Date(year, month, 10)..Date(year, month, 20)])
+        ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti=Date(year, month, 10)..Date(year, month, 20)])
+        ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti=Date(year, month, 10)..Date(year, month, 20)])
 
         # Replace missing values and convert to arrays
         # I think latest YAXArrays converts _FillValues to missing
@@ -149,33 +159,67 @@ for year in years
         (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
         monthly_T[month] = T
+        monthly_Tadv[month] = Tadv
+        monthly_TκH[month] = TκH
+        monthly_TκVML[month] = TκVML
+        monthly_TκVdeep[month] = TκVdeep
         monthly_weights[month] = daysinmonth(Date(year, month, 15))
 
     end
 
-    @info "summing monthly matrices for year $year"
+    @show monthly_weights
     yearly_weights[year] = sum(w for w in values(monthly_weights))
-    @time yearly_T[year] = let
+
+    @info "summing monthly matrices for year $year"
+    @time yearly_T[year], yearly_Tadv[year], yearly_TκH[year], yearly_TκVML[year], yearly_TκVdeep[year] = let
         T = monthly_weights[first(months)] * monthly_T[first(months)]
+        Tadv = monthly_weights[first(months)] * monthly_Tadv[first(months)]
+        TκH = monthly_weights[first(months)] * monthly_TκH[first(months)]
+        TκVML = monthly_weights[first(months)] * monthly_TκVML[first(months)]
+        TκVdeep = monthly_weights[first(months)] * monthly_TκVdeep[first(months)]
         for month in months[2:end]
             T += monthly_weights[month] * monthly_T[month]
+            Tadv += monthly_weights[month] * monthly_Tadv[month]
+            TκH += monthly_weights[month] * monthly_TκH[month]
+            TκVML += monthly_weights[month] * monthly_TκVML[month]
+            TκVdeep += monthly_weights[month] * monthly_TκVdeep[month]
         end
         T /= yearly_weights[year]
-        T
+        Tadv /= yearly_weights[year]
+        TκH /= yearly_weights[year]
+        TκVML /= yearly_weights[year]
+        TκVdeep /= yearly_weights[year]
+        T, Tadv, TκH, TκVML, TκVdeep
     end
 
 end
+
+@show yearly_weights
 
 @info "summing yearly matrices for years $years"
 total_weights = sum(w for w in values(yearly_weights))
-@time T = let
+@time T, Tadv, TκH, TκVML, TκVdeep = let
     T = yearly_weights[first(years)] * yearly_T[first(years)]
+    Tadv = yearly_weights[first(years)] * yearly_Tadv[first(years)]
+    TκH = yearly_weights[first(years)] * yearly_TκH[first(years)]
+    TκVML = yearly_weights[first(years)] * yearly_TκVML[first(years)]
+    TκVdeep = yearly_weights[first(years)] * yearly_TκVdeep[first(years)]
     for year in years[2:end]
         T += yearly_weights[year] * yearly_T[year]
+        Tadv += yearly_weights[year] * yearly_Tadv[year]
+        TκH += yearly_weights[year] * yearly_TκH[year]
+        TκVML += yearly_weights[year] * yearly_TκVML[year]
+        TκVdeep += yearly_weights[year] * yearly_TκVdeep[year]
     end
     T /= total_weights
-    T
+    Tadv /= total_weights
+    TκH /= total_weights
+    TκVML /= total_weights
+    TκVdeep /= total_weights
+    T, Tadv, TκH, TκVML, TκVdeep
 end
+
+WIP
 
 # 3. Then solve for ideal age / reemergence time
 
