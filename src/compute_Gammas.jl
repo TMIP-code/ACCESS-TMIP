@@ -12,11 +12,11 @@ using LinearAlgebra
 using Unitful
 using Unitful: s, yr
 
-@show model = ARGS[1]
+# @show model = ARGS[1]
 # model = "ACCESS1-0"
 # model = "ACCESS1-3"
 # model = "ACCESS-CM2"
-# model = "ACCESS-ESM1-5"
+model = "ACCESS-ESM1-5"
 # model = "CESM2"
 # model = "CESM2-FV2"
 # model = "CESM2-WACCM-FV2"
@@ -67,7 +67,7 @@ show(dataavailability; allrows = true)
 all(.!dataavailability.has_it_all) && @warn "Nothing to do: missing something for all members"
 
 for member in members[dataavailability.has_it_all]
-# for member in [last(members)]
+# for member in [first(members)]
 
     inputdir = inputdirfun(member)
 

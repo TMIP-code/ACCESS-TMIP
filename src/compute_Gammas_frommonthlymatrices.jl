@@ -60,12 +60,13 @@ areacello_ds = open_dataset(only(areacellodf.path))
 CMIP6outputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 
 # 2. Load Tilo data (GM + submeso transport)
+include("GentMcWilliams.jl")
 CSIRO_member = CMIP6member2CSIROmember(member)
 Tilodatainputdir = "/g/data/xv83/TMIP/data/$model/$CSIRO_member"
-ϕᵢGM_ds = open_dataset(joinpath(Tilodatainputdir, "month_tx_trans_gm_1990s.nc"))
-ϕⱼGM_ds = open_dataset(joinpath(Tilodatainputdir, "month_ty_trans_gm_1990s.nc"))
-ϕᵢsubmeso_ds = open_dataset(joinpath(Tilodatainputdir, "month_tx_trans_submeso_1990s.nc"))
-ϕⱼsubmeso_ds = open_dataset(joinpath(Tilodatainputdir, "month_ty_trans_submeso_1990s.nc"))
+ψᵢGM_ds = open_dataset(joinpath(Tilodatainputdir, "month_tx_trans_gm_1990s.nc"))
+ψⱼGM_ds = open_dataset(joinpath(Tilodatainputdir, "month_ty_trans_gm_1990s.nc"))
+ψᵢsubmeso_ds = open_dataset(joinpath(Tilodatainputdir, "month_tx_trans_submeso_1990s.nc"))
+ψⱼsubmeso_ds = open_dataset(joinpath(Tilodatainputdir, "month_ty_trans_submeso_1990s.nc"))
 
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
@@ -93,117 +94,168 @@ indices = makeindices(gridmetrics.v3D)
 κVML = 0.1    # m^2/s
 κVdeep = 1e-5 # m^2/s
 
-monthly_T = [];
-# for year in 1990:1999
-YEAR = 1990
-    # for month in 1:12
-    MONTH = 1
+
+
+yearly_T = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+yearly_weights = Dict{Int64, Float64}()
+
+years = 1990:1999
+months = 1:12
+
+for year in years
+
+    println("year $year")
+
+    monthly_T = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
+    monthly_weights = Dict{Int64, Float64}()
+
+    for month in months
+
+        println("  month $month")
 
         # Load variables in memory
-        mlotst = readcubedata(mlotst_ds.mlotst[Ti=Near(Date(YEAR, MONTH, 15))])
-        umo = readcubedata(umo_ds.umo[Ti=Near(Date(YEAR, MONTH, 15))])
-        vmo = readcubedata(vmo_ds.vmo[Ti=Near(Date(YEAR, MONTH, 15))])
+        mlotst = readcubedata(mlotst_ds.mlotst[Ti=Near(Date(year, month, 15))])
+        umo = readcubedata(umo_ds.umo[Ti=Near(Date(year, month, 15))])
+        vmo = readcubedata(vmo_ds.vmo[Ti=Near(Date(year, month, 15))])
 
-        ϕᵢGM = readcubedata(ϕᵢGM_ds.tx_trans_gm[Ti=Near(Date(YEAR, MONTH, 15))])
-        ϕⱼGM = readcubedata(ϕⱼGM_ds.ty_trans_gm[Ti=Near(Date(YEAR, MONTH, 15))])
-        ϕᵢsubmeso = readcubedata(ϕᵢsubmeso_ds.tx_trans_submeso[Ti=Near(Date(YEAR, MONTH, 15))])
-        ϕⱼsubmeso = readcubedata(ϕⱼsubmeso_ds.ty_trans_submeso[Ti=Near(Date(YEAR, MONTH, 15))])
+        ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti=Near(Date(year, month, 15))])
+        ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti=Near(Date(year, month, 15))])
+        ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti=Near(Date(year, month, 15))])
+        ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti=Near(Date(year, month, 15))])
 
-        # TODO take the vertical diff first!
-        WIP WIP
+        # Replace missing values and convert to arrays
+        # I think latest YAXArrays converts _FillValues to missing
+        ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
+        ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
+        ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
+        ψⱼsubmeso = replace(ψⱼsubmeso |> Array, missing => 0) .|> Float64
+
+        # Also remove missings in umo and vmo
+        umo = replace(umo, missing => 0)
+        vmo = replace(vmo, missing => 0)
+
+        # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
+        (nx, ny, _) = size(ψᵢGM)
+        ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
+        ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
+        ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
+        ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
 
         # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
         ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
-            facefluxesfrommasstransport(; umo, vmo)
+            facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
         end
-
-        weight = daysinmonth(Date(YEAR, MONTH, 15))
 
         (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
+        monthly_T[month] = T
+        monthly_weights[month] = daysinmonth(Date(year, month, 15))
+
     end
 
+    @info "summing monthly matrices for year $year"
+    yearly_weights[year] = sum(w for w in values(monthly_weights))
+    @time yearly_T[year] = let
+        T = monthly_weights[first(months)] * monthly_T[first(months)]
+        for month in months[2:end]
+            T += monthly_weights[month] * monthly_T[month]
+        end
+        T /= yearly_weights[year]
+        T
+    end
 
+end
 
-
+@info "summing yearly matrices for years $years"
+total_weights = sum(w for w in values(yearly_weights))
+@time T = let
+    T = yearly_weights[first(years)] * yearly_T[first(years)]
+    for year in years[2:end]
+        T += yearly_weights[year] * yearly_T[year]
+    end
+    T /= total_weights
+    T
+end
 
 # 3. Then solve for ideal age / reemergence time
 
-    # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
-    lev = zt
-    # unpack indices
-    (; wet3D, N) = indices
+# unpack model grid
+(; lon, lat, zt, v3D,) = gridmetrics
+lev = zt
+# unpack indices
+(; wet3D, N) = indices
 
-    v = v3D[wet3D]
+v = v3D[wet3D]
 
-    # surface mask
-    issrf3D = copy(wet3D)
-    issrf3D[:,:,2:end] .= false
-    issrf = issrf3D[wet3D]
-    # Ideal mean age Γ↓ is governed by
-    # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
-    # so
-    # 	Γ↓ = A⁻¹ 1
-    # where A = T + M and M is matrix mask of surface with short timescale (1s)
-    sΓin = ones(size(v))
-    M = sparse(Diagonal(issrf))
-    @info "Factorizing A = T + M"
-    A = factorize(T + M)
-    @info "Solving ideal mean age"
-    Γin = A \ sΓin
-    Γinyr = ustrip.(yr, Γin .* s)
-    Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
+# surface mask
+issrf3D = copy(wet3D)
+issrf3D[:,:,2:end] .= false
+issrf = issrf3D[wet3D]
+# Ideal mean age Γ↓ is governed by
+# 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
+# so
+# 	Γ↓ = A⁻¹ 1
+# where A = T + M and M is matrix mask of surface with short timescale (1s)
+sΓin = ones(size(v))
+M = sparse(Diagonal(issrf))
+@info "Factorizing A = T + M"
+A = factorize(T + M)
+@info "Solving ideal mean age"
+Γin = A \ sΓin
+Γinyr = ustrip.(yr, Γin .* s)
+Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
 
-    # global mean of the mean age should be order 1000yr
-    (v' * Γinyr) / sum(v)
+# global mean of the mean age should be order 1000yr
+(v' * Γinyr) / sum(v)
 
-    # Mean reemergence time is governed by
-    # 	-∂Γ↑/∂t + (T̃ + M) Γ↑ = 1    (note the tilde on T̃ = V⁻¹ Tᵀ V, the adjoint of T)
-    # For computational efficiency, reuse factors of A = T + M:
-    #   Γ↑ = V⁻¹ A⁻ᵀ V 1
-    V = sparse(Diagonal(v))
-    V⁻¹ = sparse(Diagonal(1 ./ v))
-    Γout = V⁻¹ * (transpose(A) \ (V * sΓin))
-    Γoutyr = ustrip.(yr, Γout .* s)
-    Γoutyr3D = OceanTransportMatrixBuilder.as3D(Γoutyr, wet3D)
+# Mean reemergence time is governed by
+# 	-∂Γ↑/∂t + (T̃ + M) Γ↑ = 1    (note the tilde on T̃ = V⁻¹ Tᵀ V, the adjoint of T)
+# For computational efficiency, reuse factors of A = T + M:
+#   Γ↑ = V⁻¹ A⁻ᵀ V 1
+V = sparse(Diagonal(v))
+V⁻¹ = sparse(Diagonal(1 ./ v))
+Γout = V⁻¹ * (transpose(A) \ (V * sΓin))
+Γoutyr = ustrip.(yr, Γout .* s)
+Γoutyr3D = OceanTransportMatrixBuilder.as3D(Γoutyr, wet3D)
 
-    # global mean of the mean reemergence time should also be order 1000yr
-    (v' * Γout) / sum(v)
+# global mean of the mean reemergence time should also be order 1000yr
+(v' * Γout) / sum(v)
 
-    # Turn Γin into a YAXArray by rebuilding from volcello
-    Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
-        data = Γinyr3D,
-        dims = dims(volcello_ds["volcello"]),
-        metadata = Dict(
-            "origin" => "ideal_mean_age computed from $model $experiment $member $(time_window)",
-            "units" => "yr",
-        )
+# Turn Γin into a YAXArray by rebuilding from volcello
+Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+    data = Γinyr3D,
+    dims = dims(volcello_ds["volcello"]),
+    metadata = Dict(
+        "origin" => "ideal_mean_age computed from $model $experiment $member $(time_window)",
+        "units" => "yr",
     )
-    arrays = Dict(:age => Γinyr_YAXArray, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-    Γin_ds = Dataset(; volcello_ds.properties, arrays...)
+)
+arrays = Dict(:age => Γinyr_YAXArray, :lat => volcello_ds.latitude, :lon => volcello_ds.longitude)
+Γin_ds = Dataset(; volcello_ds.properties, arrays...)
 
-    # Turn Γout into a YAXArray by rebuilding from volcello
-    Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
-        data = Γoutyr3D,
-        dims = dims(volcello_ds["volcello"]),
-        metadata = Dict(
-            "origin" => "mean_reemergence_time computed from $model $experiment $member $(time_window)",
-            "units" => "yr",
-        )
+# Turn Γout into a YAXArray by rebuilding from volcello
+Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+    data = Γoutyr3D,
+    dims = dims(volcello_ds["volcello"]),
+    metadata = Dict(
+        "origin" => "mean_reemergence_time computed from $model $experiment $member $(time_window)",
+        "units" => "yr",
     )
-    arrays = Dict(:age => Γoutyr_YAXArray, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-    Γout_ds = Dataset(; volcello_ds.properties, arrays...)
+)
+arrays = Dict(:age => Γoutyr_YAXArray, :lat => volcello_ds.latitude, :lon => volcello_ds.longitude)
+Γout_ds = Dataset(; volcello_ds.properties, arrays...)
 
-    # Save Γinyr3D to netCDF file
-    outputfile = joinpath(CMIP6outputdir, "ideal_mean_age_$str.nc")
-    @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
-    savedataset(Γin_ds, path = outputfile, driver = :netcdf, overwrite = true)
+str = "monthlymatrices"
 
-    # Save Γoutyr3D to netCDF file
-    outputfile = joinpath(CMIP6outputdir, "mean_reemergence_time_$str.nc")
-    @info "Saving mean reemergence time as netCDF file:\n  $(outputfile)"
-    savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
+# Save Γinyr3D to netCDF file
+outputfile = joinpath(CMIP6outputdir, "ideal_mean_age_$str.nc")
+@info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
+savedataset(Γin_ds, path = outputfile, driver = :netcdf, overwrite = true)
+
+# Save Γoutyr3D to netCDF file
+outputfile = joinpath(CMIP6outputdir, "mean_reemergence_time_$str.nc")
+@info "Saving mean reemergence time as netCDF file:\n  $(outputfile)"
+savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 
-end
+

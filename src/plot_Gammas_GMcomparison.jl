@@ -470,7 +470,7 @@ colgap!(fig.layout, 10)
 
 
 # save plot
-outputfile = joinpath(inputdir, "mean_age_at_seafloor.png")
+outputfile = joinpath(inputdir, "mean_age_at_seafloor_GMcomparison.png")
 @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
@@ -544,7 +544,7 @@ colgap!(fig.layout, 10)
 
 
 # save plot
-outputfile = joinpath(inputdir, "reemergence_time_at_seafloor.png")
+outputfile = joinpath(inputdir, "reemergence_time_at_seafloor_GMcomparison.png")
 @info "Saving mean reemergence time at seafloor as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
