@@ -106,7 +106,7 @@ for member in members[dataavailability.has_it_all]
     (; lon_vertices, lat_vertices) = gridmetrics
 
     # Make fuxes from all directions
-    ϕ = facefluxesfrommasstransport(; umo, vmo)
+    ϕ = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
 
     # Make indices
     indices = makeindices(gridmetrics.v3D)

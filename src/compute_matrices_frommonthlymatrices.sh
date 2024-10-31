@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P xv83
-#PBS -N Gamma_monthlytransport
+#PBS -N mean_monthly_matrix
 #PBS -l ncpus=28
 #PBS -l mem=180GB
 #PBS -l jobfs=4GB
@@ -23,5 +23,8 @@ module load python3/3.12.1
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
+echo "Testing that python is executable"
+python -c 'print("Python is executable")'
+
 echo "Running script"
-julia src/compute_Gammas_frommonthlymatrices.jl &> output/$PBS_JOBID.compute_Gammas_frommonthlymatrices.out
+julia src/compute_matrices_frommonthlymatrices.jl &> output/$PBS_JOBID.compute_matrices_frommonthlymatrices.out

@@ -299,7 +299,7 @@ member = first(members)
     ρ = 1035.0    # density (kg/m^3)
 
     # Make arrays of the flux on each face for each grid cell
-    ϕ = facefluxesfrommasstransport(; umo, vmo)
+    ϕ = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
 
     # Make arrays of the flux from velocities as well
     uo_lon = modify(Array, uo_ds.lon)

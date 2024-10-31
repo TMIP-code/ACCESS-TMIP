@@ -2,7 +2,6 @@ using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
 
-
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using PythonCall
 using OceanTransportMatrixBuilder
@@ -124,7 +123,6 @@ for YEAR in YEARS
 
         # Load variables in memory
         mlotst = readcubedata(mlotst_ds.mlotst[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        mlotst = readcubedata(mlotst_ds.mlotst[Ti=At(Date(YEAR, MONTH, 15); atol=Day(5))])
         umo = readcubedata(umo_ds.umo[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
         vmo = readcubedata(vmo_ds.vmo[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
 
@@ -220,7 +218,7 @@ total_weights = sum(w for w in values(yearly_weights))
 end
 
 # Save matrices
-outputfile = joinpath(inputdir, "transportmatrix_$str.jld2")
+outputfile = joinpath(CMIP6outputdir, "transportmatrix_frommonthlymatrices.jld2")
 @info "Saving matrices + metrics as $outputfile"
 save(outputfile,
     Dict(
@@ -238,99 +236,7 @@ save(outputfile,
         "experiment" => experiment,
         "member" => member,
         "time_window" => time_window,
-        "note" => "built from averaging mass transport, $str"
+        "note" => "built from averaging monthly matrices",
         "OceanTransportMatrixBuilder" => "v$(pkgversion(OceanTransportMatrixBuilder))",
     )
 )
-
-WIP
-
-# TODO refactor this out into separate "plot file"
-# Quick scatter plot comparison
-fig = Figure()
-
-fig, ax, plt = scatter()
-
-# TODO refactor/split compute age and compute decadal matrix into separate jobs/scripts
-# 3. Then solve for ideal age / reemergence time
-
-# unpack model grid
-(; lon, lat, zt, v3D,) = gridmetrics
-lev = zt
-# unpack indices
-(; wet3D, N) = indices
-
-v = v3D[wet3D]
-
-# surface mask
-issrf3D = copy(wet3D)
-issrf3D[:,:,2:end] .= false
-issrf = issrf3D[wet3D]
-# Ideal mean age Γ↓ is governed by
-# 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
-# so
-# 	Γ↓ = A⁻¹ 1
-# where A = T + M and M is matrix mask of surface with short timescale (1s)
-sΓin = ones(size(v))
-M = sparse(Diagonal(issrf))
-@info "Factorizing A = T + M"
-A = factorize(T + M)
-@info "Solving ideal mean age"
-Γin = A \ sΓin
-Γinyr = ustrip.(yr, Γin .* s)
-Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
-
-# global mean of the mean age should be order 1000yr
-(v' * Γinyr) / sum(v)
-
-# Mean reemergence time is governed by
-# 	-∂Γ↑/∂t + (T̃ + M) Γ↑ = 1    (note the tilde on T̃ = V⁻¹ Tᵀ V, the adjoint of T)
-# For computational efficiency, reuse factors of A = T + M:
-#   Γ↑ = V⁻¹ A⁻ᵀ V 1
-V = sparse(Diagonal(v))
-V⁻¹ = sparse(Diagonal(1 ./ v))
-Γout = V⁻¹ * (transpose(A) \ (V * sΓin))
-Γoutyr = ustrip.(yr, Γout .* s)
-Γoutyr3D = OceanTransportMatrixBuilder.as3D(Γoutyr, wet3D)
-
-# global mean of the mean reemergence time should also be order 1000yr
-(v' * Γout) / sum(v)
-
-# Turn Γin into a YAXArray by rebuilding from volcello
-Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
-    data = Γinyr3D,
-    dims = dims(volcello_ds["volcello"]),
-    metadata = Dict(
-        "origin" => "ideal_mean_age computed from $model $experiment $member $(time_window)",
-        "units" => "yr",
-    )
-)
-arrays = Dict(:age => Γinyr_YAXArray, :lat => volcello_ds.latitude, :lon => volcello_ds.longitude)
-Γin_ds = Dataset(; volcello_ds.properties, arrays...)
-
-# Turn Γout into a YAXArray by rebuilding from volcello
-Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
-    data = Γoutyr3D,
-    dims = dims(volcello_ds["volcello"]),
-    metadata = Dict(
-        "origin" => "mean_reemergence_time computed from $model $experiment $member $(time_window)",
-        "units" => "yr",
-    )
-)
-arrays = Dict(:age => Γoutyr_YAXArray, :lat => volcello_ds.latitude, :lon => volcello_ds.longitude)
-Γout_ds = Dataset(; volcello_ds.properties, arrays...)
-
-str = "monthlymatrices"
-
-# Save Γinyr3D to netCDF file
-outputfile = joinpath(CMIP6outputdir, "ideal_mean_age_$str.nc")
-@info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
-savedataset(Γin_ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-# Save Γoutyr3D to netCDF file
-outputfile = joinpath(CMIP6outputdir, "mean_reemergence_time_$str.nc")
-@info "Saving mean reemergence time as netCDF file:\n  $(outputfile)"
-savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-
-

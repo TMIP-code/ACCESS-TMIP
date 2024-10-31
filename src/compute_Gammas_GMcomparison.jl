@@ -13,6 +13,7 @@ using Unitful
 using Unitful: s, yr
 using NaNStatistics
 using Format
+using FileIO
 
 # Load functions for GM terms
 include("GentMcWilliams.jl")
@@ -74,10 +75,34 @@ strs = ("resolved", "resolved_GM", "resolved_GM_submeso")
 for (umo, vmo, str) in zip(umos, vmos, strs)
 
     # Make fuxes from all directions
-    ϕ = facefluxesfrommasstransport(; umo, vmo)
+    ϕ = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
 
     # Make transport matrix
     (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+
+    # Save matrices
+    outputfile = joinpath(inputdir, "transportmatrix_$str.jld2")
+    @info "Saving matrices + metrics as $outputfile"
+    save(outputfile,
+        Dict(
+            "T" => T,
+            "Tadv" => Tadv,
+            "TκH" => TκH,
+            "TκVML" => TκVML,
+            "TκVdeep" => TκVdeep,
+            "gridmetrics" => gridmetrics,
+            "indices" => indices,
+            "κH" => κH,
+            "κVML" => κVML,
+            "κVdeep" => κVdeep,
+            "model" => model,
+            "experiment" => experiment,
+            "member" => member,
+            "time_window" => time_window,
+            "note" => "built from averaging mass transport, $str",
+            "OceanTransportMatrixBuilder" => "v$(pkgversion(OceanTransportMatrixBuilder))",
+        )
+    )
 
     # unpack model grid
     (; lon, lat, zt, v3D,) = gridmetrics

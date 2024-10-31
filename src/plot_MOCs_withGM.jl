@@ -171,16 +171,16 @@ member = "r5i1p1f1" # <- presumably the ACCESS-ESM1-5 member which has GM transp
 
 
     # Compute the fluxes without the GM terms
-    ϕ = facefluxesfrommasstransport(; umo, vmo)
+    ϕ = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     # Compute the fluxes with the GM terms
     umo = umo .+ ϕGMᵢmean
     vmo = vmo .+ ϕGMⱼmean
-    ϕbis = facefluxesfrommasstransport(; umo, vmo)
+    ϕbis = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     # Compute the fluxes with the submseo terms
     if model == "ACCESS-ESM1-5"
         umo = umo .+ ϕsubmesoᵢmean
         vmo = vmo .+ ϕsubmesoⱼmean
-        ϕter = facefluxesfrommasstransport(; umo, vmo)
+        ϕter = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
         ϕsnorth = (ϕ.north, ϕbis.north, ϕter.north)
     else
         ϕsnorth = (ϕ.north, ϕbis.north)
