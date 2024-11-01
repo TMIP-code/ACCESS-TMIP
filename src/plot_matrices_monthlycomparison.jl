@@ -53,9 +53,10 @@
 # lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # strs = ("resolved_GM_submeso", "frommonthlymatrices")
+strs = ("resolved_GM_submeso_maxMLD", "frommonthlymatrices")
 
-# # Load ideal mean age and reemergence time
-# Ts = [load(joinpath(inputdir, "transportmatrix_$k.jld2")) for k in strs]
+# Load ideal mean age and reemergence time
+Ts = [load(joinpath(inputdir, "transportmatrix_$k.jld2")) for k in strs]
 
 fig = Figure(size=(1000, 1000))
 
@@ -75,30 +76,45 @@ function makesparseentriescomparable(Tx, Ty, nskip)
     @assert isequal(jx, jy)
     return vx[1:nskip:end], vy[1:nskip:end]
 end
-nskip = 19
-ax = Axis(ga[1,1], title = "T")
-vx, vy = makesparseentriescomparable(Ts[1]["T"], Ts[2]["T"], nskip)
-ablines!(ax, 0, 1, color = :red)
-scatter!(ax, vx, vy, color = :black, markersize = 3)
-# points = StructArray{Point2f}((vx, vy))
-# datashader!(ax, points, colormap=[:white, :black])
+nskip = 1
 
-axes = [
+myscale(x) = Makie.pseudolog10(1e7x)
+ticks = [-reverse(exp10.(-7:-2)); exp10.(-7:-2)]
+signedstr(x) = x > 0 ? "+$x" : "−$(-x)"
+ticklabels = [rich("10", superscript(signedstr(i))) for i in -7:-2]
+ticklabels = [[rich("−", x) for x in reverse(ticklabels)]; [rich("+", x) for x in ticklabels]]
+xticks = yticks = (myscale.(ticks), ticklabels)
+ax = Axis(ga[1,1]; title = "T", xlabel = strs[1], ylabel = strs[2], xticks, yticks)
+vx, vy = makesparseentriescomparable(Ts[1]["T"], Ts[2]["T"], nskip)
+# scatter!(ax, myscale.(vx), myscale.(vy), color = :black, markersize = 3)
+points = StructArray{Point2f}((myscale.(vx), myscale.(vy)))
+colormap = cgrad([:white; collect(cgrad(:managua))])
+datashader!(ax, points; colormap, async = false)
+ablines!(ax, 0, 1, color = (:black, 0.1), linewidth = 10)
+vlines!(ax, 0, color = (:black, 0.1), linewidth = 10)
+hlines!(ax, 0, color = (:black, 0.1), linewidth = 10)
+
+subplots = [
     "Tadv"    "TκH"
     "TκVdeep" "TκVML"
 ]
 
-for I in eachindex(IndexCartesian(), axes)
+for I in eachindex(IndexCartesian(), subplots)
     irow, icol  = Tuple(I)
-    Tstr = axes[irow, icol]
-    local ax = Axis(gb[irow, icol], title = Tstr)
+    Tstr = subplots[irow, icol]
+    local ax = Axis(gb[irow, icol]; title = Tstr, xlabel = strs[1], ylabel = strs[2], xticks, yticks)
     local vx, vy = makesparseentriescomparable(Ts[1][Tstr], Ts[2][Tstr], nskip)
-    ablines!(ax, 0, 1, color = :red)
-    scatter!(ax, vx, vy, color = :black, markersize = 3)
+    # scatter!(ax, vx, vy, color = :black, markersize = 3)
+    # scatter!(ax, myscale2.(vx), myscale2.(vy), color = :black, markersize = 3)
+    local points = StructArray{Point2f}((myscale.(vx), myscale.(vy)))
+    datashader!(ax, points; colormap, async = false)
+    ablines!(ax, 0, 1, color = (:black, 0.1), linewidth = 10)
+    vlines!(ax, 0, color = (:black, 0.1), linewidth = 10)
+    hlines!(ax, 0, color = (:black, 0.1), linewidth = 10)
 end
 
 # save plot
-outputfile = joinpath(inputdir, "matrices_monthlycomparison.png")
+outputfile = joinpath(inputdir, "matrices_$(strs[1])_vs_$(strs[2]).png")
 @info "Saving matrices comparsion as image file:\n  $(outputfile)"
 save(outputfile, fig)
 

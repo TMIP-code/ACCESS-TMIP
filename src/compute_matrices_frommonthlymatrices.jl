@@ -22,7 +22,6 @@ using FileIO
 
 model = "ACCESS-ESM1-5"
 member = "r1i1p1f1"
-CMIP_version = "CMIP5"
 experiment = "historical"
 time_window = "Jan1990-Dec1999"
 
