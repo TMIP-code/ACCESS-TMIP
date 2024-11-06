@@ -1,162 +1,162 @@
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# # using SparseArrays
-# # using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr, m, kg, K, °C
-# using CairoMakie
-# using GeoMakie
-# using PairPlots
-# using Interpolations
-# using OceanBasins
-# using NaNStatistics
-# using Format
-# using GibbsSeaWater
-# using Statistics
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+using Unitful
+using Unitful: s, yr, m, kg, K, °C
+using CairoMakie
+using GeoMakie
+using PairPlots
+using Interpolations
+using OceanBasins
+using NaNStatistics
+using Format
+using GibbsSeaWater
+using Statistics
 
-# include("plotting_functions.jl")
+include("plotting_functions.jl")
 
-# # 1. Load data from Matt's ACCESS1-3 = the data used for the GM terms in previous papers.
-# GMmasstransport_fromMattChamberlain = let
-#     # Extra stuff for GM terms
-#     MattChamberlaindirectory = "/g/data/v19/mtc599/matrix/access1.3"
-#     GMtermfilepath = joinpath(MattChamberlaindirectory, "historical/grid1990/transport.nc")
-#     # Below is required because MC's directory names
-#     Sv = 1e6m^3/s * 1000kg/m^3
-#     @info """
-#     Loading GM velocities from Matt Chamberlain's ACCESS1-3 data
-#     from file: $GMtermfilepath
-#     """
-#     uGM = ncread(GMtermfilepath, "tx_trans_gm") |> Array .|> Float64
-#     vGM = ncread(GMtermfilepath, "ty_trans_gm") |> Array .|> Float64
-#     # convert from Sverdrups to kg/s
-#     uGM = ustrip.(kg/s, uGM * Sv)
-#     vGM = ustrip.(kg/s, vGM * Sv)
-#     # the GM fields are summed vertically, so we need their diff.
-#     (nx, ny, _) = size(uGM)
-#     uGM = diff([fill(0.0, nx, ny, 1);;; uGM], dims=3)
-#     vGM = diff([fill(0.0, nx, ny, 1);;; vGM], dims=3)
-#     (; uGM, vGM)
+# 1. Load data from Matt's ACCESS1-3 = the data used for the GM terms in previous papers.
+GMmasstransport_fromMattChamberlain = let
+    # Extra stuff for GM terms
+    MattChamberlaindirectory = "/g/data/v19/mtc599/matrix/access1.3"
+    GMtermfilepath = joinpath(MattChamberlaindirectory, "historical/grid1990/transport.nc")
+    # Below is required because MC's directory names
+    Sv = 1e6m^3/s * 1000kg/m^3
+    @info """
+    Loading GM velocities from Matt Chamberlain's ACCESS1-3 data
+    from file: $GMtermfilepath
+    """
+    uGM = ncread(GMtermfilepath, "tx_trans_gm") |> Array .|> Float64
+    vGM = ncread(GMtermfilepath, "ty_trans_gm") |> Array .|> Float64
+    # convert from Sverdrups to kg/s
+    uGM = ustrip.(kg/s, uGM * Sv)
+    vGM = ustrip.(kg/s, vGM * Sv)
+    # the GM fields are summed vertically, so we need their diff.
+    (nx, ny, _) = size(uGM)
+    uGM = diff([fill(0.0, nx, ny, 1);;; uGM], dims=3)
+    vGM = diff([fill(0.0, nx, ny, 1);;; vGM], dims=3)
+    (; uGM, vGM)
+end
+
+
+# 2. Load the GM velocities that I build from CMIP output
+# begin
+    # model = "ACCESS-ESM1-5"
+    # model = "ACCESS-CM2"
+    model = "ACCESS1-3"
+    experiment = "historical"
+    member = "r1i1p1"
+    time_window = "Jan1990-Dec1999"
+
+
+    # Directory for data
+    if gethostname() == "benoits-MacBook-Pro.local"
+        DATADIR = "/Users/benoitpasquier/Data/TMIP/data"
+    else # on Gadi. TODO: change this to the correct path
+        DATADIR = "/scratch/xv83/TMIP/data"
+    end
+
+    inputdir = joinpath(DATADIR, "$model/$experiment/$member/$(time_window)")
+    outputdir = joinpath("output", "plots")
+    mkpath(outputdir)
+
+    # Load datasets lazily
+    volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
+    areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
+    umo_ds = open_dataset(joinpath(inputdir, "umo.nc"))
+    vmo_ds = open_dataset(joinpath(inputdir, "vmo.nc"))
+
+    # Load variables in memory
+    areacello = readcubedata(areacello_ds.areacello)
+    volcello = readcubedata(volcello_ds.volcello)
+    lon = readcubedata(volcello_ds.lon)
+    lat = readcubedata(volcello_ds.lat)
+    lev = volcello_ds.lev
+    # Identify the vertices keys (vary across CMIPs / models)
+    volcello_keys = propertynames(volcello_ds)
+    lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+    lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+    lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+    lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+    umo = readcubedata(umo_ds.umo)
+    vmo = readcubedata(vmo_ds.vmo)
+    umo_lon = readcubedata(umo_ds.lon)
+    umo_lat = readcubedata(umo_ds.lat)
+    vmo_lon = readcubedata(vmo_ds.lon)
+    vmo_lat = readcubedata(vmo_ds.lat)
+
+    # Make makegridmetrics
+    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+    (; lon_vertices, lat_vertices, v3D, zt, Z3D, thkcello) = gridmetrics
+
+
+    # Load thetato and so to compute density
+    @info """
+    Loading thetao and so to compute density
+    from files: $(joinpath(inputdir, "thetao.nc")), $(joinpath(inputdir, "so.nc"))
+    """
+    thetao_ds = open_dataset(joinpath(inputdir, "thetao.nc"))
+    so_ds = open_dataset(joinpath(inputdir, "so.nc"))
+    # Load variables in memory
+    thetao = readcubedata(thetao_ds.thetao)
+    @show thetao_mean = nanmean(thetao)
+    if thetao_mean > 200 # If Temperature is in K (i.e., typically >200)
+        thetao = ustrip.(°C, thetao * K) # convert to °C
+    end
+    so = readcubedata(so_ds.so)
+    @show nanmean(so)
+    # Convert thetao and so to density
+    ct = gsw_ct_from_pt.(so, thetao)
+    @show nanmean(ct)
+    ρ = gsw_rho.(so, ct, Z3D)
+
+    indices = makeindices(v3D)
+
+    κGM = 600 # m^2/s
+    maxslope = 0.001
+    uGM, vGM = OceanTransportMatrixBuilder.bolus_GM_velocity(ρ, gridmetrics, indices; κGM, maxslope)
+    # Turn uGM into a YAXArray by rebuilding from uo
+    uGM_YAXArray = rebuild(umo;
+        data = uGM,
+        dims = dims(umo),
+        metadata = Dict(
+            "origin" => "u GM bolus velocity computed from thetao and so",
+            "kGM" => κGM,
+            "units" => "m/s",
+        )
+    )
+    arrays = Dict(:uo_GM => uGM_YAXArray, :lat => umo_lat, :lon => umo_lon)
+    uGM_ds = Dataset(; umo_ds.properties, arrays...)
+    # Save to netCDF file
+    # outputfile = joinpath(outputdir, "uo_GM.nc")
+    # @info "uo_GM as netCDF file:\n  $(outputfile)"
+    # savedataset(uGM_ds, path = outputfile, driver = :netcdf, overwrite = true)
+    # Turn vGM into a YAXArray by rebuilding from uo
+    vGM_YAXArray = rebuild(vmo;
+        data = vGM,
+        dims = dims(vmo),
+        metadata = Dict(
+            "origin" => "v GM bolus velocity computed from thetao and so",
+            "kGM" => κGM,
+            "units" => "m/s",
+        )
+    )
+    arrays = Dict(:vo_GM => vGM_YAXArray, :lat => vmo_lat, :lon => vmo_lon)
+    vGM_ds = Dataset(; vmo_ds.properties, arrays...)
+    # Save to netCDF file
+    # outputfile = joinpath(outputdir, "vo_GM.nc")
+    # @info "Saving vo_GM as netCDF file:\n  $(outputfile)"
+    # savedataset(vGM_ds, path = outputfile, driver = :netcdf, overwrite = true)
+    umo_GM, vmo_GM = velocity2fluxes(uGM, umo_lon, umo_lat, vGM, vmo_lon, vmo_lat, gridmetrics, ρ)
 # end
-
-
-# # 2. Load the GM velocities that I build from CMIP output
-# # begin
-#     # model = "ACCESS-ESM1-5"
-#     # model = "ACCESS-CM2"
-#     model = "ACCESS1-3"
-#     experiment = "historical"
-#     member = "r1i1p1"
-#     time_window = "Jan1990-Dec1999"
-
-
-#     # Directory for data
-#     if gethostname() == "benoits-MacBook-Pro.local"
-#         DATADIR = "/Users/benoitpasquier/Data/TMIP/data"
-#     else # on Gadi. TODO: change this to the correct path
-#         DATADIR = "/scratch/xv83/TMIP/data"
-#     end
-
-#     inputdir = joinpath(DATADIR, "$model/$experiment/$member/$(time_window)")
-#     outputdir = joinpath("output", "plots")
-#     mkpath(outputdir)
-
-#     # Load datasets lazily
-#     volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
-#     areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
-#     umo_ds = open_dataset(joinpath(inputdir, "umo.nc"))
-#     vmo_ds = open_dataset(joinpath(inputdir, "vmo.nc"))
-
-#     # Load variables in memory
-#     areacello = readcubedata(areacello_ds.areacello)
-#     volcello = readcubedata(volcello_ds.volcello)
-#     lon = readcubedata(volcello_ds.lon)
-#     lat = readcubedata(volcello_ds.lat)
-#     lev = volcello_ds.lev
-#     # Identify the vertices keys (vary across CMIPs / models)
-#     volcello_keys = propertynames(volcello_ds)
-#     lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-#     lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-#     lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-#     lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-#     umo = readcubedata(umo_ds.umo)
-#     vmo = readcubedata(vmo_ds.vmo)
-#     umo_lon = readcubedata(umo_ds.lon)
-#     umo_lat = readcubedata(umo_ds.lat)
-#     vmo_lon = readcubedata(vmo_ds.lon)
-#     vmo_lat = readcubedata(vmo_ds.lat)
-
-#     # Make makegridmetrics
-#     gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-#     (; lon_vertices, lat_vertices, v3D, zt, Z3D, thkcello) = gridmetrics
-
-
-#     # Load thetato and so to compute density
-#     @info """
-#     Loading thetao and so to compute density
-#     from files: $(joinpath(inputdir, "thetao.nc")), $(joinpath(inputdir, "so.nc"))
-#     """
-#     thetao_ds = open_dataset(joinpath(inputdir, "thetao.nc"))
-#     so_ds = open_dataset(joinpath(inputdir, "so.nc"))
-#     # Load variables in memory
-#     thetao = readcubedata(thetao_ds.thetao)
-#     @show thetao_mean = nanmean(thetao)
-#     if thetao_mean > 200 # If Temperature is in K (i.e., typically >200)
-#         thetao = ustrip.(°C, thetao * K) # convert to °C
-#     end
-#     so = readcubedata(so_ds.so)
-#     @show nanmean(so)
-#     # Convert thetao and so to density
-#     ct = gsw_ct_from_pt.(so, thetao)
-#     @show nanmean(ct)
-#     ρ = gsw_rho.(so, ct, Z3D)
-
-#     indices = makeindices(v3D)
-
-#     κGM = 600 # m^2/s
-#     maxslope = 0.001
-#     uGM, vGM = OceanTransportMatrixBuilder.bolus_GM_velocity(ρ, gridmetrics, indices; κGM, maxslope)
-#     # Turn uGM into a YAXArray by rebuilding from uo
-#     uGM_YAXArray = rebuild(umo;
-#         data = uGM,
-#         dims = dims(umo),
-#         metadata = Dict(
-#             "origin" => "u GM bolus velocity computed from thetao and so",
-#             "kGM" => κGM,
-#             "units" => "m/s",
-#         )
-#     )
-#     arrays = Dict(:uo_GM => uGM_YAXArray, :lat => umo_lat, :lon => umo_lon)
-#     uGM_ds = Dataset(; umo_ds.properties, arrays...)
-#     # Save to netCDF file
-#     # outputfile = joinpath(outputdir, "uo_GM.nc")
-#     # @info "uo_GM as netCDF file:\n  $(outputfile)"
-#     # savedataset(uGM_ds, path = outputfile, driver = :netcdf, overwrite = true)
-#     # Turn vGM into a YAXArray by rebuilding from uo
-#     vGM_YAXArray = rebuild(vmo;
-#         data = vGM,
-#         dims = dims(vmo),
-#         metadata = Dict(
-#             "origin" => "v GM bolus velocity computed from thetao and so",
-#             "kGM" => κGM,
-#             "units" => "m/s",
-#         )
-#     )
-#     arrays = Dict(:vo_GM => vGM_YAXArray, :lat => vmo_lat, :lon => vmo_lon)
-#     vGM_ds = Dataset(; vmo_ds.properties, arrays...)
-#     # Save to netCDF file
-#     # outputfile = joinpath(outputdir, "vo_GM.nc")
-#     # @info "Saving vo_GM as netCDF file:\n  $(outputfile)"
-#     # savedataset(vGM_ds, path = outputfile, driver = :netcdf, overwrite = true)
-#     umo_GM, vmo_GM = velocity2fluxes(uGM, umo_lon, umo_lat, vGM, vmo_lon, vmo_lat, gridmetrics, ρ)
-# # end
 
 # 3. Load the GM terms for ACCESS-ESM1-5
 @info "Loading GM velocities from ACCESS-ESM1-5 data"
@@ -240,8 +240,8 @@ members = readdir(joinpath(DATADIR, "$model/$experiment"))
 members = [m for m in members if m ≠ ".DS_Store"]
 
 # sort members by r, i, p[, f]
-memmber_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
-parse_member(member) = parse.(Int, match(memmber_regex, member).captures)
+member_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
+parse_member(member) = parse.(Int, match(member_regex, member).captures)
 members = sort(members, by = x -> parse_member(x))
 dataavailability = DataFrame(
     :member => members,

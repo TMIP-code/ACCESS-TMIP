@@ -55,8 +55,8 @@ members = readdir("/scratch/xv83/TMIP/data/$model/$experiment")
 
 # sort members by r, i, p[, f]
 
-memmber_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
-parse_member(member) = parse.(Int, match(memmber_regex, member).captures)
+member_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
+parse_member(member) = parse.(Int, match(member_regex, member).captures)
 members = sort(members, by = x -> parse_member(x))
 dataavailability = DataFrame(
     :member => members,

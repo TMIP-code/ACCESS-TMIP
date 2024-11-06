@@ -60,8 +60,8 @@ for model in models
     members = [m for m in members if m ≠ ".DS_Store"]
 
     # sort members by r, i, p[, f]
-    memmber_regex = model ∈ CMIP5_models ? r"r(\d+)i(\d+)p(\d+)" : r"r(\d+)i(\d+)p(\d+)f(\d+)"
-    parse_member(member) = parse.(Int, match(memmber_regex, member).captures)
+    member_regex = model ∈ CMIP5_models ? r"r(\d+)i(\d+)p(\d+)" : r"r(\d+)i(\d+)p(\d+)f(\d+)"
+    parse_member(member) = parse.(Int, match(member_regex, member).captures)
     members = sort(members, by=x -> parse_member(x))
 
     println("$model")
