@@ -24,9 +24,9 @@ CMIP_version = "CMIP5"
 experiment = "historical"
 time_window = "Jan1990-Dec1999"
 
-# members = [1, 3, 4, 5, 6, 7, 8]
+members = [1, 3, 4, 5, 6, 7, 8]
 # members = [1, 3, 4] # batch 1: HI-05, HI-07, HI-08 (issues with HI-06)
-members = [5, 6, 7, 8] # bacth 2: HI-09, HI-10, HI-11, HI-12
+# members = [5, 6, 7, 8] # bacth 2: HI-09, HI-10, HI-11, HI-12
 # member = "r1i1p1f1"
 
 for member in members
