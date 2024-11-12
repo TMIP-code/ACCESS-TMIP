@@ -62,7 +62,7 @@ println()
 Γdown = rich("Γ", superscript("↓"))
 Γup = rich("Γ", superscript("↑"))
 
-for member in members[dataavailability.has_it_all][4:end]
+for member in members[dataavailability.has_it_all]
 # for member in [last(members)]
 
     inputdir = inputdirfun(member)
@@ -94,7 +94,7 @@ for member in members[dataavailability.has_it_all][4:end]
     basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
-    levels = 0:100:1500
+    levels = 0:100:2500
     colormap = cgrad(:viridis, length(levels); categorical=true)
     extendlow = nothing
     extendhigh = colormap[end]
@@ -253,30 +253,27 @@ for member in members[dataavailability.has_it_all][4:end]
     save(outputfile, fig)
 
 
+    # plot options
+    colorrange = extrema(levels)
+    colormap = :viridis
+
     # Plot mean age at the seafloor level
     Γinyrseafloor = seafloorvalue(Γinyr3D, wet3D)
     title = "$model $experiment $member $(time_window) mean age at seafloor"
-    # plot options
-    colorrange = (0, 1500)
-    colormap = :viridis
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
+    Colorbar(fig[1,2], plt, label=rich(Γdown, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(inputdir, "mean_age_at_seafloor_v3.png")
     @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
 
-
     # Plot reemergence time at the seafloor level
     Γoutyrseafloor = seafloorvalue(Γoutyr3D, wet3D)
     title = "$model $experiment $member $(time_window) reemergence time at seafloor"
-    # plot options
-    colorrange = (0, 1500)
-    colormap = :viridis
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
     ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
