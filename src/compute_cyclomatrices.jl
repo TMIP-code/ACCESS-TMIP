@@ -27,17 +27,17 @@ lumpby = "season"
 
 
 # Gadi directory for input files
-inputputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
-cycloinputputdir = joinpath(inputdir, "cyclo$season")
-umo_ds = open_dataset(joinpath(cycloinputputdir, "umo.nc"))
-vmo_ds = open_dataset(joinpath(cycloinputputdir, "vmo.nc"))
-ψᵢGM_ds = open_dataset(joinpath(cycloinputputdir, "tx_trans_gm.nc"))
-ψⱼGM_ds = open_dataset(joinpath(cycloinputputdir, "ty_trans_gm.nc"))
-ψᵢsubmeso_ds = open_dataset(joinpath(cycloinputputdir, "tx_trans_submeso.nc"))
-ψⱼsubmeso_ds = open_dataset(joinpath(cycloinputputdir, "ty_trans_submeso.nc"))
-mlotst_ds = open_dataset(joinpath(cycloinputputdir, "mlotst.nc"))
-areacello_ds = open_dataset(joinpath(inputputdir, "areacello.nc"))
-volcello_ds = open_dataset(joinpath(inputputdir, "volcello.nc"))
+inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
+cycloinputdir = joinpath(inputdir, "cyclo$season")
+umo_ds = open_dataset(joinpath(cycloinputdir, "umo.nc"))
+vmo_ds = open_dataset(joinpath(cycloinputdir, "vmo.nc"))
+ψᵢGM_ds = open_dataset(joinpath(cycloinputdir, "tx_trans_gm.nc"))
+ψⱼGM_ds = open_dataset(joinpath(cycloinputdir, "ty_trans_gm.nc"))
+ψᵢsubmeso_ds = open_dataset(joinpath(cycloinputdir, "tx_trans_submeso.nc"))
+ψⱼsubmeso_ds = open_dataset(joinpath(cycloinputdir, "ty_trans_submeso.nc"))
+mlotst_ds = open_dataset(joinpath(cycloinputdir, "mlotst.nc"))
+areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
+volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 
 
 
@@ -107,7 +107,7 @@ for season in seasons
     (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-    outputfile = joinpath(cycloinputputdir, "cyclo_matrix_$season.jld2")
+    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$season.jld2")
     @info "Saving matrix as $outputfile"
     save(outputfile,
         Dict(
