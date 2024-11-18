@@ -15,4 +15,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/compute_cyclomatrices.jl &> output/$PBS_JOBID.compute_cyclomatrices.out
+julia src/build_cyclomatrices.jl &> output/$PBS_JOBID.build_cyclomatrices.out

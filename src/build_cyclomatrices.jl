@@ -24,11 +24,11 @@ member = "r1i1p1f1"
 experiment = "historical"
 time_window = "Jan1990-Dec1999"
 lumpby = "season"
-
+seasons = ("DJF", "MAM", "JJA", "SON")
 
 # Gadi directory for input files
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
-cycloinputdir = joinpath(inputdir, "cyclo$season")
+cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 umo_ds = open_dataset(joinpath(cycloinputdir, "umo.nc"))
 vmo_ds = open_dataset(joinpath(cycloinputdir, "vmo.nc"))
 ψᵢGM_ds = open_dataset(joinpath(cycloinputdir, "tx_trans_gm.nc"))
@@ -44,8 +44,8 @@ volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
 volcello = readcubedata(volcello_ds.volcello)
-lon = readcubedata(volcello_ds.longitude)
-lat = readcubedata(volcello_ds.latitude)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
 lev = volcello_ds.lev
 # Identify the vertices keys (vary across CMIPs / models)
 volcello_keys = propertynames(volcello_ds)
@@ -67,19 +67,18 @@ indices = makeindices(gridmetrics.v3D)
 κVML = 0.1    # m^2/s
 κVdeep = 1e-5 # m^2/s
 
-seasons = ("DJF", "MAM", "JJA", "SON")
 
 for season in seasons
 
     # Load variables in memory
-    mlotst = readcubedata(mlotst_ds.mlotst[Ti=At(season)])
-    umo = readcubedata(umo_ds.umo[Ti=At(season)])
-    vmo = readcubedata(vmo_ds.vmo[Ti=At(season)])
+    mlotst = readcubedata(mlotst_ds.mlotst[season=At(season)])
+    umo = readcubedata(umo_ds.umo[season=At(season)])
+    vmo = readcubedata(vmo_ds.vmo[season=At(season)])
 
-    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti=At(season)])
-    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti=At(season)])
-    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti=At(season)])
-    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti=At(season)])
+    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[season=At(season)])
+    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[season=At(season)])
+    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[season=At(season)])
+    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[season=At(season)])
 
     # Replace missing values and convert to arrays
     # I think latest YAXArrays converts _FillValues to missing
