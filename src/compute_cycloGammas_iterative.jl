@@ -15,7 +15,6 @@ using SparseArrays
 using LinearAlgebra
 using Unitful
 using Unitful: s, yr, d
-using NaNStatistics
 using Statistics
 using Format
 using Dates
@@ -173,7 +172,7 @@ nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve seasonal steady state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); reltol=Inf, abstol=1e-10norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
 
 
 @info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
