@@ -178,3 +178,35 @@ nonlinearprob! = NonlinearProblem(f!, u0, p)
 @info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
 du = deepcopy(u0)
 @show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
+
+
+# Save seasonal age
+du = sol!.u
+cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
+    (
+        begin
+            (m > 1) && mystep!(du, du, p, m)
+            Γinyr = ustrip.(yr, du .* s)
+            Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
+            Γinyr4D = reshape(OceanTransportMatrixBuilder.as3D(Γinyr, wet3D), (size(wet3D)..., 1))
+            axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(collect(steps))))[1][m:m])
+            Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+                data = Γinyr4D,
+                dims = axlist,
+                metadata = Dict(
+                    "origin" => "seasonal ideal age computed from $model $experiment $member $(time_window)",
+                    "units" => "yr",
+                )
+            )
+        end
+        for m in eachindex(steps)
+    )
+)
+
+arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+ds = Dataset(; volcello_ds.properties, arrays...)
+
+# Save Γinyr3D to netCDF file
+outputfile = joinpath(cycloinputdir, "ideal_mean_age.nc")
+@info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
