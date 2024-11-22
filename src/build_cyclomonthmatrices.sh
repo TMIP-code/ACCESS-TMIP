@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P xv83
-#PBS -N cyclomatrices
+#PBS -N cyclomonthmatrices
 #PBS -l ncpus=48
 #PBS -l mem=180GB
 #PBS -l jobfs=4GB
@@ -15,4 +15,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/build_cyclomatrices.jl &> output/$PBS_JOBID.build_cyclomatrices.out
+julia src/build_cyclomonthmatrices.jl &> output/$PBS_JOBID.build_cyclomonthmatrices.out

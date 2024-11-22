@@ -61,29 +61,42 @@ end
 
 OCEANS = oceanpolygons()
 
-function zonalaverage(x3D, gridmetrics; mask = 1)
+function average(x, gridmetrics; mask = 1, dims = Tuple(1:ndims(x)))
     # unpack gridmetrics
     (; v3D) = gridmetrics
 
-    # create zonal average
-    x2D = nansum(x3D .* v3D .* mask, dims = 1) ./ nansum(mask .* v3D, dims = 1)
+    # average x over dims
+    # (Note special care for summing over the mask * v3D)
+    mask3D = mask .* v3D
+    maskdims = Tuple(dims ∩ Tuple(1:ndims(mask3D)))
+    repeateddims = setdiff(dims, maskdims)
+    multiplier = prod(size(x)[repeateddims])
 
-    return dropdims(x2D, dims = 1)
+    xmean = nansum(x .* mask3D; dims) ./ (multiplier * nansum(mask3D; dims = maskdims))
+
+    return dropdims(xmean; dims) |> Array
 end
 
-function horizontalaverage(x3D, gridmetrics; mask = 1)
-    # unpack gridmetrics
-    (; v3D) = gridmetrics
-
-    # create zonal average
-    x2D = nansum(x3D .* v3D .* mask, dims = (1, 2)) ./ nansum(mask .* v3D, dims = (1, 2))
-
-    return dropdims(x2D, dims = (1, 2))
-end
+zonalaverage(x, gridmetrics; mask = 1) = average(x, gridmetrics; mask, dims = 1)
+horizontalaverage(x, gridmetrics; mask = 1) = average(x, gridmetrics; mask, dims = (1, 2))
 
 zlim = (6000, 0)
 ztick = 0:1000:6000
 zticklabel = map(x -> string.(x), ztick)
+
+function myhidexdecorations!(ax, condition)
+    hidexdecorations!(ax,
+        label = condition, ticklabels = condition,
+        ticks = condition, grid = false
+    )
+end
+function myhideydecorations!(ax, condition)
+    hideydecorations!(ax,
+        label = condition, ticklabels = condition,
+        ticks = condition, grid = false
+    )
+end
+
 
 # find the seafloor level
 function seafloorvalue(x3D, wet3D, i, j)

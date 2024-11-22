@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -q hugemem -l mem=720GB -l storage=gdata/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
+# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=gdata/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
 
 using Pkg
 Pkg.activate(".")
@@ -32,8 +32,10 @@ model = "ACCESS-ESM1-5"
 member = "r1i1p1f1"
 experiment = "historical"
 time_window = "Jan1990-Dec1999"
-lumpby = "season"
-steps = ("DJF", "MAM", "JJA", "SON")
+# lumpby = "season"
+lumpby = "month"
+# steps = ["DJF", "MAM", "JJA", "SON"]
+steps = 1:12
 Nsteps = length(steps)
 δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
 
@@ -170,7 +172,7 @@ end
 f! = NonlinearFunction(G!; jvp = jvp!)
 nonlinearprob! = NonlinearProblem(f!, u0, p)
 
-@info "solve seasonal steady state"
+@info "solve cyclo-stationary steady state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
 @time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
 
@@ -180,7 +182,7 @@ du = deepcopy(u0)
 @show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
 
 
-# Save seasonal age
+# Save cyclo-stationary age
 du = sol!.u
 cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
     (
@@ -189,12 +191,12 @@ cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
             Γinyr = ustrip.(yr, du .* s)
             Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
             Γinyr4D = reshape(OceanTransportMatrixBuilder.as3D(Γinyr, wet3D), (size(wet3D)..., 1))
-            axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(collect(steps))))[1][m:m])
+            axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
             Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
                 data = Γinyr4D,
                 dims = axlist,
                 metadata = Dict(
-                    "origin" => "seasonal ideal age computed from $model $experiment $member $(time_window)",
+                    "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
                     "units" => "yr",
                 )
             )
