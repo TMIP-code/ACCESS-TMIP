@@ -2,11 +2,11 @@
 
 #PBS -P xv83
 #PBS -N plot_decadal_GM_archive
-#PBS -l ncpus=28
-#PBS -l mem=180GB
+#PBS -l ncpus=24
+#PBS -l mem=90GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=12:00:00
-#PBS -l storage=gdata/xv83
+#PBS -l walltime=24:00:00
+#PBS -l storage=gdata/gh0+gdata/xv83+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/
 #PBS -j oe
