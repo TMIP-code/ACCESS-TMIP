@@ -197,7 +197,7 @@ cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
         begin
             (m > 1) && mystep!(du, du, p, m)
             temperature3D = OceanTransportMatrixBuilder.as3D(du, wet3D)
-            temperature4D = reshape(OceanTransportMatrixBuilder.as3D(temperature, wet3D), (size(wet3D)..., 1))
+            temperature4D = reshape(temperature3D, (size(wet3D)..., 1))
             axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
             temperature_YAXArray = rebuild(volcello_ds["volcello"];
                 data = temperature4D,

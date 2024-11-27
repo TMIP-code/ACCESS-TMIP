@@ -190,7 +190,7 @@ cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
             (m > 1) && mystep!(du, du, p, m)
             Γinyr = ustrip.(yr, du .* s)
             Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
-            Γinyr4D = reshape(OceanTransportMatrixBuilder.as3D(Γinyr, wet3D), (size(wet3D)..., 1))
+            Γinyr4D = reshape(Γinyr3D, (size(wet3D)..., 1))
             axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
             Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
                 data = Γinyr4D,

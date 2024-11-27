@@ -197,7 +197,7 @@ cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
         begin
             (m > 1) && mystep!(du, du, p, m)
             salt3D = OceanTransportMatrixBuilder.as3D(du, wet3D)
-            salt4D = reshape(OceanTransportMatrixBuilder.as3D(salt, wet3D), (size(wet3D)..., 1))
+            salt4D = reshape(salt3D, (size(wet3D)..., 1))
             axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
             salt_YAXArray = rebuild(volcello_ds["volcello"];
                 data = salt4D,
