@@ -46,10 +46,12 @@ cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 # Load areacello and volcello for grid geometry
 volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
+thetao_ds = open_dataset(joinpath(inputdir, "thetao.nc"))
 
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
 volcello = readcubedata(volcello_ds.volcello)
+thetao = readcubedata(thetao_ds.thetao)
 lon = readcubedata(volcello_ds.lon)
 lat = readcubedata(volcello_ds.lat)
 lev = volcello_ds.lev
@@ -67,9 +69,11 @@ gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices
 # Make indices
 indices = makeindices(v3D)
 (; N, wet3D) = indices
-# The ideal age equation is
-#   ∂ₜx + T x = 1 - Ω x
+# The equation for conservative θ or S is
+#   ∂ₜx + T x = Ω (x_srf - x)
 # Applying Backward Euler time step gives
+#   (I + Δt M) xₖ₊₁ = xₖ + Δt Ω x_srf
+# where M = T + Ω
 
 
 issrf = let
@@ -121,27 +125,25 @@ Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs = 48), rtol = 1e-10).u
-@show norm(M̄ * u0 - ones(N)) / norm(ones(N))
+src = Ω * thetao[wet3D]
+@time "initial state solve" u0 = solve(LinearProblem(M̄, src), MKLPardisoIterate(; nprocs = 48), rtol = 1e-10).u
+@show norm(M̄ * u0 - src) / norm(src)
 
 function initstepprob(A)
-    prob = LinearProblem(A, δt * ones(N))
+    prob = LinearProblem(A, δt * src)
     return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
 end
 
-p = (;
-    δt,
-    stepprob = [initstepprob(I + δt * M) for M in Ms]
-)
+
 function mystep!(du, u, p, m)
     prob = p.stepprob[m]
-    prob.b = u .+ p.δt # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    prob.b = u .+ p.δt * p.src # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt Ω x_srf)
     du .= solve!(prob).u
     return du
 end
 function jvpstep!(dv, v, p, m)
     prob = p.stepprob[m]
-    prob.b = v # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    prob.b = v # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1)
     dv .= solve!(prob).u
     return dv
 end
@@ -170,6 +172,12 @@ function jvp!(dv, v, u, p)
     return dv
 end
 f! = NonlinearFunction(G!; jvp = jvp!)
+
+p = (;
+    δt,
+    stepprob = [initstepprob(I + δt * M) for M in Ms],
+    src
+)
 nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve cyclo-stationary state"
@@ -182,22 +190,20 @@ du = deepcopy(u0)
 @show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
 
 
-# Save cyclo-stationary age
+# Save mean salinity
 du = sol!.u
 cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
     (
         begin
             (m > 1) && mystep!(du, du, p, m)
-            Γinyr = ustrip.(yr, du .* s)
-            Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
-            Γinyr4D = reshape(OceanTransportMatrixBuilder.as3D(Γinyr, wet3D), (size(wet3D)..., 1))
+            temperature3D = OceanTransportMatrixBuilder.as3D(du, wet3D)
+            temperature4D = reshape(OceanTransportMatrixBuilder.as3D(temperature, wet3D), (size(wet3D)..., 1))
             axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
-            Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
-                data = Γinyr4D,
+            temperature_YAXArray = rebuild(volcello_ds["volcello"];
+                data = temperature4D,
                 dims = axlist,
                 metadata = Dict(
                     "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
-                    "units" => "yr",
                 )
             )
         end
@@ -205,10 +211,12 @@ cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
     )
 )
 
-arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+temperaturemean3D = mean(cube4D, dims=Ti)
+
+arrays = Dict(:thetao => temperaturemean3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
-# Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "ideal_mean_age.nc")
+# Save temperature3D to netCDF file
+outputfile = joinpath(cycloinputdir, "mean_cyclo_thetao.nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)

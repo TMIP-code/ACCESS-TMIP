@@ -41,8 +41,10 @@ modeldir = joinpath(datadir, "ACCESS-ESM1-5")
 
 # experiments = ["historical", "ssp370"]
 # exp_prefix = ["HI", "SSP-370"]
-experiments = ["historical"]
-exp_prefix = ["HI"]
+# experiments = ["historical"]
+# exp_prefix = ["HI"]
+experiments = ["ssp370"]
+exp_prefix = ["SSP-370"]
 
 # members = 1:40
 # members = 1:20
@@ -74,6 +76,7 @@ for (experiment, exp_prefix) in zip(experiments, exp_prefix)
 
             decade_str = "$(first(decades))s"
             fname = joinpath(inputdir, "month_$(var)_$(decade_str).nc")
+            !isfile(fname) && continue
             println("    $fname")
             previous_x = nanmean(replace(ncread(fname, var) |> Array, -1f20 => NaN), dims = 4) |> vec
 
