@@ -18,10 +18,13 @@ using FileIO
 
 # Making monthly matrices for every MONTH from 1990s and averaging them into a single matrix, and computing the age
 
-model = "ACCESS-ESM1-5"
-member = "r1i1p1f1"
-experiment = "historical"
-time_window = "Jan1990-Dec1999"
+# member = "r1i1p1f1"
+# experiment = "historical"
+# time_window = "Jan1990-Dec1999"
+@show model = "ACCESS-ESM1-5"
+@show experiment = ARGS[1]
+@show member = ARGS[2]
+@show time_window = ARGS[3]
 lumpby = "month"
 months = 1:12
 

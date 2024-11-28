@@ -28,13 +28,12 @@ using NonlinearSolve
 
 
 # Load matrix and grid metrics
-model = "ACCESS-ESM1-5"
-member = "r1i1p1f1"
-experiment = "historical"
-time_window = "Jan1990-Dec1999"
-# lumpby = "season"
+@show model = "ACCESS-ESM1-5"
+@show experiment = ARGS[1]
+@show member = ARGS[2]
+@show time_window = ARGS[3]
+
 lumpby = "month"
-# steps = ["DJF", "MAM", "JJA", "SON"]
 steps = 1:12
 Nsteps = length(steps)
 δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
