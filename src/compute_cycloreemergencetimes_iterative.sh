@@ -18,7 +18,7 @@ cd ~/Projects/TMIP/ACCESS-TMIP
 experiment=historical
 time_window=Jan1990-Dec1999
 
-for member in r{1..1}i1p1f1; do
+for member in r{3..40}i1p1f1; do
     echo "Computing age for $experiment $member $time_window"
     julia src/compute_cycloreemergencetimes_iterative.jl $experiment $member $time_window &> output/$PBS_JOBID.compute_cycloreemergencetimes_iterative..$experiment.$member.$time_window.out
 done

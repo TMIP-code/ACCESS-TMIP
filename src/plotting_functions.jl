@@ -61,10 +61,26 @@ end
 
 OCEANS = oceanpolygons()
 
+function volumeintegral(x, gridmetrics; mask = 1, dim = Tuple(1:ndims(x)))
+    # unpack gridmetrics
+    (; v3D) = gridmetrics
+
+    mask3D = mask .* v3D
+
+    ∫xdV = nansum(x .* mask3D; dim) |> Array
+
+    # re-add NaNs where there is no water?
+    ∫dV = nansum(mask3D; dim) |> Array
+    ∫xdV[∫dV .== 0] .= NaN
+
+    return ∫xdV
+end
+
 function average(x, gridmetrics; mask = 1, dims = Tuple(1:ndims(x)))
     # unpack gridmetrics
     (; v3D) = gridmetrics
 
+    # TODO explain what purpose the dim stuff below serves
     # average x over dims
     # (Note special care for summing over the mask * v3D)
     mask3D = mask .* v3D
@@ -105,4 +121,17 @@ function seafloorvalue(x3D, wet3D, i, j)
 end
 function seafloorvalue(x3D, wet3D)
     [seafloorvalue(x3D, wet3D, i, j) for i in axes(x3D, 1), j in axes(x3D, 2)]
+end
+function seafloorvalue1D(x3D, wet3D)
+    sfv = seafloorvalue(x3D, wet3D)
+    sfv[.!isnan.(sfv)]
+end
+function seafloormask(wet3D)
+    mask = falses(size(wet3D))
+    for i in axes(wet3D, 1), j in axes(wet3D, 2)
+        k = findlast(wet3D[i,j,:])
+        isnothing(k) && continue
+        mask[i,j,k] = true
+    end
+    mask
 end
