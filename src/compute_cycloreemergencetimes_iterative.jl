@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=gdata/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
+# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=gdata/gh0+scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
 
 using Pkg
 Pkg.activate(".")
