@@ -18,10 +18,10 @@ using FileIO
 
 # Making monthly matrices for every MONTH from 1990s and averaging them into a single matrix, and computing the age
 
+@show model = "ACCESS-ESM1-5"
 # member = "r1i1p1f1"
 # experiment = "historical"
 # time_window = "Jan1990-Dec1999"
-@show model = "ACCESS-ESM1-5"
 @show experiment = ARGS[1]
 @show member = ARGS[2]
 @show time_window = ARGS[3]
@@ -76,6 +76,8 @@ for month in months
     umo = readcubedata(umo_ds.umo[month=At(month)])
     vmo = readcubedata(vmo_ds.vmo[month=At(month)])
 
+    mean_days_in_month = umo_ds.mean_days_in_month[month=At(month)] |> Array |> only
+
     ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[month=At(month)])
     ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[month=At(month)])
     ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[month=At(month)])
@@ -112,6 +114,7 @@ for month in months
     save(outputfile,
         Dict(
             "T" => T,
+            "mean_days_in_month" => mean_days_in_month,
         )
     )
 

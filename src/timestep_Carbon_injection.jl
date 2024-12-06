@@ -1,38 +1,38 @@
-# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=gdata/gh0+scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
+# # qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
 
-using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
+# using Pkg
+# Pkg.activate(".")
+# Pkg.instantiate()
 
 
-ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-using OceanTransportMatrixBuilder
-using NetCDF
-using YAXArrays
-using DataFrames
-using DimensionalData
-using SparseArrays
-using LinearAlgebra
-using Unitful
-using Unitful: s, yr, d
-using Statistics
-using Format
-using Dates
-using FileIO
-using LinearSolve
-import Pardiso # import Pardiso instead of using (to avoid name clash?)
-using NonlinearSolve
-using ProgressMeter
-try
-    using CairoMakie
-catch
-    using CairoMakie
-end
-using GeoMakie
-using OceanBasins
-using NaNStatistics
+# ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
+# using OceanTransportMatrixBuilder
+# using NetCDF
+# using YAXArrays
+# using DataFrames
+# using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+# using Unitful
+# using Unitful: s, yr, d
+# using Statistics
+# using Format
+# using Dates
+# using FileIO
+# using LinearSolve
+# import Pardiso # import Pardiso instead of using (to avoid name clash?)
+# using NonlinearSolve
+# using ProgressMeter
+# try
+#     using CairoMakie
+# catch
+#     using CairoMakie
+# end
+# using GeoMakie
+# using OceanBasins
+# using NaNStatistics
 
-include("plotting_functions.jl")
+# include("plotting_functions.jl")
 
 
 
@@ -47,6 +47,19 @@ include("plotting_functions.jl")
 # @show experiment = "historical"
 # @show member = "r1i1p1f1"
 # @show time_window = "Jan1990-Dec1999"
+# @show nearesttown = "Karratha"
+
+# Injection locations
+# I Identify location with nearest towns to use the name for saving files
+if nearesttown == "Karratha" # North West of Australia
+    src_P = (115.45849390000001,-16.56466979999999) # Carnarvon Basin?
+elseif nearesttown == "Portland" # South West of Melbourne (West of Tas)
+    src_P = (141.73529860000008,-38.93477809999996) # Otway Basin
+elseif nearesttown == "Marlo" # South East (East of Tas)
+    src_P = (148.74669400000005,-38.6952) # Gippsland Basin
+else
+    error("No predefined location for this nearest town")
+end
 
 lumpby = "month"
 steps = 1:12
@@ -119,7 +132,6 @@ p = (;
 )
 
 # Point source for carbon injection
-src_P = (110, -15) # <- Choose (lon,lat) of source here
 src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
 src_k = findlast(wet3D[src_i, src_j,:])
 isnothing(src_k) && error("No seafloor at (lon,lat)=$src_P")
@@ -133,7 +145,7 @@ v = v3D[wet3D]
 src_mass = v' * sum(src(y) * 12δt for y in 1:src_years)
 
 # Plot
-function plotandsave!(x3D, state, year, text="")
+function plotandprint!(x3D, state, year, text="")
     x3D[wet3D] = state
     fig = Figure(size=(600, 300))
     ax = Axis(fig[1, 1], title="Injected tracer (year $year: $text sequestered)")
@@ -143,7 +155,7 @@ function plotandsave!(x3D, state, year, text="")
     Colorbar(fig[1, 2], plt)
 
     # save plot
-    outputfile = joinpath(inputdir, "injected_tracer_year$year.png")
+    outputfile = joinpath(inputdir, "$(nearesttown)_injected_tracer_year$year.png")
     @info "Saving injection location as image file:\n  $(outputfile)"
     save(outputfile, fig)
 end
@@ -151,7 +163,7 @@ end
 x3D = fill(NaN, size(wet3D))
 state = src1D
 year = 0
-plotandsave!(x3D, state, year)
+plotandprint!(x3D, state, year)
 
 
 function steponemonth!(u, p, m, y)
@@ -180,13 +192,13 @@ uprofile = Array{Float64}(undef, length(lev), Nyears)
     umass[y] = v' * u
     x3D[wet3D] .= u
     uprofile[:, y] .= average(x3D, gridmetrics; dims = (1, 2))
-    if mod(y, 10) == 0
-        text = "$(round(100umass[y] / src_mass, sigdigits = 2))%"
-        plotandsave!(x3D, u, y, text)
-    end
+    # if mod(y, 10) == 0
+    #     text = "$(round(100umass[y] / src_mass, sigdigits = 2))%"
+    #     plotandprint!(x3D, u, y, text)
+    # end
 end
 
-outputfile = joinpath(inputdir, "injected_tracer_timeseries.jld2") # TODO add src_P in name
+outputfile = joinpath(inputdir, "timeseries_injected_near_$(nearesttown).jld2")
 @info "Saving injection time series file:\n  $(outputfile)"
 save(outputfile,
     Dict(
@@ -205,6 +217,6 @@ ylims!(ax, (6000, 0))
 Colorbar(fig[1, 2], co)
 
 # save plot
-outputfile = joinpath(inputdir, "injected_tracer_year_Hovmoller_profile.png")
+outputfile = joinpath(inputdir, "$(nearesttown)_injected_tracer_year_Hovmoller_profile.png")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)

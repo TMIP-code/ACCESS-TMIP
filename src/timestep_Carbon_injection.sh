@@ -7,7 +7,7 @@
 #PBS -l mem=360GB
 #PBS -l jobfs=4GB
 #PBS -l walltime=05:00:00
-#PBS -l storage=gdata/gh0+scratch/gh0+scratch/xv83
+#PBS -l storage=scratch/gh0+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/
 #PBS -j oe
@@ -20,4 +20,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/timestep_Carbon_injection.jl $experiment $member $time_window &> output/timestep_Carbon_injection.$PBS_JOBID.out
+julia src/timestep_Carbon_injection.jl $experiment $member $time_window $lonlat &> output/timestep_Carbon_injection.$PBS_JOBID.out
