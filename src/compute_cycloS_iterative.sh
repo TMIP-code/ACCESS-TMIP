@@ -7,7 +7,7 @@
 #PBS -l mem=360GB
 #PBS -l jobfs=4GB
 #PBS -l walltime=2:00:00
-#PBS -l storage=gdata/gh0+scratch/xv83
+#PBS -l storage=scratch/gh0+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/
 #PBS -j oe
