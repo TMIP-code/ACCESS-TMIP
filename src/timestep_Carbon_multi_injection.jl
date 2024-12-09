@@ -66,27 +66,36 @@ include("plotting_functions.jl")
 
 
 
-# Load matrix and grid metrics
+# script options
 @show model = "ACCESS-ESM1-5"
-# @show experiment = ARGS[1]
-# @show member = ARGS[2]
-# @show time_window = ARGS[3]
-@show experiment = "historical"
-@show time_window = "Jan1850-Dec1859"
-# @show time_window = "Jan1990-Dec1999"
-# @show experiment = "ssp370"
-# @show time_window = "Jan2030-Dec2039"
-# @show time_window = "Jan2090-Dec2099"
-@show member = "r1i1p1f1"
+if isempty(ARGS)
+    member = "r1i1p1f1"
+    # experiment = "historical"
+    # time_window = "Jan1850-Dec1859"
+    srcname = "Karratha"
+    # time_window = "Jan1990-Dec1999"
+    experiment = "ssp370"
+    time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
+else
+    experiment, member, time_window, srcname = ARGS
+end
+@show experiment
+@show member
+@show time_window
+@show srcname
 
 # Injection locations
 # I Identify location with nearest towns to use the name for saving files
-src_Ps = (
-    Karratha = (115.45849390000001,-16.56466979999999), # Carnarvon Basin?" North West of Australia
-    Portland = (141.73529860000008,-38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
-    Marlo    = (148.74669400000005,-38.6952          ), # Gippsland Basin" South East (East of Tas)
-)
-Nsrc = length(src_Ps)
+src_P = if srcname == "Karratha"
+    (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+elseif srcname == "Portland"
+    (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+elseif srcname == "Marlo"
+    (148.74669400000005,-38.6952) # Gippsland Basin" South East (East of Tas)
+else
+    error("No source name matchin $srcname")
+end
 
 lumpby = "month"
 steps = 1:12
@@ -95,11 +104,15 @@ Nsteps = length(steps)
 
 
 # Gadi directory for input files
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# Load areacello and volcello for grid geometry
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+
+# Gadi directory for input files
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
-# Load areacello and volcello for grid geometry
-volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
-areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
+
 
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
@@ -130,16 +143,6 @@ end
 Ω = sparse(Diagonal(Float64.(issrf)))
 
 
-# Build matrices
-# @time "building Ms" Ms = [
-#     begin
-#         inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
-#         @info "Loading matrix from $inputfile"
-#         T = load(inputfile, "T")
-#         T + Ω
-#     end
-#     for step in steps
-# ]
 @time "building Ms" Ms = map(steps) do step
     inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
     @info "Loading matrix from $inputfile"
@@ -148,17 +151,16 @@ end
 end
 @time "building mean_days_in_months" mean_days_in_months = map(steps) do step
     inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
-    @info "Loading mean_days_in_month from $inputfile"
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies Mₖ is δ(k-1..k)
 # which is 0.5 of the mean days in months k-1 and k
 δts = map(eachindex(mean_days_in_months)) do k
-    (mean_days_in_months[mod1(k - 1, 12)] + mean_days_in_months[k]) / 2
+    ustrip(s, (mean_days_in_months[mod1(k - 1, 12)] + mean_days_in_months[k]) / 2 * d)
 end
 
 function initstepprob(A)
-    prob = LinearProblem(A, ones(N, Nsrc))
+    prob = LinearProblem(A, ones(N))
     return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
 end
 
@@ -168,45 +170,42 @@ p = (;
 )
 
 # Point sources for carbon injection
-# for each source point we create a vector and we hcat them into a Nocn × Nsrc matrix
-src_injections = reduce(hcat, map(src_Ps) do src_P
+src1D = let
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
     src_k = findlast(wet3D[src_i, src_j,:])
     isnothing(src_k) && error("No seafloor at (lon,lat)=$src_P")
+    srcdepth = round(Int, gridmetrics.Z3D[src_i, src_j, src_k])
+    @info "source depth is $(srcdepth)m"
     src3D = fill(NaN, size(wet3D))
     src3D[wet3D] .= 0
     src3D[src_i, src_j, src_k] = 1
     src3D[wet3D]
-end)
+end
 
 src_years = 10
-src(y) = (y ≤ src_years) * src_injections
+src(y) = (y ≤ src_years) * src1D
 v = v3D[wet3D]
 src_mass = v' * sum(src(y) * sum(δts) for y in 1:src_years)
 
 # Plot
-function plotandprint!(x3D, state, ksrc, year, text="")
-    x3D[wet3D] = state[:, ksrc]
+function plotandprint!(x3D, state, year, text="")
+    x3D[wet3D] = state
     fig = Figure(size=(600, 300))
     ax = Axis(fig[1, 1], title="Injected tracer (year $year: $text sequestered)")
     x2D = volumeintegral(x3D, gridmetrics; dim = 3)
     plt = plotmap!(ax, x2D, gridmetrics; colormap = :viridis)
-    scatter!(ax, src_Ps[ksrc], marker=:star5, markersize=15, color=:red, strokecolor=:black, strokewidth=1)
+    # scatter!(ax, src_P, marker=:star5, markersize=15, color=:red, strokecolor=:black, strokewidth=1)
     Colorbar(fig[1, 2], plt)
 
     # save plot
-    str = keys(src_Ps)[ksrc]
-    outputfile = joinpath(inputdir, "$(str)_injected_tracer_year$year.png")
+    outputfile = joinpath(inputdir, "$(srcname)_injected_tracer_year$year.png")
     @info "Saving injection location as image file:\n  $(outputfile)"
     save(outputfile, fig)
 end
 
 x3D = fill(NaN, size(wet3D))
-state = src_injections
 year = 0
-for ksrc in eachindex(keys(src_Ps))
-    plotandprint!(x3D, state, ksrc, year)
-end
+plotandprint!(x3D, src1D, year)
 
 
 function steponemonth!(u, p, m, y)
@@ -224,33 +223,34 @@ end
 
 
 @info "Time-stepping loop"
-# Nyears = 500
-Nyears = 11
+Nyears = 500
 src_mass = v' * sum(src(y) * sum(δts) for y in 1:Nyears)
-u = zeros(N, Nsrc)
+u = zeros(N)
 # Preallocate what I save? (may be worth it to save to disk instead, especially oif saving full field)
-umass = Vector{Float64}(undef, Nyears, Nsrc)
+umass = Vector{Float64}(undef, Nyears)
 # uprofile = Array{Float64}(undef, Nsrc, length(lev), Nyears)
 @showprogress for y in 1:Nyears
     steponeyear!(u, p, y)
     # save mass time series
-    umass[y, :] = v' * u
+    umass[y] = v' * u
     # x3D[wet3D] .= u
     # uprofile[:, y] .= average(x3D, gridmetrics; dims = (1, 2))
-    # if mod(y, 10) == 0
-    #     text = "$(round(100umass[y] / src_mass, sigdigits = 2))%"
-    #     plotandprint!(x3D, u, y, text)
-    # end
+    if mod(y, 10) == 0
+        text = "$(round(100umass[y] / src_mass, sigdigits = 2))%"
+        # plotandprint!(x3D, u, y, text)
+    end
 end
 
-outputfile = joinpath(inputdir, "timeseries_injected.jld2")
+outputfile = joinpath(inputdir, "$(srcname)_timeseries_injected.jld2")
 @info "Saving injection time series file:\n  $(outputfile)"
 save(outputfile,
     Dict(
         "umass" => umass,
         # "uprofile" => uprofile,
         "src_mass" => src_mass,
-        "src_Ps" => src_Ps,
+        "srcname" => srcname,
+        "src_P" => src_P,
+        "src_years" => src_years,
     )
 )
 
@@ -260,7 +260,6 @@ save(outputfile,
 # co = contourf!(ax, 1:size(uprofile, 2), Array(lev), uprofile'; colormap = :viridis)
 # ylims!(ax, (6000, 0))
 # Colorbar(fig[1, 2], co)
-
 # # save plot
 # outputfile = joinpath(inputdir, "$(nearesttown)_injected_tracer_year_Hovmoller_profile.png")
 # @info "Saving injection location as image file:\n  $(outputfile)"

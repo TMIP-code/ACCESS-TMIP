@@ -44,13 +44,13 @@
 # # @show member = ARGS[2]
 # # @show time_window = ARGS[3]
 # @show model = "ACCESS-ESM1-5"
-# @show experiment = "historical"
+# @show experiment = "ssp370"
 # @show member = "r1i1p1f1"
-# @show time_window = "Jan1990-Dec1999"
+# @show time_window = "Jan2030-Dec2039"
 
 
 # # Gadi directory for input files
-# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
+# inputdir = "/scratch/xv83/TMIP/data/$model"
 # # Load areacello and volcello for grid geometry
 # volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 # areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
@@ -77,8 +77,19 @@
 # (; N, wet3D) = indices
 
 
+# members = map(m -> "r$(m)i1p1f1", 1:40)
 
-color = Makie.wong_colors()[6]
+# data = Dict{String, Any}()
+# for member in members
+#     @show datainputdir = joinpath(fixedvarsinputdir, experiment, member, time_window)
+#     outputfile = joinpath(datainputdir, "timeseries_injected.jld2")
+#     isfile(outputfile) || continue
+#     @info "Loading injection time series file:\n  $(outputfile)"
+#     data[member] = load(outputfile)
+# end
+
+
+colors = Makie.wong_colors()[[1, 3, 6]]
 fig = Figure(size = (400, 300))
 ax = Axis(fig[1, 1];
     yticks = (-60:20:0, ["$(-i)°S" for i in -60:20:0]),
@@ -87,13 +98,17 @@ ax = Axis(fig[1, 1];
 
 depth2D = nansum(gridmetrics.thkcello; dim = 3)
 depth2D[.!wet3D[:,:,1]] .= NaN
-plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
+# plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
+hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 src_P = (110, -15) # <- Choose (lon,lat) of source here
 # TODO: read src_P somehow (file name or variable inside file)
-sc = scatter!(ax, src_P; marker=:star5, markersize=15, color, strokecolor=:black, strokewidth=1)
-translate!(sc, 0, 0, 100)
+for (ksrc, (src_name, src_P)) in enumerate(pairs(first(values(data))["src_Ps"]))
+    sc = scatter!(ax, src_P; marker=:star5, markersize=10, color=colors[ksrc], strokecolor=:black, strokewidth=1)
+    translate!(sc, 0, 0, 100)
+end
 xlims!(ax, (100, 180))
 ylims!(ax, (-60, 0))
+cb = Colorbar(fog[1, 2], hm)
 
 # save plot
 outputfile = joinpath(inputdir, "injected_tracer_location.png")
