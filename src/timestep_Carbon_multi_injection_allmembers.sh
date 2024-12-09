@@ -1,4 +1,4 @@
-for member in r{1..2}i1p1f1; do
+for member in r{3..38}i1p1f1; do
 # for member in r{1..40}i1p1f1; do
     # for srcname in Karratha; do
     for srcname in Karratha Portland Marlo; do
