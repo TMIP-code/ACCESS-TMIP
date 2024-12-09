@@ -29,6 +29,10 @@ lumpby = "month"
 months = 1:12
 
 # Gadi directory for input files
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# Load areacello and volcello for grid geometry
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 umo_ds = open_dataset(joinpath(cycloinputdir, "umo.nc"))
@@ -38,8 +42,6 @@ vmo_ds = open_dataset(joinpath(cycloinputdir, "vmo.nc"))
 ψᵢsubmeso_ds = open_dataset(joinpath(cycloinputdir, "tx_trans_submeso.nc"))
 ψⱼsubmeso_ds = open_dataset(joinpath(cycloinputdir, "ty_trans_submeso.nc"))
 mlotst_ds = open_dataset(joinpath(cycloinputdir, "mlotst.nc"))
-areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
-volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 
 
 
