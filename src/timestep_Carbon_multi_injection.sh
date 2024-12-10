@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P xv83
-#PBS -N time_step_injection
+#PBS -N ts_member_placeholder_srcname_placeholder
 #PBS -l ncpus=48
 #PBS -q hugemem
 #PBS -l mem=360GB

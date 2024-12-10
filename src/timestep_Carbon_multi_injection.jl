@@ -92,7 +92,7 @@ src_P = if srcname == "Karratha"
 elseif srcname == "Portland"
     (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
 elseif srcname == "Marlo"
-    (148.74669400000005,-38.6952) # Gippsland Basin" South East (East of Tas)
+    (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
 else
     error("No source name matchin $srcname")
 end

@@ -14,15 +14,15 @@
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
-experiment=historical
+# experiment=historical
 # time_window=Jan1850-Dec1859
-time_window=Jan1990-Dec1999
-# experiment=ssp370
+# time_window=Jan1990-Dec1999
+experiment=ssp370
 # time_window=Jan2030-Dec2039
-# time_window=Jan2090-Dec2099
+time_window=Jan2090-Dec2099
 
 # for member in r{1..40}i1p1f1; do
-for member in r{1..40}i1p1f1; do
+for member in r{39..40}i1p1f1; do
     echo "building $experiment $member $time_window"
     julia src/build_cyclomonthmatrices.jl $experiment $member $time_window &> output/build_cyclomonthmatrices.$experiment.$member.$time_window.$PBS_JOBID.out
 done
