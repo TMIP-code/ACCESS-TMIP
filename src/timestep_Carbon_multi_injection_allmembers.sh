@@ -1,6 +1,5 @@
-for member in r{24..40}i1p1f1; do
-# for member in r{1..23}i1p1f1; do
 # for member in r{1..40}i1p1f1; do
+for member in r{1..1}i1p1f1; do
     # for srcname in Marlo; do
     for srcname in Karratha Portland Marlo; do
         # change member_placeholders in timestep_Carbon_multi_injection.sh and create file and remove it
