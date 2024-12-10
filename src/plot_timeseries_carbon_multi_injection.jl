@@ -127,8 +127,10 @@
 #     end
 # end
 
-# depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
-# maxdepth = 6000
+depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
+maxdepth = 6000
+@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
 fig = Figure(size=(900, 400))
@@ -158,35 +160,47 @@ ga = Axis(fig[1, 1];
 # xlims!(ga, limits[1])
 # ylims!(ga, limits[2])
 # image!(ga, -180..180, -90..90, GeoMakie.earth() |> rotr90; interpolate = false)
-colors = cgrad(:blues, length(depths), categorical=true)
-colors = cgrad(:grays, length(depths), categorical=true, rev=true)
+colors = cgrad(:jblue, length(depths), categorical=true)
+# colors = cgrad(:blues, length(depths), categorical=true)
+# colors = cgrad(:grays, length(depths), categorical=true, rev=true)
 
 isinlimits(P) = !ismissing(P[1]) && !ismissing(P[2]) && (limits[1][1] ≤ P[1] ≤ limits[1][2]) && (limits[2][1] ≤ P[2] ≤ limits[2][2])
 isinlimits(vecP::Vector) = any(isinlimits, vecP)
-# for (simplepolygon, color) in zip(reverse(simplepolygons), colors)
-#     poly!(ga, simplepolygon; color)
-# end
+for (simplepolygon, color) in zip(reverse(simplepolygons), colors)
+    poly!(ga, simplepolygon; color)
+end
+# poly!(ga, GeoMakie.land(); color = :white, strokecolor = :black, strokewidth = 1)
 poly!(ga, GeoMakie.land(); color = :lightyellow, strokecolor = :black, strokewidth = 1)
 # depth2D = nansum(gridmetrics.thkcello; dim = 3)
 # depth2D[.!wet3D[:,:,1]] .= NaN
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 # hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 # TODO: read src_P somehow (file name or variable inside file)
-colors = Makie.wong_colors()[[1, 3, 6]]
-offsets = map(x -> x.* 3, [(-1, 1), (-1, -1), (1, -1)])
-aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
+colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+# colors = Makie.wong_colors()[[1, 3, 6]]
+offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
+# aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
+aligns = [(:right, :center), (:right, :center), (:left, :center)]
 texts = ["A", "B", "C"]
-function kinkline(A, B, angle)
-    return nothing
+function kinkline(A, B, c=2/3)
+    # A -- C
+    #       \
+    #        B
+    return [(0.9A[1] + 0.1B[1], A[2]), (c * B[1] + (1-c) * A[1], A[2]), B]
 end
 for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors, texts))
     src_P = sourcelocation(srcname)
     # sc = scatter!(ga, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
     # sc1 = scatter!(ga, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=3)
-    sc2 = scatter!(ga, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=colors[ksrc], strokewidth=1)
-    lines!(ga, [src_P, src_P .+ offset]; color=:white)
-    text!(ga, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
-    text!(ga, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
+    sc2 = scatter!(ga, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
+    sc2 = scatter!(ga, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
+    # lines!(ga, [src_P, src_P .+ offset]; color=:white)
+    lines!(ga, kinkline(src_P .+ offset, src_P); color=:black)
+    # lines!(ga, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
+    # lines!(ga, kinkline(src_P .+ offset, src_P); color)
+    text!(ga, src_P .+ offset; text, align, color=:black, strokecolor=:black)
+    # text!(ga, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
+    # text!(ga, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
     # translate!(sc1, 0, 0, 99)
     translate!(sc2, 0, 0, 100)
 end
@@ -207,9 +221,9 @@ axisoptions = (
     xticks = -100:100:500,
     yticks = 0:20:100,
     ylabel = "Fraction sequestered (%)",
-    xlabel = rich("year (repeating $(year_start)s)"),
+    xlabel = rich("year after injection (repeating $(year_start)s)"),
 )
-xmin, xmax = extrema(axisoptions.xticks)
+xmin, xmax = -30, 500
 # xmin, xmax = year_start, 2100
 ax = Axis(fig[1, 2]; axisoptions...)
 x = -10:(length(times) - 11)
@@ -236,6 +250,7 @@ for (ksrc, srcname) = enumerate(srcnames)
     Cseqmean[inan] .= NaN
     Cseqmin[inan] .= NaN
     Cseqmax[inan] .= NaN
+    # bd = band!(ax, x, Cseqmin, Cseqmax; color=(:black, 0.3))
     bd = band!(ax, x, Cseqmin, Cseqmax; color=(color, 0.3))
     # for Cseqksrc_m in eachslice(Cseqksrc, dims = 2)
     #     # cannot work if saved umass have different time span
@@ -243,9 +258,12 @@ for (ksrc, srcname) = enumerate(srcnames)
     #     # TODO use a ribbon instead of plotting each trajectory
     #     lines!(ax, x, Cseqksrc_m; color = :black, linewidth=0.1)
     # end
+    # ln = lines!(ax, x, Cseqmean; color=:black, linewidth=2, linecap=:round, joinstyle=:round)
     ln = lines!(ax, x, Cseqmean; color, linewidth=2, linecap=:round, joinstyle=:round)
     i = 250 - 10ksrc
-    text!(ax, x[i], Cseqmean[i]; text = texts[ksrc], offset = (10, 1), align = (:left, :bottom), color, font=:bold, fontsize=18)
+    text = texts[ksrc] * (ksrc == 1 ? " injection location" : "")
+    text!(ax, x[i], Cseqmean[i]; text, offset = (10, 1), align = (:left, :bottom), color=:black)
+    # text!(ax, x[i], Cseqmean[i]; text, offset = (10, 1), align = (:left, :bottom), color, fontsize=18)
     # Add a bar chart in the middle?
     # for xbar in 2100:100:2500
     #     ix = only(findall(x .== xbar))
@@ -298,8 +316,8 @@ end
 # save plot
 outputdir = joinpath(fixedvarsinputdir, "all_members")
 mkpath(outputdir)
-outputfile = joinpath(outputdir, "injected_tracer_timeseries.png")
-# outputfile = joinpath(outputdir, "injected_tracer_timeseries.pdf")
+# outputfile = joinpath(outputdir, "injected_tracer_timeseries.png")
+outputfile = joinpath(outputdir, "injected_tracer_timeseries.pdf")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
