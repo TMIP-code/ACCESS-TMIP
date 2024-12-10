@@ -2,7 +2,7 @@
 
 #PBS -P xv83
 #PBS -N ts_member_placeholder_srcname_placeholder
-#PBS -l ncpus=24
+#PBS -l ncpus=48
 #PBS -q hugemem
 #PBS -l mem=360GB
 #PBS -l jobfs=4GB
