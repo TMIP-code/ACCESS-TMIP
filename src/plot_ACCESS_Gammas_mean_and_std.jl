@@ -110,7 +110,7 @@ basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
 
 
-Plot Γ↓ zonal averages
+# Plot Γ↓ zonal averages
 
 fig = Figure(size = (1200, 600), fontsize = 18)
 axs = Array{Any,2}(undef, (2, 3))
