@@ -100,12 +100,10 @@ end
 lumpby = "month"
 steps = 1:12
 Nsteps = length(steps)
-δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
 
 
-# Gadi directory for input files
-fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 # Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
 areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
@@ -129,7 +127,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
 # Make indices
 indices = makeindices(v3D)
@@ -165,6 +163,7 @@ function initstepprob(A)
 end
 
 p = (;
+    steps,
     δts,
     stepprobs = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)]
 )
@@ -215,7 +214,7 @@ function steponemonth!(u, p, m, y)
     return u
 end
 function steponeyear!(u, p, y)
-    for m in eachindex(p.stepprobs)
+    for m in p.steps
         steponemonth!(u, p, m, y)
     end
     return u
