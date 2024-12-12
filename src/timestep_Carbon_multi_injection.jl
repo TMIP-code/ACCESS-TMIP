@@ -222,7 +222,7 @@ end
 
 
 @info "Time-stepping loop"
-Nyears = 2000
+Nyears = 1000
 src_mass = v' * sum(src(y) * sum(δts) for y in 1:Nyears)
 u = zeros(N)
 # Preallocate what I save? (may be worth it to save to disk instead, especially oif saving full field)
