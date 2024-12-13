@@ -204,7 +204,7 @@ end
 
 x3D = fill(NaN, size(wet3D))
 year = 0
-plotandprint!(x3D, src1D, year)
+# plotandprint!(x3D, src1D, year)
 
 
 function steponemonth!(u, p, m, y)

@@ -1,6 +1,7 @@
 [deps]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Contour = "d38c429a-6771-53c6-b99e-75d170b6e991"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"

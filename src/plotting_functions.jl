@@ -28,7 +28,7 @@ ytickformat(y) = latticklabel.(y)
 
 loninsamewindow(l1, l2) = mod(l1 - l2 + 180, 360) + l2 - 180
 
-function plotmap!(ax, x2D, gridmetrics; kwargs...)
+function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
 
     # unpack gridmetrics
     lonv = gridmetrics.lon_vertices
@@ -45,7 +45,45 @@ function plotmap!(ax, x2D, gridmetrics; kwargs...)
     colors_per_point = vcat(fill.(vec(x2D), 4)...)
 
     # create plot
-    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, kwargs...)
+    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange)
+    xlims!(ax, (-180, 180))
+    ylims!(ax, (-90, 90))
+
+    # Add contourlines if levels is present
+    if !isnothing(levels)
+        lon2 = mod.(gridmetrics.lon .- 80, 360) .+ 80
+        contourlevels = Contour.contours(lon2, gridmetrics.lat, x2D, levels)
+        for cl in Contour.levels(contourlevels)
+            lvl = level(cl) # the z-value of this contour level
+            for line in Contour.lines(cl)
+                xs, ys = coordinates(line) # coordinates of this line segment
+                ls = lines!(ax, xs, ys; color = (:black, 0.5), linewidth = 1)
+                translate!(ls, 0, 0, 110) # draw the contours above all
+            end
+        end
+    end
+
+
+    # add coastlines
+    cl = poly!(ax, GeoMakie.land(); color = :lightyellow, strokecolor = :black, strokewidth = 1)
+    translate!(cl, 0, 0, 100)
+
+    # move the plot behind the grid so we can see them
+    translate!(plt, 0, 0, -100)
+
+    return plt
+end
+
+function plotcontourfmap!(ax, x2D, gridmetrics; kwargs...)
+
+    # unpack gridmetrics
+    lon = gridmetrics.lon
+    lat = gridmetrics.lat
+
+    # create plot
+    @show size(lon), size(lat), size(x2D)
+
+    plt = tricontourf!(ax, lon[:], lat[:], x2D[:]; kwargs...)
     xlims!(ax, (-180, 180))
     ylims!(ax, (-90, 90))
 
@@ -58,6 +96,14 @@ function plotmap!(ax, x2D, gridmetrics; kwargs...)
 
     return plt
 end
+
+function kinkline(A, B, c=2/3)
+    # A -- C
+    #       \
+    #        B
+    return [(0.9A[1] + 0.1B[1], A[2]), (c * B[1] + (1-c) * A[1], A[2]), B]
+end
+
 
 OCEANS = oceanpolygons()
 

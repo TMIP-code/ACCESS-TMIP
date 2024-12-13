@@ -199,12 +199,7 @@ offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
 aligns = [(:right, :center), (:right, :center), (:left, :center)]
 texts = ["A", "B", "C"]
-function kinkline(A, B, c=2/3)
-    # A -- C
-    #       \
-    #        B
-    return [(0.9A[1] + 0.1B[1], A[2]), (c * B[1] + (1-c) * A[1], A[2]), B]
-end
+
 for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors, texts))
     src_P = sourcelocation(srcname)
     # sc = scatter!(axmap2, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
