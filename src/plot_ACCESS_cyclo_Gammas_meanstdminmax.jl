@@ -27,6 +27,8 @@ using StatsBase
 using FileIO
 using Contour
 
+include("plotting_functions.jl")
+
 
 model = "ACCESS-ESM1-5"
 
@@ -101,7 +103,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
 
 
-    include("plotting_functions.jl")
 
 
     # # Plot zonal averages
@@ -203,96 +204,96 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
 
 
-    # # Plot Γ↑ zonal averages
+    # Plot Γ↑ zonal averages
 
 
-    # fig = Figure(size = (1200, 600), fontsize = 18)
-    # axs = Array{Any,2}(undef, (2, 3))
-    # contours = Array{Any,2}(undef, (2, 3))
+    fig = Figure(size = (1200, 600), fontsize = 18)
+    axs = Array{Any,2}(undef, (2, 3))
+    contours = Array{Any,2}(undef, (2, 3))
 
-    # for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_std), ("mean", "std")))
+    for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_std), ("mean", "std")))
 
-    #     if str == "mean" # mean
-    #         levels = 0:100:1500
-    #         colormap = cgrad(:viridis, length(levels); categorical=true)
-    #         extendlow = nothing
-    #         extendhigh = colormap[end]
-    #         colormap = cgrad(colormap[1:end-1]; categorical=true)
-    #     elseif str == "std"
-    #         levels = 0:50:400
-    #         colormap = cgrad(:magma, length(levels); categorical=true)
-    #         extendlow = nothing
-    #         extendhigh = colormap[end]
-    #         colormap = cgrad(colormap[1:end-1]; categorical=true)
-    #     end
+        if str == "mean" # mean
+            levels = 0:100:1500
+            colormap = cgrad(:viridis, length(levels); categorical=true)
+            extendlow = nothing
+            extendhigh = colormap[end]
+            colormap = cgrad(colormap[1:end-1]; categorical=true)
+        elseif str == "std"
+            levels = 0:50:400
+            colormap = cgrad(:magma, length(levels); categorical=true)
+            extendlow = nothing
+            extendhigh = colormap[end]
+            colormap = cgrad(colormap[1:end-1]; categorical=true)
+        end
 
-    #     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
+        for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
-    #         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
+            x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-    #         local ax = Axis(fig[irow, icol],
-    #             backgroundcolor=:lightgray,
-    #             xgridvisible=false, ygridvisible=false,
-    #             ylabel = "depth (m)")
+            local ax = Axis(fig[irow, icol],
+                backgroundcolor=:lightgray,
+                xgridvisible=false, ygridvisible=false,
+                ylabel = "depth (m)")
 
-    #         X = dropdims(maximum(lat, dims=1), dims=1)
-    #         Y = zt
-    #         Z = x2D
-    #         co = contourf!(ax, X, Y, Z;
-    #             levels,
-    #             colormap,
-    #             nan_color = :lightgray,
-    #             extendlow,
-    #             extendhigh,
-    #         )
-    #         translate!(co, 0, 0, -100)
-    #         contours[irow, icol] = co
+            X = dropdims(maximum(lat, dims=1), dims=1)
+            Y = zt
+            Z = x2D
+            co = contourf!(ax, X, Y, Z;
+                levels,
+                colormap,
+                nan_color = :lightgray,
+                extendlow,
+                extendhigh,
+            )
+            translate!(co, 0, 0, -100)
+            contours[irow, icol] = co
 
-    #         xlim = basin_latlims[basin_key]
-    #         # basin2 = LONGTEXT[basin]
+            xlim = basin_latlims[basin_key]
+            # basin2 = LONGTEXT[basin]
 
-    #         ax.yticks = (ztick, zticklabel)
-    #         xticks = -90:30:90
-    #         ax.xticks = (xticks, latticklabel.(xticks))
-    #         ylims!(ax, zlim)
-    #         # xlims!(ax, (-90, 90))
-    #         xlims!(ax, xlim)
+            ax.yticks = (ztick, zticklabel)
+            xticks = -90:30:90
+            ax.xticks = (xticks, latticklabel.(xticks))
+            ylims!(ax, zlim)
+            # xlims!(ax, (-90, 90))
+            xlims!(ax, xlim)
 
-    #         hidexdecorations!(ax,
-    #             label = irow < 2, ticklabels = irow < 2,
-    #             ticks = irow < 2, grid = false)
-    #         hideydecorations!(ax,
-    #             label = icol > 1, ticklabels = icol > 1,
-    #             ticks = icol > 1, grid = false)
+            hidexdecorations!(ax,
+                label = irow < 2, ticklabels = irow < 2,
+                ticks = irow < 2, grid = false)
+            hideydecorations!(ax,
+                label = icol > 1, ticklabels = icol > 1,
+                ticks = icol > 1, grid = false)
 
-    #         axs[irow, icol] = ax
-    #     end
-    #     cb = Colorbar(fig[irow, 4], contours[irow, 1];
-    #         vertical = true, flipaxis = true,
-    #         # ticks = (, cbarticklabelformat.(levels)),
-    #         label = rich(str, " ", Γup, " (yr)"),
-    #         )
-    #     cb.height = Relative(1)
+            axs[irow, icol] = ax
+        end
+        cb = Colorbar(fig[irow, 4], contours[irow, 1];
+            vertical = true, flipaxis = true,
+            # ticks = (, cbarticklabelformat.(levels)),
+            label = rich(str, " ", Γup, " (yr)"),
+            )
+        cb.height = Relative(1)
 
-    # end
+    end
 
 
 
-    # for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    #     Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
-    #     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
-    # end
+    for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
+        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
+    end
 
-    # title = "$model $experiment $(time_window) reemergence time"
-    # Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    title = "$model $experiment $(time_window) reemergence time"
+    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
-    # rowgap!(fig.layout, 10)
-    # colgap!(fig.layout, 10)
+    rowgap!(fig.layout, 10)
+    colgap!(fig.layout, 10)
 
-    # # save plot
-    # outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_v4.png")
-    # @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
-    # save(outputfile, fig)
+    # save plot
+    outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_v4.png")
+    @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
+    save(outputfile, fig)
 
 
 
@@ -353,47 +354,47 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
 
 
-    # fig = Figure(size = (1200, 1200), fontsize = 18)
-    # axs = Array{Any,2}(undef, (2, 1))
-    # contours = Array{Any,2}(undef, (2, 1))
+    fig = Figure(size = (1200, 1200), fontsize = 18)
+    axs = Array{Any,2}(undef, (2, 1))
+    contours = Array{Any,2}(undef, (2, 1))
 
-    # for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_std), ("mean", "std")))
+    for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_std), ("mean", "std")))
 
-    #     if str == "mean" # mean
-    #         levels = 0:100:1500
-    #         colormap = :viridis
-    #         colorrange = extrema(levels)
-    #     elseif str == "std"
-    #         levels = 0:50:400
-    #         colorrange = extrema(levels)
-    #         colormap = :magma
-    #     end
+        if str == "mean" # mean
+            levels = 0:100:1500
+            colormap = :viridis
+            colorrange = extrema(levels)
+        elseif str == "std"
+            levels = 0:50:400
+            colorrange = extrema(levels)
+            colormap = :magma
+        end
 
-    #     # Plot mean age at the seafloor level
-    #     local title = "$model $experiment $(time_window) reemergence time at seafloor"
+        # Plot mean age at the seafloor level
+        local title = "$model $experiment $(time_window) reemergence time at seafloor"
 
-    #     ax = Axis(fig[irow,1]; title, xtickformat, ytickformat)
+        ax = Axis(fig[irow,1]; title, xtickformat, ytickformat)
 
 
-    #     # plot
-    #     x2D = seafloorvalue(x3D, wet3D)
-    #     plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap)
+        # plot
+        x2D = seafloorvalue(x3D, wet3D)
+        plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap)
 
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
 
-    #     Colorbar(fig[irow,2], plt, label=rich(str, " ", Γup, " at seafloor (yr)"))
-    # end
+        Colorbar(fig[irow,2], plt, label=rich(str, " ", Γup, " at seafloor (yr)"))
+    end
 
-    # rowgap!(fig.layout, 10)
-    # colgap!(fig.layout, 10)
+    rowgap!(fig.layout, 10)
+    colgap!(fig.layout, 10)
 
-    # # save plot
-    # outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_v4.png")
-    # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
-    # save(outputfile, fig)
+    # save plot
+    outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_v4.png")
+    @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
+    save(outputfile, fig)
 
 
 
@@ -505,96 +506,96 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
 
 
-    # # Plot Γ↑ zonal averages
+    # Plot Γ↑ zonal averages
 
 
-    # fig = Figure(size = (1200, 600), fontsize = 18)
-    # axs = Array{Any,2}(undef, (2, 3))
-    # contours = Array{Any,2}(undef, (2, 3))
+    fig = Figure(size = (1200, 600), fontsize = 18)
+    axs = Array{Any,2}(undef, (2, 3))
+    contours = Array{Any,2}(undef, (2, 3))
 
-    # for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_maxdiff), ("mean", "maxΔ")))
+    for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_maxdiff), ("mean", "maxΔ")))
 
-    #     if str == "mean" # mean
-    #         levels = 0:100:1500
-    #         colormap = cgrad(:viridis, length(levels); categorical=true)
-    #         extendlow = nothing
-    #         extendhigh = colormap[end]
-    #         colormap = cgrad(colormap[1:end-1]; categorical=true)
-    #     elseif str == "maxΔ"
-    #         levels = 0:50:400
-    #         colormap = cgrad(:magma, length(levels); categorical=true)
-    #         extendlow = nothing
-    #         extendhigh = colormap[end]
-    #         colormap = cgrad(colormap[1:end-1]; categorical=true)
-    #     end
+        if str == "mean" # mean
+            levels = 0:100:1500
+            colormap = cgrad(:viridis, length(levels); categorical=true)
+            extendlow = nothing
+            extendhigh = colormap[end]
+            colormap = cgrad(colormap[1:end-1]; categorical=true)
+        elseif str == "maxΔ"
+            levels = 0:50:400
+            colormap = cgrad(:magma, length(levels); categorical=true)
+            extendlow = nothing
+            extendhigh = colormap[end]
+            colormap = cgrad(colormap[1:end-1]; categorical=true)
+        end
 
-    #     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
+        for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
-    #         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
+            x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-    #         local ax = Axis(fig[irow, icol],
-    #             backgroundcolor=:lightgray,
-    #             xgridvisible=false, ygridvisible=false,
-    #             ylabel = "depth (m)")
+            local ax = Axis(fig[irow, icol],
+                backgroundcolor=:lightgray,
+                xgridvisible=false, ygridvisible=false,
+                ylabel = "depth (m)")
 
-    #         X = dropdims(maximum(lat, dims=1), dims=1)
-    #         Y = zt
-    #         Z = x2D
-    #         co = contourf!(ax, X, Y, Z;
-    #             levels,
-    #             colormap,
-    #             nan_color = :lightgray,
-    #             extendlow,
-    #             extendhigh,
-    #         )
-    #         translate!(co, 0, 0, -100)
-    #         contours[irow, icol] = co
+            X = dropdims(maximum(lat, dims=1), dims=1)
+            Y = zt
+            Z = x2D
+            co = contourf!(ax, X, Y, Z;
+                levels,
+                colormap,
+                nan_color = :lightgray,
+                extendlow,
+                extendhigh,
+            )
+            translate!(co, 0, 0, -100)
+            contours[irow, icol] = co
 
-    #         xlim = basin_latlims[basin_key]
-    #         # basin2 = LONGTEXT[basin]
+            xlim = basin_latlims[basin_key]
+            # basin2 = LONGTEXT[basin]
 
-    #         ax.yticks = (ztick, zticklabel)
-    #         xticks = -90:30:90
-    #         ax.xticks = (xticks, latticklabel.(xticks))
-    #         ylims!(ax, zlim)
-    #         # xlims!(ax, (-90, 90))
-    #         xlims!(ax, xlim)
+            ax.yticks = (ztick, zticklabel)
+            xticks = -90:30:90
+            ax.xticks = (xticks, latticklabel.(xticks))
+            ylims!(ax, zlim)
+            # xlims!(ax, (-90, 90))
+            xlims!(ax, xlim)
 
-    #         hidexdecorations!(ax,
-    #             label = irow < 2, ticklabels = irow < 2,
-    #             ticks = irow < 2, grid = false)
-    #         hideydecorations!(ax,
-    #             label = icol > 1, ticklabels = icol > 1,
-    #             ticks = icol > 1, grid = false)
+            hidexdecorations!(ax,
+                label = irow < 2, ticklabels = irow < 2,
+                ticks = irow < 2, grid = false)
+            hideydecorations!(ax,
+                label = icol > 1, ticklabels = icol > 1,
+                ticks = icol > 1, grid = false)
 
-    #         axs[irow, icol] = ax
-    #     end
-    #     cb = Colorbar(fig[irow, 4], contours[irow, 1];
-    #         vertical = true, flipaxis = true,
-    #         # ticks = (, cbarticklabelformat.(levels)),
-    #         label = rich(str, " ", Γup, " (yr)"),
-    #         )
-    #     cb.height = Relative(1)
+            axs[irow, icol] = ax
+        end
+        cb = Colorbar(fig[irow, 4], contours[irow, 1];
+            vertical = true, flipaxis = true,
+            # ticks = (, cbarticklabelformat.(levels)),
+            label = rich(str, " ", Γup, " (yr)"),
+            )
+        cb.height = Relative(1)
 
-    # end
+    end
 
 
 
-    # for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    #     Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
-    #     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
-    # end
+    for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
+        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
+    end
 
-    # title = "$model $experiment $(time_window) reemergence time"
-    # Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    title = "$model $experiment $(time_window) reemergence time"
+    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
-    # rowgap!(fig.layout, 10)
-    # colgap!(fig.layout, 10)
+    rowgap!(fig.layout, 10)
+    colgap!(fig.layout, 10)
 
-    # # save plot
-    # outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_vsmaxdiff.png")
-    # @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
-    # save(outputfile, fig)
+    # save plot
+    outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_vsmaxdiff.png")
+    @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
+    save(outputfile, fig)
 
 
 
@@ -655,47 +656,47 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
 
 
-    # fig = Figure(size = (1200, 1200), fontsize = 18)
-    # axs = Array{Any,2}(undef, (2, 1))
-    # contours = Array{Any,2}(undef, (2, 1))
+    fig = Figure(size = (1200, 1200), fontsize = 18)
+    axs = Array{Any,2}(undef, (2, 1))
+    contours = Array{Any,2}(undef, (2, 1))
 
-    # for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_maxdiff), ("mean", "maxΔ")))
+    for (irow, (x3D, str)) in enumerate(zip((Γoutyr3D_mean, Γoutyr3D_maxdiff), ("mean", "maxΔ")))
 
-    #     if str == "mean" # mean
-    #         levels = 0:100:1500
-    #         colormap = :viridis
-    #         colorrange = extrema(levels)
-    #     elseif str == "maxΔ"
-    #         levels = 0:50:400
-    #         colorrange = extrema(levels)
-    #         colormap = :magma
-    #     end
+        if str == "mean" # mean
+            levels = 0:100:1500
+            colormap = :viridis
+            colorrange = extrema(levels)
+        elseif str == "maxΔ"
+            levels = 0:50:400
+            colorrange = extrema(levels)
+            colormap = :magma
+        end
 
-    #     # Plot mean age at the seafloor level
-    #     local title = "$model $experiment $(time_window) reemergence time at seafloor"
+        # Plot mean age at the seafloor level
+        local title = "$model $experiment $(time_window) reemergence time at seafloor"
 
-    #     ax = Axis(fig[irow,1]; title, xtickformat, ytickformat)
+        ax = Axis(fig[irow,1]; title, xtickformat, ytickformat)
 
 
-    #     # plot
-    #     x2D = seafloorvalue(x3D, wet3D)
-    #     plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap)
+        # plot
+        x2D = seafloorvalue(x3D, wet3D)
+        plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
 
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
-    #     # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
+        # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
 
-    #     Colorbar(fig[irow,2], plt, label=rich(str, " ", Γup, " at seafloor (yr)"))
-    # end
+        Colorbar(fig[irow,2], plt, label=rich(str, " ", Γup, " at seafloor (yr)"))
+    end
 
-    # rowgap!(fig.layout, 10)
-    # colgap!(fig.layout, 10)
+    rowgap!(fig.layout, 10)
+    colgap!(fig.layout, 10)
 
-    # # save plot
-    # outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_vsmaxdiff.png")
-    # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
-    # save(outputfile, fig)
+    # save plot
+    outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_vsmaxdiff.png")
+    @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
+    save(outputfile, fig)
 
 
 
@@ -799,7 +800,7 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
         # plot
         x2D = seafloorvalue(x3D, wet3D)
         # plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap)
-        plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels = 0:100:2000)
+        plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels)
 
         # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
