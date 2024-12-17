@@ -1,150 +1,157 @@
-# qsub -I -P xv83 -l mem=32GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=6
+# # qsub -I -P xv83 -l mem=32GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=6
 
-using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
-
-
-ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-using OceanTransportMatrixBuilder
-using NetCDF
-using YAXArrays
-using DataFrames
-using DimensionalData
-using SparseArrays
-using LinearAlgebra
-using Unitful
-using Unitful: s, yr, d
-using Statistics
-using Format
-using Dates
-using FileIO
-using LinearSolve
-import Pardiso # import Pardiso instead of using (to avoid name clash?)
-using NonlinearSolve
-using ProgressMeter
-try
-    using CairoMakie
-catch
-    using CairoMakie
-end
-using GeoMakie
-using OceanBasins
-using NaNStatistics
-using NaturalEarth
-using GeometryOps
-
-include("plotting_functions.jl")
+# using Pkg
+# Pkg.activate(".")
+# Pkg.instantiate()
 
 
+# ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
+# using OceanTransportMatrixBuilder
+# using NetCDF
+# using YAXArrays
+# using DataFrames
+# using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+# using Unitful
+# using Unitful: s, yr, d
+# using Statistics
+# using Format
+# using Dates
+# using FileIO
+# using LinearSolve
+# import Pardiso # import Pardiso instead of using (to avoid name clash?)
+# using NonlinearSolve
+# using ProgressMeter
+# try
+#     using CairoMakie
+# catch
+#     using CairoMakie
+# end
+# using GeoMakie
+# using OceanBasins
+# using NaNStatistics
+# using NaturalEarth
+# using GeometryOps
+
+# include("plotting_functions.jl")
 
 
 
-# Load matrix and grid metrics
+
+
+# # Load matrix and grid metrics
+# # @show model = "ACCESS-ESM1-5"
+# # @show experiment = ARGS[1]
+# # @show member = ARGS[2]
+# # @show time_window = ARGS[3]
 # @show model = "ACCESS-ESM1-5"
-# @show experiment = ARGS[1]
-# @show member = ARGS[2]
-# @show time_window = ARGS[3]
-@show model = "ACCESS-ESM1-5"
-# @show experiment = "historical"
-@show experiment = "ssp370"
-# @show time_window = "Jan1850-Dec1859"
-# @show time_window = "Jan1990-Dec1999"
-@show time_window = "Jan2030-Dec2039"
+# # @show experiment = "historical"
+# @show experiment = "ssp370"
+# # @show time_window = "Jan1850-Dec1859"
+# # @show time_window = "Jan1990-Dec1999"
+# @show time_window = "Jan2030-Dec2039"
 
-lumpby = "month"
-steps = 1:12
-Nsteps = length(steps)
-δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
+# lumpby = "month"
+# steps = 1:12
+# Nsteps = length(steps)
+# δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
 
 
-# Gadi directory for input files
-fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# Load areacello and volcello for grid geometry
-volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+# # Gadi directory for input files
+# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# # Load areacello and volcello for grid geometry
+# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-# Load fixed variables in memory
-areacello = readcubedata(areacello_ds.areacello)
-volcello = readcubedata(volcello_ds.volcello)
-lon = readcubedata(volcello_ds.lon)
-lat = readcubedata(volcello_ds.lat)
-lev = volcello_ds.lev
-# Identify the vertices keys (vary across CMIPs / models)
-volcello_keys = propertynames(volcello_ds)
-lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# # Load fixed variables in memory
+# areacello = readcubedata(areacello_ds.areacello)
+# volcello = readcubedata(volcello_ds.volcello)
+# lon = readcubedata(volcello_ds.lon)
+# lat = readcubedata(volcello_ds.lat)
+# lev = volcello_ds.lev
+# # Identify the vertices keys (vary across CMIPs / models)
+# volcello_keys = propertynames(volcello_ds)
+# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
-# Make makegridmetrics
-gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+# # Make makegridmetrics
+# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+# (; lon_vertices, lat_vertices, v3D, ) = gridmetrics
 
-# Make indices
-indices = makeindices(v3D)
-(; N, wet3D) = indices
+# # Make indices
+# indices = makeindices(v3D)
+# (; N, wet3D) = indices
 
-function sourcelocation(srcname)
-    if srcname == "Karratha"
-        return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
-    elseif srcname == "Portland"
-        return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
-    elseif srcname == "Marlo"
-        return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
-    else
-        error("No source name matchin $srcname")
-    end
-end
+# function sourcelocation(srcname)
+#     if srcname == "Karratha"
+#         return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+#     elseif srcname == "Portland"
+#         return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+#     elseif srcname == "Marlo"
+#         return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
+#     else
+#         error("No source name matchin $srcname")
+#     end
+# end
 
-members = map(m -> "r$(m)i1p1f1", 1:40)
-srcnames = ["Karratha", "Portland", "Marlo"]
-year_start = parse(Int, time_window[4:7])
-# Nyears = 501
-# Nyears = 2001
-Nyears = 1001
-times = range(Date("$year_start-01-01"); step=Year(1), length=Nyears)
-axlist = (
-    Dim{:time}(times),
-    Dim{:source}(srcnames),
-    Dim{:member}(members),
-)
-Nmembers = length(members)
-Nsrc = length(srcnames)
-data = fill(NaN, (Nyears, Nsrc, Nmembers))
-yaxdata = YAXArray(axlist, data)
+# members = map(m -> "r$(m)i1p1f1", 1:40)
+# srcnames = ["Karratha", "Portland", "Marlo"]
+# year_start = parse(Int, time_window[4:7])
+# # Nyears = 501
+# # Nyears = 2001
+# Nyears = 1001
+# times = range(Date("$year_start-01-01"); step=Year(1), length=Nyears)
+# axlist = (
+#     Dim{:time}(times),
+#     Dim{:source}(srcnames),
+#     Dim{:member}(members),
+# )
+# Nmembers = length(members)
+# Nsrc = length(srcnames)
+# data = fill(NaN, (Nyears, Nsrc, Nmembers))
+# yaxdata = YAXArray(axlist, data)
 
-for member in members
-    for srcname in srcnames
-        datainputdir = joinpath(fixedvarsinputdir, experiment, member, time_window)
-        outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
-        isfile(outputfile) || continue
-        @info "Loading injection time series file:\n  $(outputfile)"
-        umass = load(outputfile, "umass")
-        src_mass = load(outputfile, "src_mass")
-        @show size(umass)
-        yaxdata[member=At(member), source=At(srcname)] .= 100 * [0.0; umass] / src_mass
-        # TODO: Check that src_P match (since I have changed these along the way)
-        src_P = load(outputfile, "src_P")
-        src_P == sourcelocation(srcname) || @info "issue $member $srcname $scr_P ≠ $(sourcelocation(srcname))"
-    end
-end
+# for member in members
+#     for srcname in srcnames
+#         datainputdir = joinpath(fixedvarsinputdir, experiment, member, time_window)
+#         outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
+#         isfile(outputfile) || continue
+#         @info "Loading injection time series file:\n  $(outputfile)"
+#         umass = load(outputfile, "umass")
+#         src_mass = load(outputfile, "src_mass")
+#         @show size(umass)
+#         yaxdata[member=At(member), source=At(srcname)] .= 100 * [0.0; umass] / src_mass
+#         # TODO: Check that src_P match (since I have changed these along the way)
+#         src_P = load(outputfile, "src_P")
+#         src_P == sourcelocation(srcname) || @info "issue $member $srcname $scr_P ≠ $(sourcelocation(srcname))"
+#     end
+# end
 
-@info "Grab mean reemergence time at injection locations for all members"
-all_members_inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
-Γoutyr3D_timemean_ds = open_dataset(joinpath(all_members_inputdir, "adjointage_timemean.nc")).adjointage_timemean
-Γouts = map(srcnames) do srcname
-    src_P = sourcelocation(srcname)
-    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
-    readcubedata(Γoutyr3D_timemean_ds[src_i, src_j, src_k, :]).data
-end
+# @info "Grab mean reemergence time at injection locations for all members"
+# all_members_inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
+# Γoutyr3D_timemean_ds = open_dataset(joinpath(all_members_inputdir, "adjointage_timemean.nc")).adjointage_timemean
+# Γouts = map(srcnames) do srcname
+#     src_P = sourcelocation(srcname)
+#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+#     src_k = findlast(wet3D[src_i, src_j,:])
+#     readcubedata(Γoutyr3D_timemean_ds[src_i, src_j, src_k, :]).data
+# end
 
-depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
-maxdepth = 6000
-@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
-# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
-# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
+# depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
+# # maxdepth = 6000
+# maxdepth = 5000
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
+# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
+
+
+
+
+
+
 
 fig = Figure(size=(900, 400))
 
@@ -187,8 +194,43 @@ for (simplepolygon, color) in zip(reverse(simplepolygons), colors)
     p = poly!(axmap2, simplepolygon; color)
     translate!(p, 0, 0, -100)
 end
+# p = poly!(axmap2, simplepolygons[2]; color = (:red, 0), strokecolor = :black, strokewidth = 1) # should be 5000m
+# translate!(p, 0, 0, -90)
 # poly!(axmap2, GeoMakie.land(); color = :white, strokecolor = :black, strokewidth = 1)
 poly!(axmap2, GeoMakie.land(); color = :lightyellow, strokecolor = :black, strokewidth = 1)
+
+# Add depth colorbar inside
+cbarlabelformat(x) = isinteger(x) ? string(round(Int, x)) : string(x)
+ilow = only(findall(depths .== 0))
+ihigh = only(findall(depths .== maxdepth))
+Colorbar(fig;
+    limits = (1,length(simplepolygons) - 2),
+    # ticks = (1:length(simplepolygons) - 2, cbarlabelformat.(1e-3 * reverse(depths[ihigh + 1 : ilow - 1]))),
+    ticks = (1:length(simplepolygons) - 2, string.(reverse(depths[ihigh + 1 : ilow - 1]))),
+    colormap = cgrad(reverse(colors)[ihigh + 2 : ilow - 1], categorical = true, rev = true),
+    highclip = reverse(colors)[ihigh + 1],
+    lowclip = reverse(colors)[ilow],
+    label = "seafloor depth (m)",
+    height = 10,
+    width = 140,
+    labelsize = 10,
+    vertical = false,
+    flipaxis = true,
+    ticklabelsize = 10,
+    bbox = axmap2.scene.px_area,
+    alignmode = Outside(10),
+    valign = :bottom,
+    halign = :left,
+    # topspinecolor = :white,
+    # bottomspinecolor = :white,
+    # rightspinecolor = :white,
+    # leftspinecolor = :white,
+    # ticklabelcolor = :white,
+    # labelcolor = :white,
+    # tickcolor = :white
+)
+
+
 # depth2D = nansum(gridmetrics.thkcello; dim = 3)
 # depth2D[.!wet3D[:,:,1]] .= NaN
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
