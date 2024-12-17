@@ -219,9 +219,9 @@ umass = Vector{Float64}(undef, 12Nyears)
 function steponeyear!(u, p, y)
     for m in p.steps
         steponemonth!(u, p, m, y)
+        # save mass time series
+        umass[12 * (y - 1) + m] = v' * u
     end
-    # save mass time series
-    umass[12 * (y - 1) + m] = v' * u
     return u
 end
 
@@ -263,3 +263,12 @@ save(outputfile,
 # outputfile = joinpath(inputdir, "$(nearesttown)_injected_tracer_year_Hovmoller_profile.png")
 # @info "Saving injection location as image file:\n  $(outputfile)"
 # save(outputfile, fig)
+
+# fig, ax, plt = lines(0:1/12:Nyears, 100 * [0; umass] / src_mass; axis=(; yscale=Makie.pseudolog10))
+# fig, ax, plt = lines(0:1/12:Nyears, 100 * [0; umass] / src_mass; axis=(; yscale=log10))
+fig, ax, plt = lines(0:1/12:Nyears, 100 * [0; umass] / src_mass)
+# fig, ax, plt = lines(0:1/12:Nyears, 100 * [0; 0 ; diff(umass)] / src_mass)
+ylims!(ax, (0, 100))
+outputfile = joinpath(inputdir, "$(srcname)_injected_tracer_monthlysaves.pdf")
+@info "Saving as:\n  $(outputfile)"
+save(outputfile, fig)

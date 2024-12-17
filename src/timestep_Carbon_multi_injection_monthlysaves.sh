@@ -25,4 +25,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/timestep_Carbon_multi_injection_monthly.jl $experiment $member $time_window $srcname &> output/timestep_Carbon_multi_injection_monthly.$experiment.$member.$srcname.$time_window.$PBS_JOBID.out
+julia src/timestep_Carbon_multi_injection_monthlysaves.jl $experiment $member $time_window $srcname &> output/timestep_Carbon_multi_injection_monthlysaves.$experiment.$member.$srcname.$time_window.$PBS_JOBID.out
