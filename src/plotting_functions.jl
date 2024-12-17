@@ -181,3 +181,29 @@ function seafloormask(wet3D)
     end
     mask
 end
+
+function seafloorvalue(x3D, wet3D, gridmetrics)
+    (; Z3D, thkcello) = gridmetrics
+    zseafloor2D = nansum(thkcello, dim = 3)
+    map(eachindex(IndexCartesian(), zseafloor2D)) do I
+        i, j = Tuple(I)
+        zseafloor = zseafloor2D[i, j]
+        (zseafloor == 0) && return NaN
+        ks = wet3D[i,j,:]
+        z = Z3D[i,j,ks]
+        vals = x3D[i,j,ks]
+        etp = linear_interpolation(z, vals; extrapolation_bc=Line())
+        return etp(zseafloor)
+    end
+end
+
+
+
+labeloptions = (
+    font = :bold,
+    align = (:left, :top),
+    offset = (5, -2),
+    space = :relative,
+    fontsize = 24
+)
+
