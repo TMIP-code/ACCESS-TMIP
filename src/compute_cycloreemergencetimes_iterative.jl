@@ -121,8 +121,8 @@ end
     inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
-# So the δt that multiplies Mₘ is δ(k..k+1)
-# which is 0.5 of the mean days in months k and k+1
+# So the δt that multiplies M̃ₜ is δ(t..t+1)
+# which is 0.5 of the mean days in months t and t+1
 δts = map(eachindex(months)) do m
     ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
 end
