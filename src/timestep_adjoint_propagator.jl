@@ -74,7 +74,6 @@ if isempty(ARGS)
     member = "r1i1p1f1"
     # experiment = "historical"
     # time_window = "Jan1850-Dec1859"
-    srcname = "Karratha"
     # time_window = "Jan1990-Dec1999"
     experiment = "ssp370"
     time_window = "Jan2030-Dec2039"
@@ -213,13 +212,13 @@ Nyears = 22
 Nmonths = 12Nyears
 
 # Initial condition
-ℊ̃ = V * Ω
+ℊ̃ = V * Ω * ones(N)
 
 # Preallocate what I save? (may be worth it to save to disk instead, especially oif saving full field)
 data4D = Array{Float64}(undef, size(wet3D)..., Nmonths)
 
 @showprogress "Time-stepping loop" for t in 1:Nmonths
-    steponemonth!(ℊ̃, p, t)
+    stepbackonemonth!(ℊ̃, p, t)
 end
 
 
