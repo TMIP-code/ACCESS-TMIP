@@ -1,4 +1,4 @@
-# # qsub -I -P xv83 -l mem=32GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=6
+# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
 # using Pkg
 # Pkg.activate(".")
@@ -101,8 +101,11 @@
 #     Γoutyr3D_min = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemin.nc")).adjointage_ensemblemin)
 #     Γoutyr3D_maxdiff = Γoutyr3D_max - Γoutyr3D_min
 
+#     Γoutyr3D_argmin = dropdims(map(x -> Float64(x[4]), argmin(Γoutyr3D_timemean, dims = 4)), dims = 4)
+#     Γoutyr3D_argmax = dropdims(map(x -> Float64(x[4]), argmax(Γoutyr3D_timemean, dims = 4)), dims = 4)
 
-
+#     Γoutyr3D_argmin[.!wet3D] .= NaN
+#     Γoutyr3D_argmax[.!wet3D] .= NaN
 
 
 
@@ -657,37 +660,94 @@
 
 
 
+    # fig = Figure(size = (800, 800), fontsize = 18)
+    # axs = Array{Any,2}(undef, (2, 1))
+    # contours = Array{Any,2}(undef, (2, 1))
+    # yticks = -60:30:60
+
+    # strs = [
+    #     "$(time_window[4:7])s Mean Reemergence Time"
+    #     "Internal Variability"
+    # ]
+
+    # for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff))
+
+    #     if irow == 1 # mean
+    #         levels = 0:100:1500
+    #         colormap = :viridis
+    #         colorrange = extrema(levels)
+    #         label = rich("seafloor ensemble mean ", Γup, " (yr)")
+    #     else
+    #         levels = 0:50:250
+    #         colorrange = extrema(levels)
+    #         colormap = :magma
+    #         label = rich("seafloor ensemble max − min ", Γup, " (yr)")
+    #     end
+
+    #     # Plot mean age at the seafloor level
+    #     local title = "$model $experiment $(time_window) reemergence time at seafloor"
+
+    #     axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xtickformat, ytickformat)
+
+    #     # plot
+    #     x2D = seafloorvalue(x3D, wet3D, gridmetrics)
+    #     plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+
+    #     myhidexdecorations!(ax, irow < 2)
+
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
+
+    #     cb = Colorbar(fig[irow,2], plt; label)
+    #     cb.height = Relative(2/3)
+
+    #     text = strs[irow]
+    #     Label(fig[irow, 0]; text, rotation = π/2, tellheight = false, fontsize = 24)
+    # end
+
+    # for (ax, label) in zip(axs, ["a", "b"])
+    #     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
+    #     text!(ax, 0, 1; text = label, labeloptions...)
+    # end
+
+    # # rowgap!(fig.layout, 10)
+    # # colgap!(fig.layout, 10)
+
+    # # save plot
+    # outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_vsmaxdiff_$(time_window)_v2.png")
+    # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
+    # save(outputfile, fig)
+
+
+
+
+
+    # Plot argmin and argmax to see which members
+
     fig = Figure(size = (800, 800), fontsize = 18)
     axs = Array{Any,2}(undef, (2, 1))
     contours = Array{Any,2}(undef, (2, 1))
     yticks = -60:30:60
 
     strs = [
-        "$(time_window[4:7])s Mean Reemergence Time"
-        "Internal Variability"
+        rich("Member with Minimal ", Γup)
+        rich("Member with Maximal ", Γup)
     ]
 
-    for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff))
+    for (irow, x3D) in enumerate((Γoutyr3D_argmin, Γoutyr3D_argmax))
 
-        if irow == 1 # mean
-            levels = 0:100:1500
-            colormap = :viridis
-            colorrange = extrema(levels)
-            label = rich("seafloor ensemble mean ", Γup, " (yr)")
-        else
-            levels = 0:50:250
-            colorrange = extrema(levels)
-            colormap = :magma
-            label = rich("seafloor ensemble max − min ", Γup, " (yr)")
-        end
+        levels = 0.5:40.5
+        colormap = cgrad([collect(cgrad(:tab20b, categorical = true)); collect(cgrad(:tab20c, categorical = true))]; categorical = true)
+        colorrange = extrema(levels)
+        label = rich("member")
 
         # Plot mean age at the seafloor level
-        local title = "$model $experiment $(time_window) reemergence time at seafloor"
-
         axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xtickformat, ytickformat)
 
         # plot
-        x2D = seafloorvalue(x3D, wet3D, gridmetrics)
+        x2D = seafloorvalue(x3D, wet3D)
         plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
 
         myhidexdecorations!(ax, irow < 2)
@@ -697,12 +757,16 @@
         # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
 
-        cb = Colorbar(fig[irow,2], plt; label)
-        cb.height = Relative(2/3)
 
         text = strs[irow]
         Label(fig[irow, 0]; text, rotation = π/2, tellheight = false, fontsize = 24)
+
+        if irow == 2
+            cb = Colorbar(fig[:,2], plt; label, ticks = 1:4:40)
+            cb.height = Relative(2/3)
+        end
     end
+
 
     for (ax, label) in zip(axs, ["a", "b"])
         text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
@@ -713,7 +777,7 @@
     # colgap!(fig.layout, 10)
 
     # save plot
-    outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_vsmaxdiff_$(time_window)_v2.png")
+    outputfile = joinpath(outputdir, "reemergence_time_argminmax_$(time_window).png")
     @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
