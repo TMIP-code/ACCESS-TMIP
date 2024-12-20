@@ -81,14 +81,13 @@ if isempty(ARGS)
     finalmonth = "1" # January
     WRITEDATA = "true"
 else
-    experiment, member, time_window, srcname, finalmonth, WRITEDATA = ARGS
+    experiment, member, time_window, finalmonth, WRITEDATA = ARGS
 end
 finalmonth = parse(Int, finalmonth)
 WRITEDATA = parse(Bool, WRITEDATA)
 @show experiment
 @show member
 @show time_window
-@show srcname
 @show finalmonth
 
 
@@ -188,6 +187,21 @@ p = (;
 # year = 0
 # # plotandprint!(x3D, src1D, year)
 
+
+src_Ps = (
+    Karratha = (115.45849390000001,-16.56466979999999), # Carnarvon Basin?" North West of Australia
+    Portland = (141.73529860000008,-38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
+    Marlo = (149.05333500000006, -38.25798499999996), # "Shark 1" Gippsland Basin" South East (East of Tas)
+)
+Nsrc = length(src_Ps)
+
+src_ijks = NamedTuple(map(keys(src_Ps), values(src_Ps)) do srcname, src_P
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    src_k = findlast(wet3D[src_i, src_j,:])
+    srcname => CartesianIndex(src_i, src_j, src_k)
+end)
+
+
 # Get index for M̃ given number of months elapsed t
 M̃idx(t) = mod1(finalmonth - t, 12)
 
@@ -199,23 +213,35 @@ function stepbackonemonth!(ℊ̃, p, t)
     ℊ̃ .= solve!(prob).u
     # Write monthly values to 4D Array
     if WRITEDATA
-        data4D[:,:,:,t] .= OceanTransportMatrixBuilder.as3D(ℊ̃, wet3D)
+        # data4D[:,:,:,t] .= OceanTransportMatrixBuilder.as3D(ℊ̃, wet3D)
+        # Save yearly data at seafloor
+        x3D[wet3D] .= ℊ̃
+        if mod(t, 12) == 0
+            data_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
+        end
+        # Save monthly data at source locations for check
+        for (src_idx, ijk) in enumerate(src_ijks)
+            data_srcPs[src_idx, t] = x3D[ijk]
+        end
     end
     return ℊ̃
 end
 
 
 
-# Nyears = 1001
-Nyears = 22
+Nyears = 1020
 
 Nmonths = 12Nyears
 
 # Initial condition
-ℊ̃ = V * Ω * ones(N)
+ℊ̃ = Ω * ones(N)
 
 # Preallocate what I save? (may be worth it to save to disk instead, especially oif saving full field)
-data4D = Array{Float64}(undef, size(wet3D)..., Nmonths)
+# data4D = Array{Float64}(undef, size(wet3D)..., Nmonths)
+nx, ny, nz = size(wet3D)
+data_seafloor = fill(NaN, nx, ny, Nyears)
+data_srcPs = fill(NaN, Nsrc, Nmonths)
+x3D = fill(NaN, nx, ny, nz)
 
 @showprogress "Time-stepping loop" for t in 1:Nmonths
     stepbackonemonth!(ℊ̃, p, t)
@@ -226,27 +252,59 @@ end
 
 # save monthly values
 
-axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(1:Nmonths)))[1])
+finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr)_srcPs.jld2")
+@info "Saving reemergence time as netCDF file:\n  $(outputfile)"
+save(outputfile, "data_srcPs", data_srcPs)
 
-cube4D = rebuild(volcello_ds["volcello"];
-    data = data4D,
+axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
+
+cube3D = rebuild(volcello_ds["volcello"];
+    data = data_seafloor,
     dims = axlist,
     metadata = Dict(
-        "origin" => "cyclo-stationary calg tilde",
+        "origin" => "cyclo-stationary adjoint propagator, calgtilde",
         "finalmonth" => finalmonth,
         "model" => model,
         "experiment" => experiment,
         "member" => member,
         "time window" => time_window,
-        "units" => "yr",
+        "units" => "s^-1",
+        "Ti unit" => "yr",
     )
 )
 
-arrays = Dict(:calgtilde => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+arrays = Dict(:calgtilde => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
-# Save Γinyr3D to netCDF file
+# Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
 outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
-@info "Saving reemergence time as netCDF file:\n  $(outputfile)"
+@info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+
+
+# axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(1:Nmonths)))[1])
+
+# cube4D = rebuild(volcello_ds["volcello"];
+#     data = data4D,
+#     dims = axlist,
+#     metadata = Dict(
+#         "origin" => "cyclo-stationary calg tilde",
+#         "finalmonth" => finalmonth,
+#         "model" => model,
+#         "experiment" => experiment,
+#         "member" => member,
+#         "time window" => time_window,
+#         "units" => "s^-1",
+#     )
+# )
+
+# arrays = Dict(:calgtilde => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+# ds = Dataset(; volcello_ds.properties, arrays...)
+
+# # Save Γinyr3D to netCDF file
+# finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+# outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+# @info "Saving reemergence time as netCDF file:\n  $(outputfile)"
+# savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
