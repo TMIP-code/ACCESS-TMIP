@@ -1,127 +1,127 @@
-# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=48
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=48
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
-
-
-# ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# using SparseArrays
-# using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr, d
-# using Statistics
-# using Format
-# using Dates
-# using FileIO
-# using LinearSolve
-# import Pardiso # import Pardiso instead of using (to avoid name clash?)
-# using NonlinearSolve
-# using ProgressMeter
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using OceanBasins
-# using NaNStatistics
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
 
-
-# include("plotting_functions.jl")
-
-
-# # script options
-# @show model = "ACCESS-ESM1-5"
-# if isempty(ARGS)
-#     member = "r1i1p1f1"
-#     # experiment = "historical"
-#     # time_window = "Jan1850-Dec1859"
-#     # time_window = "Jan1990-Dec1999"
-#     experiment = "ssp370"
-#     time_window = "Jan2030-Dec2039"
-#     # time_window = "Jan2090-Dec2099"
-#     WRITEDATA = "true"
-# else
-#     experiment, member, time_window, finalmonth, WRITEDATA = ARGS
-# end
-# WRITEDATA = parse(Bool, WRITEDATA)
-# @show experiment
-# @show member
-# @show time_window
-
-
-# # Load areacello and volcello for grid geometry
-# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
-
-# # Gadi directory for input files
-# lumpby = "month"
-# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
-# cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
+ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+using SparseArrays
+using LinearAlgebra
+using Unitful
+using Unitful: s, yr, d
+using Statistics
+using Format
+using Dates
+using FileIO
+using LinearSolve
+import Pardiso # import Pardiso instead of using (to avoid name clash?)
+using NonlinearSolve
+using ProgressMeter
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using OceanBasins
+using NaNStatistics
 
 
 
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# volcello_keys = propertynames(volcello_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, v3D) = gridmetrics
-
-# # Make indices
-# indices = makeindices(v3D)
-# (; N, wet3D) = indices
-
-# finalmonths = 1:12
+include("plotting_functions.jl")
 
 
-# @time "building mean_days_in_months" mean_days_in_months = map(finalmonths) do m
-#     inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
-#     load(inputfile, "mean_days_in_month")
-# end
-# # So the δt that multiplies M̃ₜ is δ(t..t+1)
-# # which is 0.5 of the mean days in finalmonths k and k+1
-# δts = map(finalmonths) do m
-#     ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
-# end
-# # Weights to be used to combine the ℊ̃ from each final month
-# ωs = δts / sum(δts)
+# script options
+@show model = "ACCESS-ESM1-5"
+if isempty(ARGS)
+    member = "r1i1p1f1"
+    # experiment = "historical"
+    # time_window = "Jan1850-Dec1859"
+    # time_window = "Jan1990-Dec1999"
+    experiment = "ssp370"
+    time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
+    WRITEDATA = "true"
+else
+    experiment, member, time_window, finalmonth, WRITEDATA = ARGS
+end
+WRITEDATA = parse(Bool, WRITEDATA)
+@show experiment
+@show member
+@show time_window
 
-# # # quick check that it makes sense
-# Δt = sum(δts)
 
-# # Take the mean of the ∫ℊ̃dt, averaged over the 12 possible final finalmonths
-# # (weighted by the duration of that month)
-# mean∫ℊ̃dt = sum(map(finalmonths) do finalmonth
-#     # Load from NetCDF file
-#     finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
-#     outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
-#     @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
-#     ds = open_dataset(outputfile)
-#     ℊ̃ = readcubedata(ds.calgtilde)
-#     ∫ℊ̃dt = cumsum(ℊ̃ * Δt, dims=Ti) # 1-yr time steps
-#     ωs[finalmonth] * ∫ℊ̃dt
-# end)
+# Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-# ℰ = 1 .- mean∫ℊ̃dt
+# Gadi directory for input files
+lumpby = "month"
+inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
+cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
+
+
+
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
+
+# Make indices
+indices = makeindices(v3D)
+(; N, wet3D) = indices
+
+finalmonths = 1:12
+
+
+@time "building mean_days_in_months" mean_days_in_months = map(finalmonths) do m
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    load(inputfile, "mean_days_in_month")
+end
+# So the δt that multiplies M̃ₜ is δ(t..t+1)
+# which is 0.5 of the mean days in finalmonths k and k+1
+δts = map(finalmonths) do m
+    ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
+end
+# Weights to be used to combine the ℊ̃ from each final month
+ωs = δts / sum(δts)
+
+# # quick check that it makes sense
+Δt = sum(δts)
+
+# Take the mean of the ∫ℊ̃dt, averaged over the 12 possible final finalmonths
+# (weighted by the duration of that month)
+mean∫ℊ̃dt = sum(map(finalmonths) do finalmonth
+    # Load from NetCDF file
+    finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+    outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+    @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
+    ds = open_dataset(outputfile)
+    ℊ̃ = readcubedata(ds.calgtilde)
+    ∫ℊ̃dt = cumsum(ℊ̃ * Δt, dims=Ti) # 1-yr time steps
+    ωs[finalmonth] * ∫ℊ̃dt
+end)
+
+ℰ = 1 .- mean∫ℊ̃dt
 
 
 # save data
