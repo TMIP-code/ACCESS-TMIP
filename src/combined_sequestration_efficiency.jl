@@ -19,9 +19,6 @@ using Statistics
 using Format
 using Dates
 using FileIO
-using LinearSolve
-import Pardiso # import Pardiso instead of using (to avoid name clash?)
-using NonlinearSolve
 using ProgressMeter
 try
     using CairoMakie
