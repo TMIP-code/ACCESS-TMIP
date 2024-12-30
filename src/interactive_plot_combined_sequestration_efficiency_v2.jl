@@ -96,15 +96,23 @@
 # Figure
 fig = Figure(size = (1200, 800))
 
-
+ga = fig[1, 1] = GridLayout()
 sg = SliderGrid(
-    fig[1, 1],
+    ga[1, 1],
     (label = "Year", range = [y for y in years if mod(y, 10) == 0], format = "{:1d}", startvalue = 100),
     (label = "Efficiency", range = 0:0.1:1, format = "{:.1f}", startvalue = 0.5),
     (label = "Longitude", range = 80:80+360, format = "{:.1f}°E", startvalue = 360),
     (label = "Latitude", range = -90:90, format = "{:.1f}°N", startvalue = 0),
     tellwidth = false,
     tellheight = false)
+
+check_injection_timeseries = Observable(false)
+
+subga = ga[2, 1] = GridLayout(tellheight = false, tellwidth = false)
+btn = Checkbox(subga[1, 1], checked = false, tellheight = false)
+Label(subga[1, 2], "Toggle injection time series check", halign = :left)
+alpha = @lift($(btn.checked) ? 1.0 : 0)
+
 
 
 sliderobservables = [s.value for s in sg.sliders]
@@ -122,7 +130,8 @@ end
 
 # time series
 ax = Axis(fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
-    limits = (0, years[end], 0, 1))
+    limits = (0, years[end], 0, 1),
+    yticks = 0:0.2:1)
 Makie.deactivate_interaction!(ax, :rectanglezoom)
 yearℰpoint = select_point(ax; marker = :circle, markersize = 10, color = :red)
 on(yearℰpoint) do yearℰpoint
@@ -139,6 +148,25 @@ hlines!(ax, sliderobservables[2], color = :black, linestyle = :dash)
 
 # plot the time series
 lines!(ax, years, ℰij; color = :blue)
+
+# plot the time series of the injection locations as a check
+src_Ps = (
+    Karratha = (115.45849390000001,-16.56466979999999), # Carnarvon Basin?" North West of Australia
+    Portland = (141.73529860000008,-38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
+    Marlo = (149.05333500000006, -38.25798499999996), # "Shark 1" Gippsland Basin" South East (East of Tas)
+)
+map(keys(src_Ps), values(src_Ps)) do srcname, src_P
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    lines!(ax, years, ℰ[src_i, src_j, :]; alpha, color = :red)
+    # Compare to actual data
+    datainputdir = joinpath(fixedvarsinputdir, experiment, member, time_window)
+    outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
+    @info "Loading injection time series file:\n  $(outputfile)"
+    umass = load(outputfile, "umass")
+    src_mass = load(outputfile, "src_mass")
+    lines!(ax, years[1:length(umass) - 4], umass[5:length(umass)] / src_mass; color = :black, linestyle = :dash, alpha)
+end
+
 
 # map of sequestration efficiency gievn a year
 gb = fig[2, 1] = GridLayout()
@@ -161,7 +189,7 @@ colormapb = cgrad(:viridis, 10, categorical = true)
 imgb = surface!(axb, lon2, lat.data, gbdata, colormap = colormapb, colorrange = (0, 1), shading = NoShading)
 cb = Colorbar(gb[1, 2], imgb)
 scb = scatter!(axb, sliderP, color = :red, markersize = 10, strokecolor = :black)
-translate!(scb, 0, 0, 100)
+translate!(scb, 0, 0, 10)
 
 # map of duration given sequestration quantile
 gc = fig[1, 2] = GridLayout()
@@ -190,7 +218,7 @@ end
 colormapc = cgrad(:magma, 10, categorical = true)
 imgc = surface!(axc, lon2, lat.data, gcdata, colormap = colormapc, colorrange = (0, 1000), shading = NoShading)
 scc = scatter!(axc, sliderP, color = :red, markersize = 10, strokecolor = :black)
-translate!(scc, 0, 0, 100)
+translate!(scc, 0, 0, 1100)
 cc = Colorbar(gc[1, 2], imgc, label = "years of sequestration")
 
 fig
