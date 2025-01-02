@@ -1,111 +1,111 @@
-# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# # using SparseArrays
-# # using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using Interpolations
-# using OceanBasins
-# using Statistics
-# using NaNStatistics
-# using StatsBase
-# using FileIO
-# using Contour
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+using Unitful
+using Unitful: s, yr
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using Interpolations
+using OceanBasins
+using Statistics
+using NaNStatistics
+using StatsBase
+using FileIO
+using Contour
 
-# include("plotting_functions.jl")
-
-
-# model = "ACCESS-ESM1-5"
-
-# # for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
-# time_window = "Jan2030-Dec2039"
-#     experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
-#     # experiment = "historical"
-#     # time_window = "Jan1850-Dec1859"
-#     # time_window = "Jan1990-Dec1999"
-#     # experiment = "ssp370"
-#     # time_window = "Jan2030-Dec2039"
-#     # time_window = "Jan2090-Dec2099"
+include("plotting_functions.jl")
 
 
-#     # Gadi directory for input files
-#     # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
-#     inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
-#     outputdir = inputdir
-#     mkpath(inputdir)
+model = "ACCESS-ESM1-5"
+
+# for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
+time_window = "Jan2030-Dec2039"
+    experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
+    # experiment = "historical"
+    # time_window = "Jan1850-Dec1859"
+    # time_window = "Jan1990-Dec1999"
+    # experiment = "ssp370"
+    # time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
 
 
-#     # Load areacello and volcello for grid geometry
-#     fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-#     volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-#     areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
-
-#     # Load fixed variables in memory
-#     areacello = readcubedata(areacello_ds.areacello)
-#     volcello = readcubedata(volcello_ds.volcello)
-#     lon = readcubedata(volcello_ds.lon)
-#     lat = readcubedata(volcello_ds.lat)
-#     lev = volcello_ds.lev
-#     # Identify the vertices keys (vary across CMIPs / models)
-#     volcello_keys = propertynames(volcello_ds)
-#     lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-#     lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-#     lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-#     lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-#     # Make makegridmetrics
-#     gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-#     (; lon_vertices, lat_vertices, lon, lat, zt, v3D,) = gridmetrics
-#     lev = zt
-#     # Make indices
-#     indices = makeindices(gridmetrics.v3D)
-#     (; wet3D, N) = indices
+    # Gadi directory for input files
+    # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
+    inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
+    outputdir = inputdir
+    mkpath(inputdir)
 
 
+    # Load areacello and volcello for grid geometry
+    fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+    volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+    areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-#     Γdown = rich("Γ", superscript("↓"))
-#     Γup = rich("Γ", superscript("↑"))
+    # Load fixed variables in memory
+    areacello = readcubedata(areacello_ds.areacello)
+    volcello = readcubedata(volcello_ds.volcello)
+    lon = readcubedata(volcello_ds.lon)
+    lat = readcubedata(volcello_ds.lat)
+    lev = volcello_ds.lev
+    # Identify the vertices keys (vary across CMIPs / models)
+    volcello_keys = propertynames(volcello_ds)
+    lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+    lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+    lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+    lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+    # Make makegridmetrics
+    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+    (; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello) = gridmetrics
+    lev = zt
+    # Make indices
+    indices = makeindices(gridmetrics.v3D)
+    (; wet3D, N) = indices
 
-#     basin_keys = (:ATL, :PAC, :IND)
-#     basin_strs = ("Atlantic", "Pacific", "Indian")
-#     basin_functions = (isatlantic, ispacific, isindian)
-#     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
-#     basins = (; (basin_keys .=> basin_values)...)
-#     basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
-#     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
 
-#     # Γinyr3D_mean = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemean.nc")).age_ensemblemean)
-#     # Γinyr3D_std = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblestd.nc")).age_ensemblestd)
-#     # Γinyr3D_max = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemax.nc")).age_ensemblemax)
-#     # Γinyr3D_min = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemin.nc")).age_ensemblemin)
-#     # Γinyr3D_maxdiff = Γinyr3D_max - Γinyr3D_min
-#     Γoutyr3D_timemean = readcubedata(open_dataset(joinpath(inputdir, "adjointage_timemean.nc")).adjointage_timemean)
-#     Γoutyr3D_mean = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemean.nc")).adjointage_ensemblemean)
-#     Γoutyr3D_std = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblestd.nc")).adjointage_ensemblestd)
-#     Γoutyr3D_max = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemax.nc")).adjointage_ensemblemax)
-#     Γoutyr3D_min = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemin.nc")).adjointage_ensemblemin)
-#     Γoutyr3D_maxdiff = Γoutyr3D_max - Γoutyr3D_min
+    Γdown = rich("Γ", superscript("↓"))
+    Γup = rich("Γ", superscript("↑"))
 
-#     Γoutyr3D_argmin = dropdims(map(x -> Float64(x[4]), argmin(Γoutyr3D_timemean, dims = 4)), dims = 4)
-#     Γoutyr3D_argmax = dropdims(map(x -> Float64(x[4]), argmax(Γoutyr3D_timemean, dims = 4)), dims = 4)
+    basin_keys = (:ATL, :PAC, :IND)
+    basin_strs = ("Atlantic", "Pacific", "Indian")
+    basin_functions = (isatlantic, ispacific, isindian)
+    basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
+    basins = (; (basin_keys .=> basin_values)...)
+    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+    basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
-#     Γoutyr3D_argmin[.!wet3D] .= NaN
-#     Γoutyr3D_argmax[.!wet3D] .= NaN
+
+    # Γinyr3D_mean = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemean.nc")).age_ensemblemean)
+    # Γinyr3D_std = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblestd.nc")).age_ensemblestd)
+    # Γinyr3D_max = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemax.nc")).age_ensemblemax)
+    # Γinyr3D_min = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemin.nc")).age_ensemblemin)
+    # Γinyr3D_maxdiff = Γinyr3D_max - Γinyr3D_min
+    Γoutyr3D_timemean = readcubedata(open_dataset(joinpath(inputdir, "adjointage_timemean.nc")).adjointage_timemean)
+    Γoutyr3D_mean = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemean.nc")).adjointage_ensemblemean)
+    Γoutyr3D_std = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblestd.nc")).adjointage_ensemblestd)
+    Γoutyr3D_max = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemax.nc")).adjointage_ensemblemax)
+    Γoutyr3D_min = readcubedata(open_dataset(joinpath(inputdir, "adjointage_ensemblemin.nc")).adjointage_ensemblemin)
+    Γoutyr3D_maxdiff = Γoutyr3D_max - Γoutyr3D_min
+
+    Γoutyr3D_argmin = dropdims(map(x -> Float64(x[4]), argmin(Γoutyr3D_timemean, dims = 4)), dims = 4)
+    Γoutyr3D_argmax = dropdims(map(x -> Float64(x[4]), argmax(Γoutyr3D_timemean, dims = 4)), dims = 4)
+
+    Γoutyr3D_argmin[.!wet3D] .= NaN
+    Γoutyr3D_argmax[.!wet3D] .= NaN
 
 
 
@@ -724,62 +724,185 @@
 
 
 
-    # Plot argmin and argmax to see which members
-
-    fig = Figure(size = (800, 800), fontsize = 18)
-    axs = Array{Any,2}(undef, (2, 1))
-    contours = Array{Any,2}(undef, (2, 1))
+    # Same but with elevation plot as well
+    axs = Array{Any,2}(undef, (3, 1))
+    contours = Array{Any,2}(undef, (3, 1))
+    fig = Figure(size = (800, size(axs, 1) * 300), fontsize = 18)
     yticks = -60:30:60
+    xticks = -180:60:180
 
     strs = [
-        rich("Member with Minimal ", Γup)
-        rich("Member with Maximal ", Γup)
+        # "$(time_window[4:7])s Mean reemergence time"
+        "Ensemble Mean"
+        "Internal Variability"
+        "Fractional Internal Variability"
     ]
 
-    for (irow, x3D) in enumerate((Γoutyr3D_argmin, Γoutyr3D_argmax))
+    # for (irow, x3D) in enumerate((cumsum(thkcello, dims=3), Γoutyr3D_mean, Γoutyr3D_maxdiff, Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
+    for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
 
-        levels = 0.5:40.5
-        colormap = cgrad([collect(cgrad(:tab20b, categorical = true)); collect(cgrad(:tab20c, categorical = true))]; categorical = true)
-        colorrange = extrema(levels)
-        label = rich("member")
+        # if irow == 1 # bathy
+        #     levels = [0, 6000] # Note levels seems unused here (except for colorrange)
+        #     colormap = cgrad(:linear_blue_5_95_c73_n256, 6, categorical = true)
+        #     colorrange = extrema(levels)
+        #     label = rich("seafloor depth (m)")
+        # elseif irow == 2 # mean
+        if irow == 1 # mean
+            levels = 0:100:1500
+            colormap = cgrad(:linear_bgy_10_95_c74_n256, 15, categorical = true)
+            colorrange = extrema(levels)
+            label = rich("seafloor ensemble mean ", Γup, " (yr)")
+        elseif irow == 2 # mean
+            levels = 0:50:250
+            colorrange = extrema(levels)
+            colormap = cgrad(:linear_bmy_10_95_c71_n256, 5, categorical = true)
+            label = rich("ensemble max − min (yr)")
+        else
+            levels = 100 .* (0:0.05:0.5)
+            colormap = cgrad(:linear_bmw_5_95_c86_n256, 5, categorical = true)
+            colorrange = extrema(levels)
+            label = rich("(max − min) / mean (%)")
+        end
 
-        # Plot mean age at the seafloor level
-        axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xtickformat, ytickformat)
+        axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xticks, xtickformat, ytickformat)
 
         # plot
-        x2D = seafloorvalue(x3D, wet3D)
+        x2D = seafloorvalue(x3D, wet3D, gridmetrics)
         plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
 
-        myhidexdecorations!(ax, irow < 2)
+        myhidexdecorations!(ax, irow < size(axs, 1))
 
         # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
 
+        cb = Colorbar(fig[irow,2], plt; label)
+        cb.height = Relative(2/3)
 
         text = strs[irow]
         Label(fig[irow, 0]; text, rotation = π/2, tellheight = false, fontsize = 24)
-
-        if irow == 2
-            cb = Colorbar(fig[:,2], plt; label, ticks = 1:4:40)
-            cb.height = Relative(2/3)
-        end
     end
 
-
-    for (ax, label) in zip(axs, ["a", "b"])
-        text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
-        text!(ax, 0, 1; text = label, labeloptions...)
+    for (ax, label) in zip(axs, ["a", "b", "c"])
+        txt = text!(ax, 0, 1; text = "$label", labeloptions..., strokecolor = :white, strokewidth = 3)
+        translate!(txt, 0, 0, 100)
+        txt = text!(ax, 0, 1; text = "$label", labeloptions...)
+        translate!(txt, 0, 0, 100)
     end
 
+    Label(fig[0, 1]; text = "$(time_window[4:7])s Mean reemergence time", fontsize = 24, tellwidth = false)
     # rowgap!(fig.layout, 10)
     # colgap!(fig.layout, 10)
 
     # save plot
-    outputfile = joinpath(outputdir, "reemergence_time_argminmax_$(time_window).png")
+    outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_vsmaxdiff_$(time_window)_v4.png")
     @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
+
+
+
+
+    # # Quick plot of joint PDF of max−min vs mean
+    # fig = Figure()
+    # # x = seafloorvalue(Γoutyr3D_mean, wet3D, gridmetrics)
+    # # y = seafloorvalue(Γoutyr3D_maxdiff, wet3D, gridmetrics)
+    # x = seafloorvalue(Γoutyr3D_mean .* (Z3D .> 3000), wet3D, gridmetrics)
+    # y = seafloorvalue(Γoutyr3D_maxdiff .* (Z3D .> 3000), wet3D, gridmetrics)
+    # # x = Γoutyr3D_mean[:,:,21:end]
+    # # y = Γoutyr3D_maxdiff[:,:,21:end]
+    # ikeep = findall(x -> !isnan(x) & !iszero(x), x)
+    # x = x[ikeep]
+    # y = y[ikeep]
+    # ax = Axis(fig[1,1], xlabel = "ensemble mean", ylabel = "count", limits = (0, nothing, 0, nothing))
+    # hist!(ax, x)
+    # ax = Axis(fig[2,2], xlabel = "count", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
+    # hist!(ax, y; direction = :x)
+    # ax = Axis(fig[2,1], xlabel = "ensemble mean", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
+    # points = Makie.StructArray{Point2f}((x, y))
+    # ds = datashader!(ax, points; colormap = :binary, async = false)
+    # for slope in [0.1, 0.2, 0.5, 1]
+    #     ablines!(ax, 0, slope)
+    # end
+    # slopes = y ./ x
+    # ablines!(ax, 0, mean(slopes), linestyle = :dash)
+    # ablines!(ax, 0, median(slopes), linestyle = :dash)
+    # ax = Axis(fig[1,2], xlabel = "slope", ylabel = "count", limits = (-1, 2, 0, nothing))
+    # hist!(ax, slopes, bins = -1:0.05:2, color=:red)
+    # for slope in [0.1, 0.2, 0.5, 1]
+    #     vlines!(ax, slope)
+    # end
+    # vlines!(ax, mean(slopes), label = "mean slope", linestyle = :dash)
+    # vspan!(ax, (mean(slopes) .+ std(slopes) * [-1, 1])..., color=(:blue, 0.1))
+    # vlines!(ax, median(slopes), label = "median slope", linestyle = :dash)
+    # # save plot
+    # outputfile = joinpath(outputdir, "jointPDF_mean_vs_maxminusmin_adjointage_$(time_window).png")
+    # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
+    # save(outputfile, fig)
+    # @show mean(slopes)
+    # @show median(slopes)
+
+
+
+
+
+
+    # # Plot argmin and argmax to see which members
+
+    # fig = Figure(size = (800, 800), fontsize = 18)
+    # axs = Array{Any,2}(undef, (2, 1))
+    # contours = Array{Any,2}(undef, (2, 1))
+    # yticks = -60:30:60
+
+    # strs = [
+    #     rich("Member with Minimal ", Γup)
+    #     rich("Member with Maximal ", Γup)
+    # ]
+
+    # for (irow, x3D) in enumerate((Γoutyr3D_argmin, Γoutyr3D_argmax))
+
+    #     levels = 0.5:40.5
+    #     colormap = cgrad([collect(cgrad(:tab20b, categorical = true)); collect(cgrad(:tab20c, categorical = true))]; categorical = true)
+    #     colorrange = extrema(levels)
+    #     label = rich("member")
+
+    #     # Plot mean age at the seafloor level
+    #     axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xtickformat, ytickformat)
+
+    #     # plot
+    #     x2D = seafloorvalue(x3D, wet3D)
+    #     plt = plotmap!(ax, x2D, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+
+    #     myhidexdecorations!(ax, irow < 2)
+
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.atlantic()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.indian()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
+    #     # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
+
+
+    #     text = strs[irow]
+    #     Label(fig[irow, 0]; text, rotation = π/2, tellheight = false, fontsize = 24)
+
+    #     if irow == 2
+    #         cb = Colorbar(fig[:,2], plt; label, ticks = 1:4:40)
+    #         cb.height = Relative(2/3)
+    #     end
+    # end
+
+
+    # for (ax, label) in zip(axs, ["a", "b"])
+    #     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
+    #     text!(ax, 0, 1; text = label, labeloptions...)
+    # end
+
+    # # rowgap!(fig.layout, 10)
+    # # colgap!(fig.layout, 10)
+
+    # # save plot
+    # outputfile = joinpath(outputdir, "reemergence_time_argminmax_$(time_window).png")
+    # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
+    # save(outputfile, fig)
 
 
 
