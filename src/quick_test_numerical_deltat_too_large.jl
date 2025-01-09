@@ -9,7 +9,7 @@ using Statistics
 using Format
 
 κVML = 0.1m^2/s
-κVdeep = 3e-5m^2/s
+κVdeep = 1e-5m^2/s # TODO rerun with this value (1e-5)
 a = (100km)^2
 h = 10m
 vol = a * h

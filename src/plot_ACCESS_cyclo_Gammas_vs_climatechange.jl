@@ -32,8 +32,49 @@ include("plotting_functions.jl")
 
 model = "ACCESS-ESM1-5"
 
-# for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
-time_window = "Jan2030-Dec2039"
+
+
+# Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
+lev = zt
+# Make indices
+indices = makeindices(gridmetrics.v3D)
+(; wet3D, N) = indices
+
+
+Γdown = rich("Γ", superscript("↓"))
+Γup = rich("Γ", superscript("↑"))
+
+basin_keys = (:ATL, :PAC, :IND)
+basin_strs = ("Atlantic", "Pacific", "Indian")
+basin_functions = (isatlantic, ispacific, isindian)
+basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
+basins = (; (basin_keys .=> basin_values)...)
+basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
+
+
+# time_window = "Jan2030-Dec2039"
+for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
+
     experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
     # experiment = "historical"
     # time_window = "Jan1850-Dec1859"
@@ -48,55 +89,6 @@ time_window = "Jan2030-Dec2039"
     inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
     outputdir = inputdir
     mkpath(inputdir)
-
-
-
-    members = ["r$(r)i1p1f1" for r in 1:40]
-    mlotst_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$time_window/cyclomonth/mlotst.nc" for member in members]
-    mlotst_ds = open_mfdataset(DimArray(mlotst_files, Dim{:member}(members)))
-    mlotst = readcubedata(mlotst_ds.mlotst)
-
-    mlotst_yearmax_ensemblemean = dropdims(maximum(maximum(mlotst, dims=:month), dims=:member), dims=(:month, :member)) .-
-        dropdims(minimum(maximum(mlotst, dims=:month), dims=:member), dims=(:month, :member))
-
-    # Load areacello and volcello for grid geometry
-    fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-    volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-    areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
-
-    # Load fixed variables in memory
-    areacello = readcubedata(areacello_ds.areacello)
-    volcello = readcubedata(volcello_ds.volcello)
-    lon = readcubedata(volcello_ds.lon)
-    lat = readcubedata(volcello_ds.lat)
-    lev = volcello_ds.lev
-    # Identify the vertices keys (vary across CMIPs / models)
-    volcello_keys = propertynames(volcello_ds)
-    lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-    lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-    lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-    lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-    # Make makegridmetrics
-    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-    (; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
-    lev = zt
-    # Make indices
-    indices = makeindices(gridmetrics.v3D)
-    (; wet3D, N) = indices
-
-
-
-    Γdown = rich("Γ", superscript("↓"))
-    Γup = rich("Γ", superscript("↑"))
-
-    basin_keys = (:ATL, :PAC, :IND)
-    basin_strs = ("Atlantic", "Pacific", "Indian")
-    basin_functions = (isatlantic, ispacific, isindian)
-    basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
-    basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
-    basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
-
 
     # Γinyr3D_mean = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblemean.nc")).age_ensemblemean)
     # Γinyr3D_std = readcubedata(open_dataset(joinpath(inputdir, "age_ensemblestd.nc")).age_ensemblestd)
@@ -734,8 +726,8 @@ time_window = "Jan2030-Dec2039"
 
 
     # Same but with elevation plot as well
-    axs = Array{Any,2}(undef, (4, 1))
-    contours = Array{Any,2}(undef, (4, 1))
+    axs = Array{Any,2}(undef, (3, 1))
+    contours = Array{Any,2}(undef, (3, 1))
     fig = Figure(size = (800, size(axs, 1) * 300), fontsize = 18)
     yticks = -60:30:60
     xticks = -180:60:180
@@ -747,8 +739,9 @@ time_window = "Jan2030-Dec2039"
     #     "Fractional Internal Variability"
     # ]
 
+    for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
     # for (irow, x3D) in enumerate((cumsum(thkcello, dims=3), Γoutyr3D_mean, Γoutyr3D_maxdiff, Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
-    for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean, mlotst_yearmax_ensemblemean))
+    # for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean, mlotst_yearmax_ensemblemean))
 
         # if irow == 1 # bathy
         #     levels = [0, 6000] # Note levels seems unused here (except for colorrange)
@@ -804,9 +797,9 @@ time_window = "Jan2030-Dec2039"
 
     Label(fig[1, 0]; text = "Ensemble Mean", rotation = π/2, tellheight = false, fontsize = 24)
     Label(fig[2:3, 0]; text = "Internal Variability", rotation = π/2, tellheight = false, fontsize = 24)
-    Label(fig[4, 0]; text = "Mixed layer depth", rotation = π/2, tellheight = false, fontsize = 24)
+    # Label(fig[4, 0]; text = "Mixed layer depth", rotation = π/2, tellheight = false, fontsize = 24)
 
-    for (ax, label) in zip(axs, ["a", "b", "c", "d"])
+    for (ax, label) in zip(axs, ["a", "b", "c"])
         txt = text!(ax, 0, 1; text = "$label", labeloptions..., strokecolor = :white, strokewidth = 3)
         translate!(txt, 0, 0, 100)
         txt = text!(ax, 0, 1; text = "$label", labeloptions...)
@@ -1088,4 +1081,4 @@ time_window = "Jan2030-Dec2039"
     # save(outputfile, fig)
 
 
-# end
+end
