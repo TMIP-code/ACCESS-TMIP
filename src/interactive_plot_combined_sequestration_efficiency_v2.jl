@@ -128,10 +128,15 @@ end
     i, j = sliderij
     view(ℰ, i, j, :)
 end
+ℰk = lift(sliderij) do sliderij
+    i, j = sliderij
+    k = findlast(view(wet3D, i, j, :))
+    isnothing(k) ? 0 : k
+end
 
 
 # time series
-titled = @lift("$($(sliderP)): $($(sliderij))")
+titled = @lift("$($(sliderP)): $($(sliderij)) level $($(ℰk))")
 ax = Axis(fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
     limits = (0, years[end], 0, 1),
     yticks = 0:0.2:1,
