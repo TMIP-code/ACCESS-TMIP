@@ -233,8 +233,7 @@ end
 
 
 
-# Nyears = 1002
-Nyears = 2
+Nyears = 1002
 
 Nmonths = 12Nyears
 
@@ -291,7 +290,7 @@ savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 # save yearly values of ℰ
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
 ℰcube = rebuild(volcello_ds["volcello"];
-    data = ℊℰ_seafloor,
+    data = ℰ_seafloor,
     dims = axlist,
     metadata = Dict(
         "origin" => "cyclo-stationary adjoint propagator, calgtilde",
