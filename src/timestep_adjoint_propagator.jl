@@ -206,45 +206,52 @@ end)
 M̃idx(t) = mod1(finalmonth - t, 12)
 
 
-function stepbackonemonth!(ℊ̃, p, t)
+function stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
     m = M̃idx(t) # Get the month (index used for M̃)
     prob = p.monthprob[m]
     prob.b = ℊ̃ # ℊ̃ₘ₋₁ = Ãₘ₋₁⁻¹ ℊ̃ₘ
     ℊ̃ .= solve!(prob).u
+    ∫ℊ̃dt .+= ℊ̃ * δts[m]
     # Write monthly values to 4D Array
     if WRITEDATA
         # data4D[:,:,:,t] .= OceanTransportMatrixBuilder.as3D(ℊ̃, wet3D)
         # Save yearly data at seafloor
-        x3D[wet3D] .= ℊ̃
         if mod(t, 12) == 0
-            data_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
+            x3D[wet3D] .= ℊ̃
+            ℊ̃_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
+            x3D[wet3D] .= 1 .- ∫ℊ̃dt # sequestration efficiency, ℰ
+            ℰ_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
         end
-        # Save monthly data at source locations for check
-        for (src_idx, ijk) in enumerate(src_ijks)
-            data_srcPs[src_idx, t] = x3D[ijk]
-        end
+        # # Save monthly data at source locations for check
+        # for (src_idx, ijk) in enumerate(src_ijks)
+        #     x3D[wet3D] .= ℊ̃
+        #     data_srcPs[src_idx, t] = ℊ̃3D[ijk]
+        # end
     end
     return ℊ̃
 end
 
 
 
-Nyears = 1020
+# Nyears = 1002
+Nyears = 2
 
 Nmonths = 12Nyears
 
 # Initial condition
 ℊ̃ = Ω * ones(N)
+∫ℊ̃dt = zeros(N)
 
 # Preallocate what I save? (may be worth it to save to disk instead, especially oif saving full field)
 # data4D = Array{Float64}(undef, size(wet3D)..., Nmonths)
 nx, ny, nz = size(wet3D)
-data_seafloor = fill(NaN, nx, ny, Nyears)
+ℊ̃_seafloor = fill(NaN, nx, ny, Nyears)
+ℰ_seafloor = fill(NaN, nx, ny, Nyears)
 data_srcPs = fill(NaN, Nsrc, Nmonths)
 x3D = fill(NaN, nx, ny, nz)
 
 @showprogress "Time-stepping loop" for t in 1:Nmonths
-    stepbackonemonth!(ℊ̃, p, t)
+    stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
 end
 
 
@@ -257,10 +264,10 @@ outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr)_srcPs.jld2")
 @info "Saving reemergence time as netCDF file:\n  $(outputfile)"
 save(outputfile, "data_srcPs", data_srcPs)
 
+# save yearly values of ℊ̃
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-
-cube3D = rebuild(volcello_ds["volcello"];
-    data = data_seafloor,
+ℊ̃cube = rebuild(volcello_ds["volcello"];
+    data = ℊ̃_seafloor,
     dims = axlist,
     metadata = Dict(
         "origin" => "cyclo-stationary adjoint propagator, calgtilde",
@@ -273,10 +280,32 @@ cube3D = rebuild(volcello_ds["volcello"];
         "Ti unit" => "yr",
     )
 )
-
-arrays = Dict(:calgtilde => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+arrays = Dict(:calgtilde => ℊ̃cube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
+# Save to netCDF file
+finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+@info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
+# save yearly values of ℰ
+axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
+ℰcube = rebuild(volcello_ds["volcello"];
+    data = ℊℰ_seafloor,
+    dims = axlist,
+    metadata = Dict(
+        "origin" => "cyclo-stationary adjoint propagator, calgtilde",
+        "finalmonth" => finalmonth,
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time window" => time_window,
+        "units" => "s^-1",
+        "Ti unit" => "yr",
+    )
+)
+arrays = Dict(:calgtilde => ℰcube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
 outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
