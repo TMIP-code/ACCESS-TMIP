@@ -303,11 +303,11 @@ axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(
         "Ti unit" => "yr",
     )
 )
-arrays = Dict(:calgtilde => ℰcube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+arrays = Dict(:seqeff => ℰcube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
-outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 

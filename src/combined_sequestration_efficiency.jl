@@ -105,20 +105,23 @@ end
 # # quick check that it makes sense
 Δt = sum(δts)
 
-# Take the mean of the ∫ℊ̃dt, averaged over the 12 possible final finalmonths
+# Take the average of ℰ over the 12 possible final finalmonths
 # (weighted by the duration of that month)
-mean∫ℊ̃dt = sum(map(finalmonths) do finalmonth
+ℰ = sum(map(finalmonths) do finalmonth
     # Load from NetCDF file
     finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+    # FIXME this below will need to be uncommented and the line below removed
+    # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
+    # outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
+    # @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
+    # ds = open_dataset(outputfile)
+    # ωs[finalmonth] * readcubedata(ds.seqeff)
     outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
     @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
     ds = open_dataset(outputfile)
-    ℊ̃ = readcubedata(ds.calgtilde)
-    ∫ℊ̃dt = cumsum(ℊ̃ * Δt, dims=Ti) # 1-yr time steps
-    ωs[finalmonth] * ∫ℊ̃dt
+    ωs[finalmonth] * readcubedata(ds.calgtilde)
 end)
 
-ℰ = 1 .- mean∫ℊ̃dt
 
 
 # save data
