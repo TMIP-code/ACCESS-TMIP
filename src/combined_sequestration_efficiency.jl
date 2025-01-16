@@ -112,14 +112,10 @@ end
     finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
     # FIXME this below will need to be uncommented and the line below removed
     # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
-    # outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
-    # @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
-    # ds = open_dataset(outputfile)
-    # ωs[finalmonth] * readcubedata(ds.seqeff)
-    outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+    outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
     @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
     ds = open_dataset(outputfile)
-    ωs[finalmonth] * readcubedata(ds.calgtilde)
+    ωs[finalmonth] * readcubedata(ds.seqeff)
 end)
 
 
