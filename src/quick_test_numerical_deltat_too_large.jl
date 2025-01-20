@@ -16,7 +16,7 @@ vol = a * h
 
 TVML = ustrip(s^-1, κVML * a / (h * vol))
 TVdeep = ustrip(s^-1, κVdeep * a / (h * vol))
-N = 15
+N = 50
 z = range(start = h/2, length = N, step = h)
 MLD(t) = 100.1m - 33.3m * cos(π/4 + 2π * t / ustrip(s, 1yr))
 iMLD(t) = searchsortedfirst(z, MLD(t))
@@ -33,7 +33,7 @@ V = Diagonal(v)
 V⁻¹ = Diagonal(1 ./ v)
 # T = [Tcoeff -Tcoeff; -Tcoeff Tcoeff]
 
-τ₀ = ustrip(s, 1s)
+τ₀ = ustrip(s, 1yr)
 
 
 Ω = [i == 1 for i in 1:N]
@@ -63,7 +63,7 @@ g0 = Ω / τ₀
 # Tsim = 10yr
 # uδts = Any[1minute, 1hr, 1d, 30d]
 
-Tsim = 5yr
+Tsim = 500yr
 
 # uδts = Any[1minute, 1hr, 1d]
 resolutions = [12, 4]
@@ -72,7 +72,7 @@ resolutions = [48, 12, 4, 2, 1]
 resolutions = [12]
 uδts = Any[1yr/res for res in resolutions]
 
-fig = Figure(size=(1000, 200 * length(uδts)))
+fig = Figure(size=(1000, 400 * length(uδts)))
 
 for (iresolution, resolution) in enumerate(resolutions)
     uδt = uδts[iresolution]
@@ -115,7 +115,7 @@ for (iresolution, resolution) in enumerate(resolutions)
     meanℊ̃HF = dropdims(mean(ℊ̃HF, dims = 3), dims = 3)
 
     # limits = (0, ustrip(yr, min(5yr, Tsim)), nothing, nothing)
-    limits = (0, ustrip(yr, Tsim), nothing, nothing)
+    limits = (0, ustrip(yr, Tsim), 0, nothing)
     δtstr = "δt = 1/$(resolution) yr"
     ax = Axis(fig[iresolution, 1]; xlabel = "time (years)", ylabel = "meanℊ̃", limits)
     # ax2 = Axis(fig[iresolution, 1]; xlabel = "time (years)", ylabel = "ℊ̃ (δt = $uδt)", limits, yaxisposition = :right, yticklabelcolor = :red, )
@@ -138,7 +138,7 @@ for (iresolution, resolution) in enumerate(resolutions)
     end
     hidexdecorations!(ax, label = iresolution < length(uδts), ticklabels = iresolution < length(uδts), ticks = iresolution < length(uδts), grid = false)
     # hidexdecorations!(ax2, label = iresolution < length(uδts), ticklabels = iresolution < length(uδts), ticks = iresolution < length(uδts), grid = false)
-    limits = (0, ustrip(yr, Tsim), nothing, nothing)
+    limits = (0, ustrip(yr, Tsim), 0, nothing)
     ax = Axis(fig[iresolution, 2]; xlabel = "time (years)", ylabel = "ℰ = 1 − ∫ℊ̃dt", limits)
     for iz in izs
         color = colors[iz]
