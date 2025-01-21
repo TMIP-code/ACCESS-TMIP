@@ -95,6 +95,22 @@ time_window = "Jan2030-Dec2039"
 
     years = ℰ_ds.Ti |> Array
 
+    # little helper function to get the year given a quantile
+    function yearatquantile(ℰ, ℰlevel)
+        isnan(ℰ[1]) && return NaN
+        out = findfirst(ℰ .< ℰlevel)
+        isnothing(out) ? maximum(years) : Float64(out)
+    end
+    ℰ10 = map(
+        ts -> yearatquantile(ts, 0.9),
+        view(ℰ, i, j, :, m) for i in 1:size(ℰ,1), j in 1:size(ℰ,2), m in 1:size(ℰ,4)
+    )
+    ℰ50 = map(
+        ts -> yearatquantile(ts, 0.5),
+        view(ℰ, i, j, :, m) for i in 1:size(ℰ,1), j in 1:size(ℰ,2), m in 1:size(ℰ,4)
+    )
+    Γout =
+
     ℰ_ensemblemean = dropdims(mean(ℰ, dims = 4), dims = 4)
     ℰ_ensemblemax = dropdims(maximum(ℰ, dims = 4), dims = 4)
     ℰ_ensemblemin = dropdims(minimum(ℰ, dims = 4), dims = 4)
