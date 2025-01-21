@@ -45,7 +45,7 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
     colors_per_point = vcat(fill.(vec(x2D), 4)...)
 
     # create plot
-    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange)
+    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2)
     xlims!(ax, (-180, 180))
     ylims!(ax, (-90, 90))
 
@@ -65,7 +65,7 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
 
 
     # add coastlines
-    cl = poly!(ax, GeoMakie.land(); color = :lightyellow, strokecolor = :black, strokewidth = 1)
+    cl = poly!(ax, GeoMakie.land(); color = :lightgray, strokecolor = :black, strokewidth = 1)
     translate!(cl, 0, 0, 100)
 
     # move the plot behind the grid so we can see them
@@ -105,7 +105,6 @@ function kinkline(A, B, c=2/3)
 end
 
 
-OCEANS = oceanpolygons()
 
 function volumeintegral(x, gridmetrics; mask = 1, dim = Tuple(1:ndims(x)))
     # unpack gridmetrics
