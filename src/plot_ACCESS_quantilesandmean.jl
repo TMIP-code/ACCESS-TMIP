@@ -27,9 +27,6 @@
 # using FileIO
 # using Contour
 
-# include("plotting_functions.jl")
-
-
 # model = "ACCESS-ESM1-5"
 
 # # for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
@@ -130,6 +127,10 @@
 #     Γout_ensemblemean = seafloorvalue(Γoutyr3D_ensemblemean, wet3D, gridmetrics)
 #     Γout_ensemblerange = seafloorvalue(Γoutyr3D_ensemblerange, wet3D, gridmetrics)
 
+    include("plotting_functions.jl")
+
+    usecontourf = false
+
     axs = Array{Any,2}(undef, (3, 2))
     contours = Array{Any,2}(undef, (3, 2))
     nrows, ncols = size(axs)
@@ -153,7 +154,11 @@
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = plotmap!(ax, x2Dmean, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = if usecontourf
+            plotcontourfmap!(ax, x2Dmean, gridmetrics; levels, colormap)
+        else
+            plotmap!(ax, x2Dmean, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        end
 
         myhidexdecorations!(ax, irow < nrows)
         myhideydecorations!(ax, icol > 1)
@@ -166,7 +171,11 @@
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = plotmap!(ax, x2Drange, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = if usecontourf
+            plotcontourfmap!(ax, x2Drange, gridmetrics; levels, colormap)
+        else
+            plotmap!(ax, x2Drange, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        end
 
         myhidexdecorations!(ax, irow < nrows)
         myhideydecorations!(ax, icol > 1)
@@ -206,10 +215,11 @@
     # colgap!(fig.layout, 10)
 
     # save plot
-    outputfile = joinpath(outputdir, "reemergencetime_$(time_window).png")
+    suffix = usecontourf ? "_ctrf" : ""
+    outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).png")
     @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
-    outputfile = joinpath(outputdir, "reemergencetime_$(time_window).pdf")
+    outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).pdf")
     @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 

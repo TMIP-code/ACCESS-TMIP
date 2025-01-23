@@ -80,12 +80,25 @@ function plotcontourfmap!(ax, x2D, gridmetrics; kwargs...)
     lon = gridmetrics.lon
     lat = gridmetrics.lat
 
-    # create plot
-    @show size(lon), size(lat), size(x2D)
+    # extend west, east, and north
+    extend(x2D) = [[transpose(x2D[end,:]); x2D; transpose(x2D[1, :])] [x2D[1,end]; x2D[end:-1:1, end]; x2D[end, end]]]
+    extendlon(x2D) = [[transpose(x2D[end,:]) .- 360; x2D; transpose(x2D[1, :]) .+ 360] [x2D[1,end] - 360; x2D[end:-1:3end÷4+1, end] .- 360; x2D[3end÷4:-1:end÷4+1, end]; x2D[end÷4:-1:1, end] .+ 360 ; x2D[end, end] + 360]]
+    # extend west and east only
+    # extend(x2D) = [transpose(x2D[end,:]); x2D; transpose(x2D[1, :])]
+    # extendlon(x2D) = [transpose(x2D[end,:]) .- 360; x2D; transpose(x2D[1, :]) .+ 360]
+    # TODO delete: helper functions
+    # extendnorth(x2D) = [x2D x2D[end:-1:1, end]]
+    # extendeastwest(x2D) = [transpose(x2D[end,:]); x2D; transpose(x2D[1, :])]
 
-    plt = tricontourf!(ax, lon[:], lat[:], x2D[:]; kwargs...)
-    xlims!(ax, (-180, 180))
-    ylims!(ax, (-90, 90))
+    x2D = extend(x2D)
+    lon = mod.(lon .- 80, 360) .+ 80
+    lon = extendlon(lon)
+    lat = extend(lat)
+
+
+    plt = contourf!(ax, lon, lat, x2D; kwargs...)
+    # xlims!(ax, (-180, 180))
+    # ylims!(ax, (-90, 90))
 
     # add coastlines
     cl=lines!(ax, GeoMakie.coastlines(), color = :black, linewidth=0.85)
