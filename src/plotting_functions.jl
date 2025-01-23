@@ -36,16 +36,37 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
     lon = gridmetrics.lon
 
     # make sure quads are not too distorted
-    lon = mod.(gridmetrics.lon .+ 180, 360) .- 180
+    lon = mod.(lon .+ -20, 360) .- -20
+    ilon = sortperm(lon[:, 1])
+    x2D = x2D[ilon, :]
+    lon = lon[ilon, :]
+    lonv = lonv[:, ilon, :]
+    latv = latv[:, ilon, :]
+
+
     lonv = loninsamewindow.(lonv, reshape(lon, (1, size(lon)...)))
 
     # create quads
-    quad_points = vcat([Point2{Float64}.(lonv[:, i, j], latv[:, i, j]) for i in axes(lonv, 2), j in axes(lonv, 3)]...)
-    quad_faces = vcat([begin; j = (i-1) * 4 + 1; [j j+1 j+2; j+2 j+3 j]; end for i in 1:length(quad_points)÷4]...)
+    quad_points = reduce(vcat, Point2{Float64}.(lonv[:, i, j], latv[:, i, j]) for i in axes(lonv, 2), j in axes(lonv, 3))
+    quad_faces = reduce(vcat, begin; j = (i-1) * 4 + 1; [j j+1 j+2; j+2 j+3 j]; end for i in 1:length(quad_points)÷4)
+    # quad_faces = [
+    #     1 2 3;
+    #     3 4 1;
+    # ]
     colors_per_point = vcat(fill.(vec(x2D), 4)...)
+    colors_per_face = vec(x2D)
+    quad_faces = vcat([begin; j = (i-1) * 4 + 1; QuadFace(j, j+1, j+2, j+4); end for i in 1:length(quad_points)÷4]...)
+    FT = eltype(quad_faces)
+    N = length(quad_faces)
+    cs = FaceView(colors_per_face, [FT(i) for i in 1:N])
+    # generate normals per face (this creates a FaceView as well)
+    ns = face_normals(quad_points, quad_faces)
+    mymesh = Makie.GeometryBasics.mesh(quad_points, quad_faces, normal = ns, color = cs)
+
 
     # create plot
-    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2)
+    # plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2)
+    plt = mesh!(ax, mymesh; shading = NoShading, colormap, colorrange, rasterize = 2)
     xlims!(ax, (-180, 180))
     ylims!(ax, (-90, 90))
 
@@ -65,7 +86,11 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
 
 
     # add coastlines
-    cl = poly!(ax, GeoMakie.land(); color = :lightgray, strokecolor = :black, strokewidth = 1)
+    cl = if ax isa GeoAxis
+        lines!(ax, GeoMakie.coastlines(); color = :black)
+    else
+        poly!(ax, GeoMakie.land(); color = :lightgray, strokecolor = :black, strokewidth = 1)
+    end
     translate!(cl, 0, 0, 100)
 
     # move the plot behind the grid so we can see them

@@ -124,10 +124,11 @@
 #     Γoutyr3D_ensemblemax = dropdims(maximum(Γoutyr3D_timemean, dims = 4), dims = 4)
 #     Γoutyr3D_ensemblemin = dropdims(minimum(Γoutyr3D_timemean, dims = 4), dims = 4)
 #     Γoutyr3D_ensemblerange = Γoutyr3D_ensemblemax - Γoutyr3D_ensemblemin
-#     Γout_ensemblemean = seafloorvalue(Γoutyr3D_ensemblemean, wet3D, gridmetrics)
-#     Γout_ensemblerange = seafloorvalue(Γoutyr3D_ensemblerange, wet3D, gridmetrics)
 
     include("plotting_functions.jl")
+
+    Γout_ensemblemean = seafloorvalue(Γoutyr3D_ensemblemean, wet3D, gridmetrics)
+    Γout_ensemblerange = seafloorvalue(Γoutyr3D_ensemblerange, wet3D, gridmetrics)
 
     usecontourf = false
 
@@ -137,13 +138,16 @@
 
     fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
-    yticks = -60:30:60
-    xticks = -120:60:120
+    # yticks = -60:30:60
+    # xticks = -120:60:120
+    yticks = -90:30:90
+    xticks = -180:60:180 + 720
 
     datamean = (Γout_ensemblemean, ℰ50_ensemblemean, ℰ10_ensemblemean)
     datarange = (Γout_ensemblerange, ℰ50_ensemblerange, ℰ10_ensemblerange)
     rowlabels = ("Mean", "Median", "10th percentile")
 
+    # for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowlabels))
     for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowlabels))
 
         # Plot ensemble mean
@@ -152,16 +156,19 @@
         colormap = cgrad(:viridis, 15, categorical = true)
         colorrange = extrema(levels)
 
-        axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+        # axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+        axs[irow, icol] = ax = GeoAxis(fig[irow, icol]; dest = "+proj=longlat +lon_0=200", yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = if usecontourf
-            plotcontourfmap!(ax, x2Dmean, gridmetrics; levels, colormap)
-        else
-            plotmap!(ax, x2Dmean, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        if irow == 1
+            contours[irow, icol] = if usecontourf
+                plotcontourfmap!(ax, x2Dmean, gridmetrics; levels, colormap)
+            else
+                plotmap!(ax, x2Dmean, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+            end
+
+            myhidexdecorations!(ax, irow < nrows)
+            myhideydecorations!(ax, icol > 1)
         end
-
-        myhidexdecorations!(ax, irow < nrows)
-        myhideydecorations!(ax, icol > 1)
 
         # Plot ensemble range
         icol = 2
@@ -171,14 +178,14 @@
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = if usecontourf
-            plotcontourfmap!(ax, x2Drange, gridmetrics; levels, colormap)
-        else
-            plotmap!(ax, x2Drange, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
-        end
+        # contours[irow, icol] = if usecontourf
+        #     plotcontourfmap!(ax, x2Drange, gridmetrics; levels, colormap)
+        # else
+        #     plotmap!(ax, x2Drange, gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        # end
 
-        myhidexdecorations!(ax, irow < nrows)
-        myhideydecorations!(ax, icol > 1)
+        # myhidexdecorations!(ax, irow < nrows)
+        # myhideydecorations!(ax, icol > 1)
 
         Label(fig[irow, 0]; text, rotation = π/2, tellheight = false)
 
@@ -189,9 +196,9 @@
     cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:500:1500)
     cb.width = Relative(2/3)
 
-    label = rich("ensemble range, max τ − min τ (yr)")
-    cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:100:500)
-    cb.width = Relative(2/3)
+    # label = rich("ensemble range, max τ − min τ (yr)")
+    # cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:100:500)
+    # cb.width = Relative(2/3)
 
     # column labels
     # Label(fig[0, 1]; text = "ensemble mean", tellwidth = false)
@@ -219,7 +226,7 @@
     outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).png")
     @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
-    outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).pdf")
-    @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
-    save(outputfile, fig)
+    # outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).pdf")
+    # @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
+    # save(outputfile, fig)
 
