@@ -26,9 +26,9 @@ using NaNStatistics
 using StatsBase
 using FileIO
 using Contour
-
-include("plotting_functions.jl")
-
+using GeometryBasics
+using GeometryOps
+using LibGEOS
 
 model = "ACCESS-ESM1-5"
 
@@ -101,6 +101,9 @@ time_window = "Jan2030-Dec2039"
     ℰ_ensemblerange = ℰ_ensemblemax - ℰ_ensemblemin
 
 
+    include("plotting_functions.jl")
+
+    usecontourf = false
 
     axs = Array{Any,2}(undef, (3, 2))
     contours = Array{Any,2}(undef, (3, 2))
@@ -109,7 +112,7 @@ time_window = "Jan2030-Dec2039"
     fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
     yticks = -60:30:60
-    xticks = -120:60:120
+    xticks = -120:60:120 + 360
 
     for (irow, year) in enumerate([100, 300, 1000])
 
@@ -124,7 +127,11 @@ time_window = "Jan2030-Dec2039"
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblemean[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = if usecontourf
+            plotcontourfmap!(ax, 100 * ℰ_ensemblemean[:, :, iyear], gridmetrics; levels, colormap)
+        else
+            plotmap!(ax, 100 * ℰ_ensemblemean[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        end
 
         myhidexdecorations!(ax, irow < nrows)
         myhideydecorations!(ax, icol > 1)
@@ -137,21 +144,25 @@ time_window = "Jan2030-Dec2039"
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
-        contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = if usecontourf
+            plotcontourfmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; levels, colormap)
+        else
+            contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        end
 
         myhidexdecorations!(ax, irow < nrows)
         myhideydecorations!(ax, icol > 1)
 
-        Label(fig[irow, 0]; text = "after $year years", rotation = π/2, tellheight = false)
+        Label(fig[irow, 0]; text = "τ = $year years", rotation = π/2, tellheight = false)
 
     end
 
 
-    label = rich("ensemble mean ℰ (%)")
+    label = rich("ensemble mean ℰ(τ) (%)")
     cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:20:100)
     cb.width = Relative(2/3)
 
-    label = rich("ensemble range, max ℰ − min ℰ (%)")
+    label = rich("ensemble range, max ℰ(τ) − min ℰ(τ) (%)")
     cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:5:25)
     cb.width = Relative(2/3)
 
@@ -173,14 +184,16 @@ time_window = "Jan2030-Dec2039"
     end
 
     Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Sequestration Efficiency ($(length(members)) members)", fontsize = 24, tellwidth = false)
-    # rowgap!(fig.layout, 10)
-    # colgap!(fig.layout, 10)
+    rowgap!(fig.layout, 10)
+    colgap!(fig.layout, 10)
 
     # save plot
-    outputfile = joinpath(outputdir, "seqeff_$(time_window).png")
+    suffix = usecontourf ? "_ctrf" : ""
+
+    outputfile = joinpath(outputdir, "seqeff_$(time_window)$(suffix).png")
     @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
-    outputfile = joinpath(outputdir, "seqeff_$(time_window).pdf")
+    outputfile = joinpath(outputdir, "seqeff_$(time_window)$(suffix).pdf")
     @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
 

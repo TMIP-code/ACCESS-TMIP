@@ -28,6 +28,20 @@ ytickformat(y) = latticklabel.(y)
 
 loninsamewindow(l1, l2) = mod(l1 - l2 + 180, 360) + l2 - 180
 
+land1 = GeoMakie.land()
+mapwindow = GeometryBasics.Polygon([
+    Point2f(20, -90),
+    Point2f(20 + 360, -90),
+    Point2f(20 + 360, +90),
+    Point2f(20, +90),
+    Point2f(20, -90),
+])
+land1cut = [LibGEOS.intersection(p, mapwindow) for p in land1]
+land1cut = [p for p in land1cut if !LibGEOS.isEmpty(p)]
+land2 = GeometryOps.transform(P -> P + Point2f(360, 0), land1)
+land2cut = [LibGEOS.intersection(p, mapwindow) for p in land2]
+land2cut = [p for p in land2cut if !LibGEOS.isEmpty(p)]
+
 function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
 
     # unpack gridmetrics
@@ -36,7 +50,7 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
     lon = gridmetrics.lon
 
     # make sure quads are not too distorted
-    lon = mod.(gridmetrics.lon .+ 180, 360) .- 180
+    lon = mod.(gridmetrics.lon .+ -20, 360) .- -20
     lonv = loninsamewindow.(lonv, reshape(lon, (1, size(lon)...)))
 
     # create quads
@@ -46,27 +60,32 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
 
     # create plot
     plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2)
-    xlims!(ax, (-180, 180))
+    xlims!(ax, (20, 20 + 360))
     ylims!(ax, (-90, 90))
 
     # Add contourlines if levels is present
     if !isnothing(levels)
-        lon2 = mod.(gridmetrics.lon .- 80, 360) .+ 80
-        contourlevels = Contour.contours(lon2, gridmetrics.lat, x2D, levels)
-        for cl in Contour.levels(contourlevels)
-            lvl = level(cl) # the z-value of this contour level
-            for line in Contour.lines(cl)
-                xs, ys = coordinates(line) # coordinates of this line segment
-                ls = lines!(ax, xs, ys; color = (:black, 0.5), linewidth = 1)
-                translate!(ls, 0, 0, 110) # draw the contours above all
-            end
-        end
+        ilon = sortperm(lon[:,1])
+        contour!(ax, lon[ilon, :], lat[ilon, :], x2D[ilon, :]; levels, color=:black, labels = true) # <- looks terrible
+        # lon2 = mod.(gridmetrics.lon .- 80, 360) .+ 80
+        # contourlevels = Contour.contours(lon2, gridmetrics.lat, x2D, levels)
+        # for cl in Contour.levels(contourlevels)
+        #     lvl = level(cl) # the z-value of this contour level
+        #     for line in Contour.lines(cl)
+        #         xs, ys = coordinates(line) # coordinates of this line segment
+        #         ls = lines!(ax, xs, ys; color = (:black, 0.5), linewidth = 1)
+        #         translate!(ls, 0, 0, 110) # draw the contours above all
+        #     end
+        # end
     end
 
 
     # add coastlines
-    cl = poly!(ax, GeoMakie.land(); color = :lightgray, strokecolor = :black, strokewidth = 1)
-    translate!(cl, 0, 0, 100)
+
+    cl1 = poly!(ax, land1cut; color = :lightgray, strokecolor = :black, strokewidth = 1)
+    translate!(cl1, 0, 0, 100)
+    cl2 = poly!(ax, land2cut; color = :lightgray, strokecolor = :black, strokewidth = 1)
+    translate!(cl2, 0, 0, 100)
 
     # move the plot behind the grid so we can see them
     translate!(plt, 0, 0, -100)
@@ -204,7 +223,7 @@ function seafloorvalue(x3D, wet3D, gridmetrics)
         ks = wet3D[i,j,:]
         z = Z3D[i,j,ks]
         vals = x3D[i,j,ks]
-        etp = linear_interpolation(z, vals; extrapolation_bc=Line())
+        etp = linear_interpolation(z, vals; extrapolation_bc=Interpolations.Line())
         return etp(zseafloor)
     end
 end
