@@ -63,7 +63,7 @@ g0 = Ω / τ₀
 # Tsim = 10yr
 # uδts = Any[1minute, 1hr, 1d, 30d]
 
-Tsim = 500yr
+Tsim = 50yr
 
 # uδts = Any[1minute, 1hr, 1d]
 resolutions = [12, 4]
