@@ -102,6 +102,12 @@
 # end
 
 
+
+
+
+
+
+
 fig = Figure(size = (400, 450))
 𝓉 = rich("t", font = :italic)
 𝓉i = rich(𝓉, subscript("i", offset = (0.1, 0)))
@@ -112,11 +118,12 @@ yticks = 0:1:ustrip(yr, Tsim + 1yr)
 
 # Δt = ustrip(yr, Tsim / 2 + 1yr)
 # limits = (0, Δt + 1 + 1, ustrip(yr, Tsim) - Δt - 1, ustrip(yr, Tsim + 1yr))
-limits = (0, ustrip(yr, Tsim + 1yr), 0, ustrip(yr, Tsim + 1yr))
+# limits = (0, ustrip(yr, Tsim + 1yr), 0, ustrip(yr, Tsim + 1yr))
+limits = (0, 7, 0, 7)
 
 ax = Axis(fig[1, 1];
-    xlabel = rich("injection time, ", 𝓉i, " (yr)"),
-    ylabel = rich("reemergence time, ", 𝓉f, " (yr)"),
+    xlabel = rich("injection time, ", 𝓉i, " (year)"),
+    ylabel = rich("reemergence time, ", 𝓉f, " (year)"),
     # limits = (nothing, nothing, nothing, nothing),
     limits,
     xticks,
@@ -140,27 +147,27 @@ translate!(ctrf, 0, 0, -100)
 # Draw the window of interest
 # lines!(ax, collect(limits)[[1, 2, 2, 1, 1]], collect(limits)[[3, 3, 4, 4, 2]], color = :blue)
 
-τ = 4.3
-t0 = 5
-ti = 1 + 1/2
-tf = 7 + 1/3
+τ = 3.3
+τ0 = 3
+ti = τ0 - τ/2 - 0.7
+tf = τ0 + τ/2 + 0.7
 
 
 # draw ti = tf line
 # ablines!(ax, 0, 1, color = :black)
-brokenabline = [t0 - 10, t0 - 1.4, NaN, t0 - 0.6, t0 + 1.6, NaN, t0 + 2.4, t0 + 10]
-lines!(ax, brokenabline, brokenabline, color = :black)
+τ0line = [-10, τ0 - 0.3, NaN, τ0 + 0.3, 10]
+lines!(ax, τ0line, τ0line, color = :black, linestyle = :dash)
 # lines!(ax, [, t0 - 0.7], [t0 - 1.3, t0 - 0.7], color = :white)
 # text!(ax, t0 - 1, t0 - 1, text = rich(𝓉i, " = ", 𝓉f), rotation = π/4, align = (:center, :center), color = :black)
 # lines!(ax, [t0 + 1.7, t0 + 2.3], [t0 + 1.7, t0 + 2.3], color = :white)
-text!(ax, t0 + 2, t0 + 2, text = "τ = 0", rotation = π/4, align = (:center, :center), color = :black)
+text!(ax, τ0, τ0, text = "τ = 0", rotation = π/4, align = (:center, :center), color = :black)
 
 # colors of polygons and labels
 colors = cgrad(:Egypt, categorical = true)[[3, 1]]
 
 # text for tf = ti + τ
-text!(ax, t0 + 0.5 - 0.2, t0 + 0.5 + τ + 0.2, text = rich(𝓉f, " = ", 𝓉i, " + τ"), rotation = π/4, align = (:center, :center), color = colors[1])
-text!(ax, t0 + 0.5 - 0.2 - τ, t0 + 0.5 + 0.2, text = rich(𝓉i, " = ", 𝓉f, " − τ"), rotation = π/4, align = (:center, :center), color = colors[2])
+# text!(ax, t0 + 0.5 - 0.2, t0 + 0.5 + τ + 0.2, text = rich(𝓉f, " = ", 𝓉i, " + τ"), rotation = π/4, align = (:center, :center), color = colors[1])
+# text!(ax, t0 + 0.5 - 0.2 - τ, t0 + 0.5 + 0.2, text = rich(𝓉i, " = ", 𝓉f, " − τ"), rotation = π/4, align = (:center, :center), color = colors[2])
 
 # scatter!(ax, [t0], [t0], color=:red)
 # Add lines to delineate the matching patches
@@ -179,8 +186,35 @@ text!(ax, t0 + 0.5 - 0.2 - τ, t0 + 0.5 + 0.2, text = rich(𝓉i, " = ", 𝓉f
 # TTD = BIR
 scatterlines!(ax, [ti, ti + 1], [ti + τ, ti + 1 + τ], color = colors[1], markersize = 5, linewidth = 2)
 
-text!(ax, ti + 0.5, ti + 0.5 + τ, text = rich(), rotation = π/4, align = (:center, :center), color = colors[1])
+# text!(ax, ti + 0.5, ti + 0.5 + τ, text = rich(), rotation = π/4, align = (:center, :center), color = colors[1])
 scatterlines!(ax, [tf - τ, tf + 1 - τ], [tf, tf + 1], color = colors[2], markersize = 5, linewidth = 2)
+
+# Plot arrows for each matching simulation
+offset = 0.1
+arrowheadoffset = 0.05
+for t = range(start = 0.5/12, step = 1/12, length = 12)
+# for (i, t) = enumerate(range(start = 1/12, step = 2/12, length = 6))
+    # i > 2 && i < 5 && continue
+    # arrowlines!(ax, [tf + t - offset, tf + t - τ + offset], [tf + t, tf + t], color = colors[2], markersize = 3, linewidth = 1)
+    # # arrowlines!(ax, [ti + t, ti + t], [ti + t + offset, ti + t + τ - offset], color = colors[1], markersize = 3, linewidth = 1, arrowstyle="--|>")
+    # arrowlines!(ax, [ti + t, ti + t], [ti + t + offset, ti + t + τ - offset], color = colors[1], markersize = 3, linewidth = 1, alpha = 0.5)
+    # arrowlines!(ax, [tf + t - offset, tf + t - τ + offset], [tf + t, tf + t], color = colors[2], linewidth = 1)
+    # arrowlines!(ax, [ti + t, ti + t], [ti + t + offset, ti + t + τ - offset], color = colors[1], linewidth = 1, arrowstyle="--|>")
+    # arrows!(ax, [tf + t - offset], [tf + t + offset], [-τ + 2offset], [0], color = colors[2], linewidth = 1)
+    arrows!(ax, [tf + t - offset], [tf + t], [-τ + 2offset + arrowheadoffset], [0], color = colors[2], linewidth = 1, arrowsize = 6)
+    arrows!(ax, [ti + t], [ti + t + offset], [0], [τ - 2offset - arrowheadoffset], color = colors[1], linewidth = 1, arrowsize = 6, linestyle = :dot)
+end
+text!(ax, tf + 1 - τ/2, tf + 1; text = "12 BIR simulations", align = (:center, :bottom), offset = (0, 2), color = colors[2])
+text!(ax, tf + 0.5 - τ, tf + 0.5; text = "mean BIR", align = (:center, :bottom), offset = (-2, 2), color = colors[2], rotation = π/4)
+text!(ax, ti + 0.5, ti + τ + 0.5; text = "mean TTD", align = (:center, :bottom), offset = (-2, 2), color = colors[1], rotation = π/4)
+tc = (ti + 0.5 + tf + 0.5 - τ) / 2
+text!(ax, tc, tc + τ; text = "=", align = (:center, :bottom), offset = (-2, 2), color = :white, rotation = π/4)
+
+# 𝒢̃ = 0
+# 𝒢̃str = rich("𝒢", superscript("~", offset=(-0.5, 0.2)))
+𝒢̃str = rich("𝒢", superscript("†"))
+text!(ax, τ0 + 1.5, τ0 - 1.5; text = rich(𝒢̃str, " = 0"), align = (:center, :center), color = :black)
+
 
 # # Add line for τ
 # # bracket!(ax, t0 - τ, t0, t0, t0, text = "τ", offset = 2, color = colors[2], textcolor = colors[2], orientation = :down)
@@ -190,19 +224,19 @@ scatterlines!(ax, [tf - τ, tf + 1 - τ], [tf, tf + 1], color = colors[2], marke
 # bracket!(ax, t0, t0 - offset, t0 + 1, t0 - offset, text = "1 yr", offset = 2, color = :black, textcolor = :black, orientation = :down)
 # lines!(ax, [t0, t0, NaN, t0 + 1, t0 + 1], [t0 - offset, t0, NaN, t0 - offset, t0 + 1], color = :black, linestyle = :dot)
 
-# Equality
-𝒢̃str = rich("𝒢", superscript("~", offset=(-0.5, 0.2)))
-𝒢̃funstr = rich(𝒢̃str, "(", 𝓉i, ",", 𝓉f, ")")
-# intstr(sub, sup) = rich("∫", subsup(sub, sup))
-intstr(sub, sup, offsub, offsup) = rich("∫", subscript(sub, offset = (-offsub, -1)), superscript(sup, offset = (-offsup, 1)))
-text = rich(intstr("0", "1", 0.6, 0.5), "d", 𝓉i, "  ", intstr(𝓉i, rich(𝓉i, " + τ"), 0.6, 1.2), "d", 𝓉f, " ", 𝒢̃funstr)
-text!(ax, t0 - 0.2, t0 + 4; text, align = (:right, :center), color = colors[1], fontsize = 20)
-text = rich(intstr("0", "1", 0.6, 0.5), "d", 𝓉f, "  ", intstr(rich(𝓉f, " − τ"), 𝓉f, 1.2, 1.2), " d", 𝓉i, " ", 𝒢̃funstr)
-text!(ax, t0 - 2.5, t0 + 1.2; text, align = (:center, :bottom), color = colors[2], fontsize = 20)
+𝐫 = rich("r", font = :bold_italic)
+𝒢̃funstr = rich(𝒢̃str, "(", 𝐫, ", ", 𝓉i, ", ", 𝓉f, ")")
+# # Equality
+# # intstr(sub, sup) = rich("∫", subsup(sub, sup))
+# intstr(sub, sup, offsub, offsup) = rich("∫", subscript(sub, offset = (-offsub, -1)), superscript(sup, offset = (-offsup, 1)))
+# text = rich(intstr("0", "1", 0.6, 0.5), "d", 𝓉i, "  ", intstr(𝓉i, rich(𝓉i, " + τ"), 0.6, 1.2), "d", 𝓉f, " ", 𝒢̃funstr)
+# text!(ax, t0 - 0.2, t0 + 4; text, align = (:right, :center), color = colors[1], fontsize = 20)
+# text = rich(intstr("0", "1", 0.6, 0.5), "d", 𝓉f, "  ", intstr(rich(𝓉f, " − τ"), 𝓉f, 1.2, 1.2), " d", 𝓉i, " ", 𝒢̃funstr)
+# text!(ax, t0 - 2.5, t0 + 1.2; text, align = (:center, :bottom), color = colors[2], fontsize = 20)
 
 # Colorbar
 cb = Colorbar(fig[2, 1], ctrf;
-    label = rich("Cyclostationary ", 𝒢̃str, "(", 𝓉i, ",", 𝓉f, ")"),
+    label = rich("adjoint boundary propagator, ", 𝒢̃funstr),
     # label = L"$\tilde{\mathcal{G}}(t_\mathrm{i}, t_\mathrm{f})$",
     width = Relative(3/4),
     vertical = false,
