@@ -14,6 +14,18 @@ function lonticklabel(lon)
 end
 xtickformat(x) = lonticklabel.(x)
 
+function divergingcbarticklabel(x)
+    isinteger(x) && (x = Int(x))
+    if x == 0
+        "0"
+    elseif x > 0
+        "+" * string(x)
+    else
+        "−" * string(-x)
+    end
+end
+divergingcbarticklabelformat(x) = divergingcbarticklabel.(x)
+
 function latticklabel(lat)
     lat = isinteger(lat) ? Int(lat) : lat
     if lat == 0
@@ -42,7 +54,7 @@ land2 = GeometryOps.transform(P -> P + Point2f(360, 0), land1)
 land2cut = [LibGEOS.intersection(p, mapwindow) for p in land2]
 land2cut = [p for p in land2cut if !LibGEOS.isEmpty(p)]
 
-function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
+function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing, highclip = automatic, lowclip = automatic)
 
     # unpack gridmetrics
     lonv = gridmetrics.lon_vertices
@@ -59,7 +71,7 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing)
     colors_per_point = vcat(fill.(vec(x2D), 4)...)
 
     # create plot
-    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2)
+    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2, highclip, lowclip)
     xlims!(ax, (20, 20 + 360))
     ylims!(ax, (-90, 90))
 

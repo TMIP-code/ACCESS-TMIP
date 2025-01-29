@@ -1,39 +1,42 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
-using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
+# using Pkg
+# Pkg.activate(".")
+# Pkg.instantiate()
 
-using OceanTransportMatrixBuilder
-using NetCDF
-using YAXArrays
-using DataFrames
-using DimensionalData
-# using SparseArrays
-# using LinearAlgebra
-using Unitful
-using Unitful: s, yr
-try
-    using CairoMakie
-catch
-    using CairoMakie
-end
-using GeoMakie
-using Interpolations
-using OceanBasins
-using Statistics
-using NaNStatistics
-using StatsBase
-using FileIO
-using Contour
-using GeometryBasics
-using GeometryOps
-using LibGEOS
+# using OceanTransportMatrixBuilder
+# using NetCDF
+# using YAXArrays
+# using DataFrames
+# using DimensionalData
+# # using SparseArrays
+# # using LinearAlgebra
+# using Unitful
+# using Unitful: s, yr
+# try
+#     using CairoMakie
+# catch
+#     using CairoMakie
+# end
+# using GeoMakie
+# using Interpolations
+# using OceanBasins
+# using Statistics
+# using NaNStatistics
+# using StatsBase
+# using FileIO
+# using Contour
+# using GeometryBasics
+# using GeometryOps
+# using LibGEOS
+# # using LaTeXStrings
 
-model = "ACCESS-ESM1-5"
+# model = "ACCESS-ESM1-5"
 
-# for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
+# # for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Jan2090-Dec2099"]
+# # for time_window in ["Jan2030-Dec2039", "Jan2090-Dec2099"]
 time_window = "Jan2030-Dec2039"
+# time_window = "Jan2090-Dec2099"
     experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
     # experiment = "historical"
     # time_window = "Jan1850-Dec1859"
@@ -139,7 +142,9 @@ time_window = "Jan2030-Dec2039"
         # Plot ensemble range
         icol = 2
         levels = 0:5:25
-        colormap = cgrad(:linear_wyor_100_45_c55_n256, 5, categorical = true)
+        colormap = cgrad(:tol_ylorbr, 6, categorical = true)
+        highclip = colormap[end]
+        colormap = cgrad(colormap[1:end-1], categorical = true)
         colorrange = extrema(levels)
 
         axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
@@ -147,7 +152,7 @@ time_window = "Jan2030-Dec2039"
         contours[irow, icol] = if usecontourf
             plotcontourfmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; levels, colormap)
         else
-            contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+            contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; colorrange, colormap, highclip) # <- need to fix wrapping longitude for contour levels
         end
 
         myhidexdecorations!(ax, irow < nrows)
@@ -157,12 +162,16 @@ time_window = "Jan2030-Dec2039"
 
     end
 
-
-    label = rich("ensemble mean ℰ(τ) (%)")
+    # ℰstr = rich("ℰ", superscript("—"ℰ̅ ‾))
+    ℰstr = rich("ℰ", rich("‾", offset = (-0.5, 0.15)))
+    # τstr = rich("τ", font = :italic)
+    𝒓 = rich("r", font = :bold_italic)
+    ℰfun = rich(ℰstr, "(", 𝒓, ", τ)")
+    label = rich("ensemble mean ", ℰfun, " (%)")
     cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:20:100)
     cb.width = Relative(2/3)
 
-    label = rich("ensemble range, max ℰ(τ) − min ℰ(τ) (%)")
+    label = rich("ensemble range, max ", ℰfun, " − min ", ℰfun, " (%)")
     cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:5:25)
     cb.width = Relative(2/3)
 
