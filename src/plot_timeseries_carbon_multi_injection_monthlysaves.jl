@@ -146,6 +146,12 @@ maxdepth = 6000
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
+
+
+
+
+
+
 fig = Figure(size=(900, 400))
 
 # # Add location as first axis
