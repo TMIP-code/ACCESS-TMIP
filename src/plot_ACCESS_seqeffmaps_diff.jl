@@ -1,97 +1,97 @@
-# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# # using SparseArrays
-# # using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using Interpolations
-# using OceanBasins
-# using Statistics
-# using NaNStatistics
-# using StatsBase
-# using FileIO
-# using Contour
-# using GeometryBasics
-# using GeometryOps
-# using LibGEOS
-# # using LaTeXStrings
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+using Unitful
+using Unitful: s, yr
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using Interpolations
+using OceanBasins
+using Statistics
+using NaNStatistics
+using StatsBase
+using FileIO
+using Contour
+using GeometryBasics
+using GeometryOps
+using LibGEOS
+# using LaTeXStrings
 
-# model = "ACCESS-ESM1-5"
+model = "ACCESS-ESM1-5"
 
-# time_window1 = "Jan2030-Dec2039"
-# time_window2 = "Jan2090-Dec2099"
-# experiment1 = parse(Int, time_window1[4:7]) ≤ 2010 ? "historical" : "ssp370"
-# experiment2 = parse(Int, time_window2[4:7]) ≤ 2010 ? "historical" : "ssp370"
-
-
-# # members = ["r$(r)i1p1f1" for r in 1:40]
-# members = ["r$(r)i1p1f1" for r in 1:3]
-
-# # Gadi directory for input files
-# # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
-# inputdir1 = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/cyclomonth"
-# inputdir2 = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/cyclomonth"
-# outputdir = inputdir2
-# mkpath(inputdir2)
+time_window1 = "Jan2030-Dec2039"
+time_window2 = "Jan2090-Dec2099"
+experiment1 = parse(Int, time_window1[4:7]) ≤ 2010 ? "historical" : "ssp370"
+experiment2 = parse(Int, time_window2[4:7]) ≤ 2010 ? "historical" : "ssp370"
 
 
+# members = ["r$(r)i1p1f1" for r in 1:40]
+members = ["r$(r)i1p1f1" for r in 1:3]
 
-# # Load areacello and volcello for grid geometry
-# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
-
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# volcello_keys = propertynames(volcello_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
-# lev = zt
-# # Make indices
-# indices = makeindices(gridmetrics.v3D)
-# (; wet3D, N) = indices
+# Gadi directory for input files
+# inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
+inputdir1 = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/cyclomonth"
+inputdir2 = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/cyclomonth"
+outputdir = inputdir2
+mkpath(inputdir2)
 
 
-# # Read 2030s files
-# ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/calE.nc" for member in members]
-# ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-# ℰ = readcubedata(ℰ_ds.calE)
-# years = ℰ_ds.Ti |> Array
-# ℰ_ensemblemean1 = dropdims(mean(ℰ, dims = 4), dims = 4)
+
+# Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
+lev = zt
+# Make indices
+indices = makeindices(gridmetrics.v3D)
+(; wet3D, N) = indices
 
 
-# # Read 2090s files
-# ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calE.nc" for member in members]
-# ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-# ℰ = readcubedata(ℰ_ds.calE)
-# years = ℰ_ds.Ti |> Array
-# ℰ_ensemblemean2 = dropdims(mean(ℰ, dims = 4), dims = 4)
-# ℰ_diff = ℰ_ensemblemean2 - ℰ_ensemblemean1
+# Read 2030s files
+ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/calE.nc" for member in members]
+ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+ℰ = readcubedata(ℰ_ds.calE)
+years = ℰ_ds.Ti |> Array
+ℰ_ensemblemean1 = dropdims(mean(ℰ, dims = 4), dims = 4)
+
+
+# Read 2090s files
+ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calE.nc" for member in members]
+ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+ℰ = readcubedata(ℰ_ds.calE)
+years = ℰ_ds.Ti |> Array
+ℰ_ensemblemean2 = dropdims(mean(ℰ, dims = 4), dims = 4)
+ℰ_diff = ℰ_ensemblemean2 - ℰ_ensemblemean1
 
 
 
