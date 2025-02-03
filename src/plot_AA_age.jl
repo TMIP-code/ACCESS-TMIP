@@ -42,7 +42,7 @@ experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
 # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
 outputdir = "/scratch/xv83/TMIP/AndersonAcceleration"
-mkpath(inputdir)
+mkpath(outputdir)
 
 
 # Load areacello and volcello for grid geometry
