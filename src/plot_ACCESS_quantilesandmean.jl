@@ -139,11 +139,15 @@ xticks = -120:60:120 + 360
 
 datamean = (Γout_ensemblemean, ℰ50_ensemblemean, ℰ10_ensemblemean)
 datarange = (Γout_ensemblerange, ℰ50_ensemblerange, ℰ10_ensemblerange)
-Γstr = rich("Γ", superscript("↑"))
-Qstr = rich("Q", font = :italic)
-Q10 = rich(Qstr, "(0.1)")
-Q50 = rich(Qstr, "(0.5)")
-rowlabels = (rich("Mean, ", Γstr), rich("Median, ", Q50), rich("10th percentile, ", Q10))
+𝒓 = rich("r", font = :bold_italic)
+Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
+Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
+# Qstr = rich("Q", font = :italic)
+ℰstr = rich("ℰ", rich("‾", offset = (-0.5, 0.15)))
+# Q10 = rich(Qstr, "(0.1)")
+# Q50 = rich(Qstr, "(0.5)")
+rowlabels = (rich("Mean time, ", Γfun), rich("Median, ", ℰstr, " = 50 %"), rich("10th percentile, ", ℰstr, " = 90 %"))
+
 
 for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowlabels))
 
@@ -215,7 +219,8 @@ for (ax, label) in zip(axs, labels)
     translate!(txt, 0, 0, 100)
 end
 
-Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Reemergence Time ($(length(members)) members)", fontsize = 24, tellwidth = false)
+# Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Reemergence Time ($(length(members)) members)", fontsize = 24, tellwidth = false)
+Label(fig[0, 1:2]; text = "$(time_window[4:7])s Characteristic Timescales of Reemergence ($(length(members)) members)", fontsize = 24, tellwidth = false)
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 
@@ -228,3 +233,37 @@ outputfile = joinpath(outputdir, "reemergencetime_$(time_window)$(suffix).pdf")
 @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
+
+
+# datamean = (Γout_ensemblemean, ℰ50_ensemblemean, ℰ10_ensemblemean)
+ikeep = .!isnan.(Γout_ensemblemean) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = ℰ50_ensemblemean[ikeep] ./ Γout_ensemblemean[ikeep]
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = 0:0.05:3)
+outputfile = joinpath(outputdir, "median_over_mean_histogram_$(time_window)$(suffix).png")
+@info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
+save(outputfile, fig)
+mean(data, weights)
+quantile(data, weights, 0:0.1:1)
+
+
+ikeep = .!isnan.(Γout_ensemblemean) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = ℰ10_ensemblemean[ikeep] ./ ℰ50_ensemblemean[ikeep] .- 1
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = -1:0.05:1)
+outputfile = joinpath(outputdir, "tenthpercentile_over_median_histogram_$(time_window)$(suffix).png")
+@info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
+save(outputfile, fig)
+mean(data, weights)
+quantile(data, weights, 0:0.1:1)
+
+
+ikeep = .!isnan.(Γout_ensemblemean) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = ℰ50_ensemblemean[ikeep]
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = 0:100:3000)
+outputfile = joinpath(outputdir, "median_histogram_$(time_window)$(suffix).png")
+@info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
+save(outputfile, fig)
+mean(data, weights)
+quantile(data, weights, 0:0.1:1)
