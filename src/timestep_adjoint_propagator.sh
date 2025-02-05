@@ -6,7 +6,7 @@
 #PBS -q hugemem
 #PBS -l mem=500GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=10:00:00
+#PBS -l walltime=15:00:00
 #PBS -l storage=scratch/gh0+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/
@@ -16,8 +16,8 @@
 # time_window=Jan1850-Dec1859
 # time_window=Jan1990-Dec1999
 experiment=ssp370
-# time_window=Jan2030-Dec2039
-time_window=Jan2090-Dec2099
+time_window=Jan2030-Dec2039
+# time_window=Jan2090-Dec2099
 member=member_placeholder
 finalmonth=finalmonth_placeholder
 WRITEDATA=true
