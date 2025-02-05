@@ -23,7 +23,9 @@ using GLMakie
 using GeoMakie
 using OceanBasins
 using NaNStatistics
-
+using GeometryBasics
+using LibGEOS
+using GeometryOps
 
 
 include("plotting_functions.jl")
