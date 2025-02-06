@@ -176,7 +176,7 @@
 #     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
 #     ℰ2[src_i, src_j, :, :]
 # end
-
+TTD_time = ℰs[1].Ti |> Array
 
 
 
@@ -380,8 +380,8 @@ for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
     # ln = lines!(panela, x, Cseqmean; color=:black, linewidth=2, linecap=:round, joinstyle=:round)
     ln = lines!(panela, x, clamp.(Cseqmean, 0, 100); color, linewidth=2, linecap=:round, joinstyle=:round)
     # The line below is from the adjoint propagator
-    ln2 = lines!(panela, 0:1001, dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round)
-    ln3 = lines!(panela, 0:1001, dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
+    ln2 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round)
+    ln3 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
     i = 250 - 10ksrc
     # (ksrc == 1) && (text = "tracer injected at $text")
     # text!(panela, x[i], Cseqmean[i]; text, offset = (1.5, 1.5), align = (:left, :bottom), color=:black)
