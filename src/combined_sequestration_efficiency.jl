@@ -122,8 +122,6 @@ for member in members
         ωs[finalmonth] * readcubedata(ds.seqeff)
     end)
 
-
-
     # save data
     cube3D = rebuild(volcello_ds["volcello"];
         data = ℰ.data,
@@ -146,6 +144,43 @@ for member in members
     outputfile = joinpath(inputdir, "calE.nc")
     @info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
     savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+
+
+    # Do the same for 𝒢̃
+    𝒢̃ = sum(map(finalmonths) do finalmonth
+        # Load from NetCDF file
+        finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
+        # FIXME this below will need to be uncommented and the line below removed
+        # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
+        outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+        @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
+        ds = open_dataset(outputfile)
+        ωs[finalmonth] * readcubedata(ds.calgtilde)
+    end)
+
+    # save data
+    cube3D = rebuild(volcello_ds["volcello"];
+        data = 𝒢̃.data,
+        dims = dims(𝒢̃),
+        metadata = Dict(
+            "origin" => "cyclo-stationary adjoint propagator, calgtilde, averaged over all final months",
+            "model" => model,
+            "experiment" => experiment,
+            "member" => member,
+            "time window" => time_window,
+            "units" => "",
+            "Ti unit" => "yr",
+        )
+    )
+
+    arrays = Dict(:calgtilde => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+    ds = Dataset(; volcello_ds.properties, arrays...)
+
+    # Save to netCDF file
+    outputfile = joinpath(inputdir, "calgtilde.nc")
+    @info "Saving mean adjoint propagator as netCDF file:\n  $(outputfile)"
+    savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+
 
 end
 

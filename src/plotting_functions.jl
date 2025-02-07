@@ -250,3 +250,48 @@ labeloptions = (
     fontsize = 24
 )
 
+# taken from MakieExtra (not using Pkg because it has outdated Makie dep)
+using Makie.IntervalSets
+Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
+corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
+_which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
+fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
+Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
+intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
+function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
+    pscene = parent(parent(Makie.parent_scene(ax1)))
+    @assert parent(parent(Makie.parent_scene(ax2))) === pscene
+    obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
+        lims = [ax1.finallimits[], ax2.finallimits[]]
+        axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
+              lims[2] ⊆ lims[1] ? (ax2, ax1) :
+              nothing
+        slines = if isnothing(axs)
+            nothing
+        else
+            r1 = fullproject(axs[1], axs[1].finallimits[])
+            r2 = fullproject(axs[2], axs[1].finallimits[])
+            cornsets = [
+                ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
+                ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
+                ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
+                ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
+            ]
+            argmin(cornsets) do ((a1, a2), (b1, b2))
+                min(norm(a1-a2), norm(b1-b2))
+            end
+        end
+        (
+            rect1=ax2.finallimits[],
+            rect2=ax1.finallimits[],
+            slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
+        )
+    end
+
+    rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
+    poly!(ax1, (@lift $obs.rect1); rectattrs...)
+    poly!(ax2, (@lift $obs.rect2); rectattrs...)
+    plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
+    translate!(plt, 0, 0, 1000)
+    return nothing
+end

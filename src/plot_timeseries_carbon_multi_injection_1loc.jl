@@ -102,7 +102,7 @@
 # end
 
 # members = map(m -> "r$(m)i1p1f1", 1:40)
-# srcnames = ["Karratha", "Portland", "Marlo"]
+# srcnames = ["Karratha"]
 # year_start = parse(Int, time_window[4:7])
 # # Nyears = 501
 # # Nyears = 2001
@@ -176,12 +176,12 @@
 #     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
 #     ℰ2[src_i, src_j, :, :]
 # end
-TTD_time = ℰs[1].Ti |> Array
+# TTD_time = ℰs[1].Ti |> Array
 
 
 
 
-fig = Figure(size=(800, 800))
+fig = Figure(size=(800, 600))
 
 
 limits = ((107, 158), (-48, -7))
@@ -259,12 +259,15 @@ Colorbar(fig;
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 # hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 # TODO: read src_P somehow (file name or variable inside file)
-colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+# colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+colors = cgrad(:Egypt, categorical=true)[[3]]
 # colors = Makie.wong_colors()[[1, 3, 6]]
-offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
+# offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
+offsets = map(x -> x.* 2, [(-2, 1)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
-aligns = [(:right, :center), (:right, :center), (:left, :center)]
-texts = ["A", "B", "C"]
+# aligns = [(:right, :center), (:right, :center), (:left, :center)]
+aligns = [(:right, :center)]
+texts = ["A"]
 
 for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors, texts))
     src_P = sourcelocation(srcname)
@@ -313,8 +316,8 @@ axisoptions = (
 )
 # xmin, xmax = -30, Nyears - 1
 # xmin, xmax = 0, Nyears - 1
-# xmin, xmax = 0, 2000
-xmin, xmax = 0, 1020
+xmin, xmax = 0, 2000
+# xmin, xmax = 0, 1020
 ymin, ymax = 0, 100
 # xmin, xmax = year_start, 2100
 panela = Axis(fig[1, 1]; axisoptions...)
@@ -337,14 +340,14 @@ color = :gray
 linestyle = :dash
 align = (:center, :center)
 
-lines!(panela, [-1000, 860, NaN, 940, 3000], fill(90, 5); color, linestyle)
-lines!(panela, [-1000, 860, NaN, 940, 3000], fill(50, 5); color, linestyle)
-lines!(panela, fill(100, 5), [-10, 2, NaN, 8, 110]; color, linestyle)
-lines!(panela, fill(300, 5), [-10, 2, NaN, 8, 110]; color, linestyle)
-lines!(panela, fill(1000, 5), [-10, 2, NaN, 8, 110]; color, linestyle)
+lines!(panela, [-1000, 1850 - 80, NaN, 1850 + 80, 3000], fill(90, 5); color, linestyle)
+lines!(panela, [-1000, 1850 - 80, NaN, 1850 + 80, 3000], fill(50, 5); color, linestyle)
+lines!(panela, fill(100, 5), [-10, 5 - 3, NaN, 5 + 3, 110]; color, linestyle)
+lines!(panela, fill(300, 5), [-10, 5 - 3, NaN, 5 + 3, 110]; color, linestyle)
+lines!(panela, fill(1000, 5), [-10, 5 - 3, NaN, 5 + 3, 110]; color, linestyle)
 
-text!(panela, 900, 90; text = "g", align, color)
-text!(panela, 900, 50; text = "f", align, color)
+text!(panela, 1850, 90; text = "g", align, color)
+text!(panela, 1850, 50; text = "f", align, color)
 text!(panela, 100, 5; text = "b", align, color)
 text!(panela, 300, 5; text = "c", align, color)
 text!(panela, 1000, 5; text = "d", align, color)
@@ -415,7 +418,7 @@ end
 # Bpx plot below
 
 # yticks = (reverse(1:3), fill("", 3))
-yticks = (reverse(1:3), texts)
+yticks = (reverse(eachindex(texts)), texts)
 Γup = rich("Γ", superscript("↑"))
 axisoptions = (
     # ytrimspine = (false, true),
@@ -449,10 +452,10 @@ categories = reduce(vcat, fill(label, 40) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 40) for color in colors)
 boxplot!(panele, categorypositions, values; color=color, orientation = :horizontal)
-for (ksrc, text) in enumerate(texts)
-    # (ksrc == 1) && (text = "mean reemergence time at $text")
-    text!(panele, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3,0), align = (:right, :center))
-end
+# for (ksrc, text) in enumerate(texts)
+#     # (ksrc == 1) && (text = "mean reemergence time at $text")
+#     text!(panele, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3,0), align = (:right, :center))
+# end
 # raincloudoptions = (
 #     boxplot_nudge = -0.5,
 #     boxplot_width = 0.5,
@@ -515,7 +518,7 @@ axisoptions = (
     # xticks = -100:100:Nyears,
     yticks = WilkinsonTicks(7),
     # xticks = MultipleTicks(100),
-    xticks = (reverse(1:3), texts),
+    xticks = (reverse(eachindex(texts)), texts),
     # ylabel = "injection location",
     ylabel = rich("sequestration efficiency, ", ℰfun, " (%)"),
 )
@@ -578,8 +581,8 @@ end
 # sc = scatter!(inset_ax, src_P; marker=:star5, markersize=15, color, strokecolor=:black, strokewidth=1)
 # translate!(sc, 0, 0, 100)
 
-rowsize!(fig.layout, 1, Relative(1/2))
-colsize!(fig.layout, 1, Relative(1/2))
+rowsize!(fig.layout, 1, Relative(2/3))
+colsize!(fig.layout, 1, Relative(2/3))
 rowgap!(panelsefg, 10)
 colgap!(panelsefg, 10)
 rowgap!(panelsbcd, 10)
@@ -603,10 +606,10 @@ end
 # save plot
 outputdir = joinpath(fixedvarsinputdir, "all_members")
 mkpath(outputdir)
-outputfile = joinpath(outputdir, "injected_tracer_timeseries_v2.png")
+outputfile = joinpath(outputdir, "injected_tracer_timeseries_v2_1loc.png")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)
-outputfile = joinpath(outputdir, "injected_tracer_timeseries_v2.pdf")
+outputfile = joinpath(outputdir, "injected_tracer_timeseries_v2_1loc.pdf")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
