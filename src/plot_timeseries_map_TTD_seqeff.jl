@@ -36,7 +36,7 @@
 # using GeometryBasics
 # using LibGEOS
 
-include("plotting_functions.jl")
+# include("plotting_functions.jl")
 
 
 
@@ -298,31 +298,34 @@ Colorbar(fig;
 colors = cgrad(:galah, categorical=true)[[3]]
 # color2 = cgrad(:Egypt, categorical=true)[4]
 colors2 = cgrad(:galah, categorical=true)[[6]]
-bdcolors = [(c + 2 * RGBf(1,1,1)) / 3 for c in colors]
-bdcolors2 = [(c + 2 * RGBf(1,1,1)) / 3 for c in colors2]
+bdcolors = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors]
+bdcolors2 = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors2]
 # colors = Makie.wong_colors()[[1, 3, 6]]
 # offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
-offsets = map(x -> x.* 2, [(-2, 1)])
+# offsets = map(x -> x.* 2, [(-2, 1)])
+offsets = map(x -> x.* 2, [(6, -3)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
 # aligns = [(:right, :center), (:right, :center), (:left, :center)]
 aligns = [(:right, :center)]
-texts = ["A"]
+aligns = [(:left, :center)]
+# texts = ["A"]
+texts = ["injection\nlocation"]
 
 for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors, texts))
     src_P = sourcelocation(srcname)
-    # sc = scatter!(panela2, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
     # sc1 = scatter!(panela2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=3)
-    sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
-    sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
+    # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
+    # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
     # lines!(panela2, [src_P, src_P .+ offset]; color=:white)
-    lines!(panela, kinkline(src_P .+ offset, src_P); color=:black, linewidth = 1)
+    lines!(panela, kinkline(src_P .+ offset, src_P); color=:black)
+    sc = scatter!(panela, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color)
     text!(panela, src_P .+ offset; text, align, color=:black, strokecolor=:black)
     # text!(panela2, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
     # text!(panela2, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
     # translate!(sc1, 0, 0, 99)
-    translate!(sc2, 0, 0, 100)
+    # translate!(sc2, 0, 0, 100)
 end
 
 
@@ -365,7 +368,7 @@ axisoptions = (
     xticks = WilkinsonTicks(7),
     # xticks = MultipleTicks(100),
     # yticks = 0:20:100,
-    ylabel = rich("TTD, ", 𝒢str, rich(" (kyr", superscript("−1"), ")", offset = (0.5, 0))),
+    ylabel = rich("transit time distribution, ", 𝒢str, rich(" (kyr", superscript("−1"), ")", offset = (0.5, 0))),
     # ylabel = rich("adjoint propagator, ", 𝒢str, rich(" (kyr", superscript("−1"), ")", offset = (0.5, 0))),
     # xlabel = rich("time after injection, τ (years)"),
     xlabel = rich("time after injection (years)"),
@@ -418,6 +421,7 @@ axisoptions = (
     # xlabel = rich("time after injection, τ (years)"),
     xlabel = rich("time after injection (years)"),
     limits = (xmin, xmax, ymin, ymax),
+    backgroundcolor = (:white, 0),
 )
 panelc = Axis(fig[2, 1]; axisoptions...)
 # dashed lines slicing ℰ
@@ -476,6 +480,7 @@ axisoptions = (
     # xlabel = rich("time after injection, τ (years)"),
     xlabel = rich("time after injection (years)"),
     limits = (xmin, xmax, ymin, ymax),
+    backgroundcolor = (:white, 0),
 )
 paneld = Axis(fig[2, 2]; axisoptions...)
 # dashed lines slicing ℰ
@@ -504,8 +509,8 @@ ylims!(paneld, ymax, ymin)
 
 
 # Add zoom lines
-rectattrs = (strokecolor = :gray, linestyle = :solid)
-lineattrs = (color = :gray, linestyle = :solid)
+rectattrs = (strokecolor = :lightgray, linestyle = :solid)
+lineattrs = (color = :lightgray, linestyle = :solid)
 zoom_lines!(panelc, paneld; rectattrs, lineattrs)
 
 
@@ -537,13 +542,14 @@ categories = reduce(vcat, fill(label, 40) for label in texts)
 # Place Γ box plot close to top and stagger its display down for each injection locations (max 4)
 categorypositions = maxall𝒢s * (1 .- reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts))) / 4)
 color = reduce(vcat, fill(color, 40) for color in colors)
+color2 = reduce(vcat, fill(color, 40) for color in colors2)
 # I want a 10 pixel width = width_dataspace / limits_dataspace * limits_figspace
 # so width_dataspace = 10 * limits_dataspace / limits_figspace
 limits_dataspace = panelb.finallimits[].widths[2]
 limits_figspace = fullproject(panelb, panelb.finallimits[]).widths[2]
 width = 20 * limits_dataspace / limits_figspace
 boxplot!(panelb, categorypositions, valuesΓ2090s; color=color2, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
-text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = rich("mean time ", Γstr), align = (:center, :bottom), offset = (0, 30))
+text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = rich("mean time, ", Γstr), align = (:center, :bottom), offset = (0, 30))
 text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2030s)) / 2, categorypositions[1]; text = "2030s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
 text!(panelb, (minimum(valuesΓ2090s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = "2090s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
 # text!(panelb, maximum(values), categorypositions[1]; text = rich("mean time ", Γstr), align = (:left, :center), offset = (5, 0))
