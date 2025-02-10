@@ -15,8 +15,12 @@
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
-experiment=historical
-time_window=Jan1990-Dec1999
+# experiment=historical
+# time_window=Jan1990-Dec1999
+# time_window=Jan1850-Dec1859
+experiment=ssp370
+# time_window=Jan2030-Dec2039
+time_window=Jan2090-Dec2099
 
 for member in r{1..40}i1p1f1; do
     echo "Computing age for $experiment $member $time_window"

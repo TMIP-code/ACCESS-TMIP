@@ -23,28 +23,57 @@ using LinearSolve
 import Pardiso # import Pardiso instead of using (to avoid name clash?)
 using NonlinearSolve
 
+# The tracer equation is
+#
+#   ∂x(t)/∂t + T(t) x(t) = s(t) - Ω x(t)
+#
+# where Ω "relaxes" x to zero in the top layer.
+#
+# Applying Backward Euler time step gives
+#
+#   (I + δt M(t+δt)) x(t+δt) = x(t) + δt s(t+δt)
+#
+# where M(t) = T(t) + Ω.
+#
+# More succintly, if m represents the months (1..12)
+#
+#   (I + δt Mₘ₊₁) xₘ₊₁ = xₘ + δt sₘ₊₁          (1)
+#
+# Here δt = δt(m-1..m) is the time that separates
+# the "center time" of climatological months m-1 and m.
+# So the δt that multiplies Mₘ is δ(m..m+1).
 
 
 
-
-# Load matrix and grid metrics
+# script options
 @show model = "ACCESS-ESM1-5"
-@show experiment = ARGS[1]
-@show member = ARGS[2]
-@show time_window = ARGS[3]
+if isempty(ARGS)
+    member = "r20i1p1f1"
+    experiment = "historical"
+    time_window = "Jan1850-Dec1859"
+    # time_window = "Jan1990-Dec1999"
+    # experiment = "ssp370"
+    # time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
+else
+    experiment, member, time_window = ARGS
+end
+@show experiment
+@show member
+@show time_window
 
 lumpby = "month"
-steps = 1:12
-Nsteps = length(steps)
-δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
+months = 1:12
+Nmonths = length(months)
 
+# Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
 # Gadi directory for input files
 inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
 cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
-# Load areacello and volcello for grid geometry
-volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
-areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
 
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
@@ -66,9 +95,6 @@ gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices
 # Make indices
 indices = makeindices(v3D)
 (; N, wet3D) = indices
-# The ideal age equation is
-#   ∂ₜx + T x = 1 - Ω x
-# Applying Backward Euler time step gives
 
 
 issrf = let
@@ -80,16 +106,21 @@ end
 
 
 # Build matrices
-@time "building Ms" Ms = [
-    begin
-        inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
-        @info "Loading matrices + metrics as $inputfile"
-        T = load(inputfile)["T"]
-        T + Ω
-    end
-    for step in steps
-]
-
+@time "building Ms" Ms = map(months) do m
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    @info "Loading matrix from $inputfile"
+    T = load(inputfile, "T")
+    T + Ω
+end
+@time "building mean_days_in_months" mean_days_in_months = map(months) do m
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    load(inputfile, "mean_days_in_month")
+end
+# So the δt that multiplies Mₜ is δ(t-1..t)
+# which is 0.5 of the mean days in months t-1 and t
+δts = map(eachindex(months)) do m
+    ustrip(s, (mean_days_in_months[mod1(m - 1, 12)] + mean_days_in_months[m]) / 2 * d)
+end
 
 # Preconditioner
 
@@ -112,7 +143,7 @@ function LinearAlgebra.ldiv!(y::AbstractVector, Pl::CycloPreconditioner, x::Abst
     return y
 end
 M̄ = mean(Ms) #
-Δt = sum(δt for _ in steps)
+Δt = sum(δts)
 
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
 Plprob = init(Plprob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
@@ -124,17 +155,18 @@ precs = Returns((Pl, Pr))
 @show norm(M̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
-    prob = LinearProblem(A, δt * ones(N))
+    prob = LinearProblem(A, ones(N))
     return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
 end
 
 p = (;
-    δt,
-    stepprob = [initstepprob(I + δt * M) for M in Ms]
+    months,
+    δts,
+    stepprob = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)]
 )
-function mystep!(du, u, p, m)
+function stepforwardonemonth!(du, u, p, m)
     prob = p.stepprob[m]
-    prob.b = u .+ p.δt # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    prob.b = u .+ p.δts[m] # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
     du .= solve!(prob).u
     return du
 end
@@ -144,22 +176,22 @@ function jvpstep!(dv, v, p, m)
     dv .= solve!(prob).u
     return dv
 end
-function steponeyear!(du, u, p)
+function stepforwardoneyear!(du, u, p)
     du .= u
-    for m in eachindex(p.stepprob)
-        mystep!(du, du, p, m)
+    for m in p.months
+        stepforwardonemonth!(du, du, p, m)
     end
     return du
 end
 function jvponeyear!(dv, v, p)
     dv .= v
-    for m in eachindex(p.stepprob)
+    for m in p.months
         jvpstep!(dv, dv, p, m)
     end
     return dv
 end
 function G!(du, u, p)
-    steponeyear!(du, u, p)
+    stepforwardoneyear!(du, u, p)
     du .-= u
     return du
 end
@@ -182,25 +214,22 @@ du = deepcopy(u0)
 
 
 # Save cyclo-stationary age
-du = sol!.u
-cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
-    (
-        begin
-            (m > 1) && mystep!(du, du, p, m)
-            Γinyr = ustrip.(yr, du .* s)
-            Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
-            Γinyr4D = reshape(Γinyr3D, (size(wet3D)..., 1))
-            axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
-            Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
-                data = Γinyr4D,
-                dims = axlist,
-                metadata = Dict(
-                    "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
-                    "units" => "yr",
-                )
-            )
-        end
-        for m in eachindex(steps)
+du = sol!.u # The last month solved for is December (m = 12, implicit in forward time)
+data4D = reduce((a, b) -> cat(a, b, dims=4),
+    map(months) do m
+        stepforwardonemonth!(du, du, p, m)
+        Γinyr = ustrip.(yr, du .* s)
+        Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
+        reshape(Γinyr3D, (size(wet3D)..., 1))
+    end
+)
+axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(months)))[1])
+cube4D = rebuild(volcello_ds["volcello"];
+    data = data4D,
+    dims = axlist,
+    metadata = Dict(
+        "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
+        "units" => "yr",
     )
 )
 
