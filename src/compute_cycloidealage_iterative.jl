@@ -3,7 +3,7 @@
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-
+const nprocs = 24
 
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using OceanTransportMatrixBuilder
@@ -146,17 +146,17 @@ M̄ = mean(Ms) #
 Δt = sum(δts)
 
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs = 48), rtol = 1e-10).u
+@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
 @show norm(M̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
 end
 
 p = (;

@@ -2,11 +2,11 @@
 
 #PBS -P xv83
 #PBS -N cycloage
-#PBS -l ncpus=48
+#PBS -l ncpus=24
 #PBS -q hugemem
 #PBS -l mem=360GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=1:00:00
+#PBS -l walltime=2:00:00
 #PBS -l storage=scratch/gh0+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/
