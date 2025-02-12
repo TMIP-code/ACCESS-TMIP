@@ -73,8 +73,8 @@
 
 # # Matrix ages for varied diffusivities
 # @info "Loading age computed from matrices with different diffusivities"
-# κVdeeps = [1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4]
-# κHs = [50, 150, 500, 1500, 5000]
+# κVdeeps = [1e-7, 3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4]
+# κHs = [5, 15, 50, 150, 500, 1500, 5000]
 # κs = Iterators.product(κVdeeps, κHs)
 # model_data = map(κs) do κ
 #     κVdeep, κH = κ
@@ -95,45 +95,45 @@
 
 
 
-# # Taylor diagram function that returns all the required values
-# # notation taken from the original Taylor paper
-# # TODO check that the identity holds when using weights!
-# function taylordiagramvalues(f, r, args...)
+# Taylor diagram function that returns all the required values
+# notation taken from the original Taylor paper
+# TODO check that the identity holds when using weights!
+function taylordiagramvalues(f, r, args...)
 
-#     # STDs and means
-#     σf = std(f, args...; corrected = false)
-#     σr = std(r, args...; corrected = false)
-#     f̄ = mean(f, args...)
-#     r̄ = mean(r, args...)
+    # STDs and means
+    σf = std(f, args...; corrected = false)
+    σr = std(r, args...; corrected = false)
+    f̄ = mean(f, args...)
+    r̄ = mean(r, args...)
 
-#     # Correlation coefficient
-#     R = cor([f r], args...)[2]
+    # Correlation coefficient
+    R = cor([f r], args...)[2]
 
-#     # Root Mean Square Difference
-#     E = sqrt(mean((f .- r) .^ 2, args...))
+    # Root Mean Square Difference
+    E = sqrt(mean((f .- r) .^ 2, args...))
 
-#     # Bias
-#     Ē = f̄ - r̄
+    # Bias
+    Ē = f̄ - r̄
 
-#     # Centered Root Mean Square Difference
-#     E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
+    # Centered Root Mean Square Difference
+    E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
 
-#     # Full Mean Square Difference
-#     E² = E′^2 + Ē^2
+    # Full Mean Square Difference
+    E² = E′^2 + Ē^2
 
-#     # Normalized values (maybe that needs to be a kwarg)
-#     Ê′ = E′ / σr
-#     σ̂f = σf / σr
-#     σ̂r = 1.0
+    # Normalized values (maybe that needs to be a kwarg)
+    Ê′ = E′ / σr
+    σ̂f = σf / σr
+    σ̂r = 1.0
 
-#     return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r)
-# end
+    return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r)
+end
 
-# # Calculate the Taylor diagram values
-# w = weights(v3D[wet3D])
-# TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
-# σr = TDvals[1].σr
-# σmax = 2TDvals[1].σr
+# Calculate the Taylor diagram values
+w = weights(v3D[wet3D])
+TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
+σr = TDvals[1].σr
+σmax = 2TDvals[1].σr
 
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
@@ -182,7 +182,7 @@ R₀ = 1 # maximum correlation obtainable. Don't think I'll need this but may be
 S(σf, σr, R) = 4 * (1 + R) / ((σf/σr + σr/σf)^2 * (1 + R₀))
 # S(σf, σr, R) = 4 * (1 + R)^4 / ((σf/σr + σr/σf)^2 * (1 + R₀)^4)
 Sgrid = [S(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
-Slevels = 0:0.1:1
+Slevels = [0:0.1:0.9; 0.95; 0.99]
 contour!(ax, θgrid, rgrid, Sgrid;
     levels = Slevels,
     labels = true,

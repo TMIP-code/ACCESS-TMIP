@@ -57,19 +57,24 @@ if isempty(ARGS)
     # time_window = "Jan2090-Dec2099"
     κVdeep = 1e-5 # m^2/s
     κH = 500 # m^2/s
+    κVML = 0.1 # m^2/s
 else
-    experiment, member, time_window, κVdeep_str_in, κH_str_in = ARGS
-    κVdeep = parse(Float64, κVdeep_str_in)
-    κH = parse(Float64, κH_str_in)
+    # experiment, member, time_window, κVdeep_str_in, κH_str_in = ARGS
+    # κVdeep = parse(Float64, κVdeep_str_in)
+    # κH = parse(Float64, κH_str_in)
+    experiment, member, time_window, κVML_str_in = ARGS
+    κVML = parse(Float64, κVML_str_in)
 end
 @show experiment
 @show member
 @show time_window
-@show κVdeep
-@show κH
+# @show κVdeep
+# @show κH
+@show κVML
 
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+# κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+# κH_str = "kH" * format(κH, conversion="d")
+κVML_str = "kVML" * format(κVML, conversion="e")
 
 lumpby = "month"
 months = 1:12
@@ -129,7 +134,7 @@ end
 
 # Build matrices
 @time "building Ms" Ms = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     T + Ω
@@ -250,7 +255,7 @@ arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVdeep_str)_$(κH_str).nc")
+outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVML_str).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
