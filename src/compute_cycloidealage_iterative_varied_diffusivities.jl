@@ -129,7 +129,7 @@ end
 
 # Build matrices
 @time "building Ms" Ms = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     T + Ω
