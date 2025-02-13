@@ -78,9 +78,12 @@ indices = makeindices(gridmetrics.v3D)
 ρ = 1035.0    # kg/m^3
 # κVML = 0.1    # m^2/s
 # κVMLs = [0.001, 0.01, 0.1, 1] # m^2/s
-κVMLs = [1e-7, 1e-6, 1e-5, 1e-4] # m^2/s
-κVdeep = 1e-5 # m^2/s
-κH = 500.0    # m^2/s
+# κVMLs = [1e-7, 1e-6, 1e-5, 1e-4] # m^2/s
+# κVdeep = 1e-5 # m^2/s
+# κH = 500.0    # m^2/s
+κVML = 1e-7    # m^2/s
+κVdeep = 1e-7 # m^2/s
+κH = 5    # m^2/s
 # κVdeeps = [1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
 # κHs = [50, 150, 500, 1500, 5000] # m^2/s
 # κVdeeps = [1e-7, 3e-7] # m^2/s
@@ -125,22 +128,22 @@ for month in months
         facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     end
 
-    for κVML in κVMLs
 
-        (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
-        # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-        κVML_str = "kVML" * format(κVML, conversion="e")
-        outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVML_str)_$(month).jld2")
-        @info "Saving matrix as $outputfile"
-        save(outputfile,
-            Dict(
-                "T" => T,
-                "mean_days_in_month" => mean_days_in_month,
-            )
+    # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
+    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+    κH_str = "kH" * format(κH, conversion="d")
+    κVML_str = "kVML" * format(κVML, conversion="e")
+    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    @info "Saving matrix as $outputfile"
+    save(outputfile,
+        Dict(
+            "T" => T,
+            "mean_days_in_month" => mean_days_in_month,
         )
+    )
 
-    end
 
 end
 
