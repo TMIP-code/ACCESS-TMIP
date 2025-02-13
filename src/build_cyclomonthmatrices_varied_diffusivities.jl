@@ -77,7 +77,8 @@ indices = makeindices(gridmetrics.v3D)
 # Some parameter values
 ρ = 1035.0    # kg/m^3
 # κVML = 0.1    # m^2/s
-κVMLs = [0.001, 0.01, 0.1, 1] # m^2/s
+# κVMLs = [0.001, 0.01, 0.1, 1] # m^2/s
+κVMLs = [1e-7, 1e-6, 1e-5, 1e-4] # m^2/s
 κVdeep = 1e-5 # m^2/s
 κH = 500.0    # m^2/s
 # κVdeeps = [1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
