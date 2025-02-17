@@ -91,9 +91,9 @@ indices = makeindices(gridmetrics.v3D)
 # κVdeeps = [1e-7, 3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
 # κHs = [5, 15] # m^2/s
 # After internal deliberation: this is the range I think I need:
-kVdeeps = [1e-9, 1e-8, 1e-7, 1e-6, 1e-5] # m^2/s
-kVMLs = [0, 1e-7, 1e-5, 1e-3, 1e-1] # m^2/s
-kHs = [0, 1, 10, 100, 1000] # m^2/s
+κVdeeps = [1e-9, 1e-8, 1e-7, 1e-6, 1e-5] # m^2/s
+κVMLs = [0, 1e-7, 1e-5, 1e-3, 1e-1] # m^2/s
+κHs = [0, 1, 10, 100, 1000] # m^2/s
 
 
 for month in months
