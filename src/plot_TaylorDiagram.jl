@@ -178,7 +178,7 @@ contour!(ax, θgrid, rgrid, E′grid;
 )
 
 # skill score isolines
-R₀ = 1 # maximum correlation obtainable. Don't think I'll need this but may be useful
+R₀ = 0.9940801590730742 # maximum correlation obtainable from ensemble
 S(σf, σr, R) = 4 * (1 + R) / ((σf/σr + σr/σf)^2 * (1 + R₀))
 # S(σf, σr, R) = 4 * (1 + R)^4 / ((σf/σr + σr/σf)^2 * (1 + R₀)^4)
 Sgrid = [S(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
@@ -196,33 +196,34 @@ Rs = [vals.R for vals in TDvals]
 # Transform data to Cartesian space?
 "A transformation function that goes from correlation and standard deviation to the Taylor plot's Cartesian space."
 xy_from_R_and_σ(R, σ) = Point2(σ * R, sqrt(σ^2 - (σ * R)^2))
+Ps = xy_from_R_and_σ.(Rs, σfs)
 x, y = collect.(zip(xy_from_R_and_σ.(Rs, σfs)...) |> collect)
 X = reshape(x, length(κVdeeps), length(κHs)) # <- not sure that was necessary
 Y = reshape(y, length(κVdeeps), length(κHs))
 # Above I used R = 1 and σr for the reference point
-
 # Plot all matrix ages
 Xcol = reduce(vcat, [col; NaN] for col in eachcol(X))
 Ycol = reduce(vcat, [col; NaN] for col in eachcol(Y))
 Xrow = reduce(vcat, [row; NaN] for row in eachrow(X))
 Yrow = reduce(vcat, [row; NaN] for row in eachrow(Y))
 transformation = Transformation(ax.scene.transformation; transform_func = identity)
-# lines!(ax, [Xcol; Xrow], [Ycol; Yrow];
-#     color = :red,
-#     linewidth = 1,
-#     transformation,
-# )
-# text!(ax, x[1], y[1]; text = "min", transformation, align = (:center, :center), fontsize = 6)
-# text!(ax, x[length(κVdeeps)], y[length(κVdeeps)]; text = "max Vdeep", transformation, align = (:center, :center), fontsize = 6)
-# text!(ax, x[end], y[end]; text = "max", transformation, align = (:center, :center), fontsize = 6)
-# text!(ax, x[end - length(κHs) + 1], y[end - length(κHs) + 1]; text = "max H", transformation, align = (:center, :center), fontsize = 6)
-scatter!(ax, x[:], y[:];
-    color = [TDval.Ē for TDval in TDvals][:],
-    colorrange = (-200, 200),
-    colormap = :berlin,
-    marker = :cross,
-    transformation = Transformation(ax.scene.transformation; transform_func = identity)
+scatterlines!(ax, [Ps[1,:]; Ps[:,end]; Ps[end,end:-1:1]; Ps[end:-1:1,1]];
+    color = :blue,
+    markersize = 3,
+    linewidth = 1,
+    transformation,
 )
+text!(ax, Ps[1,1]; text = "min", transformation, align = (:center, :center), fontsize = 6, offset = (0, 5))
+text!(ax, Ps[end,1]; text = "max Vdeep", transformation, align = (:center, :center), fontsize = 6, offset = (0, 5))
+text!(ax, Ps[end,end]; text = "max", transformation, align = (:center, :center), fontsize = 6, offset = (0, 5))
+text!(ax, Ps[1,end]; text = "max H", transformation, align = (:center, :center), fontsize = 6, offset = (0, 5))
+# scatter!(ax, x[:], y[:];
+#     color = [TDval.Ē for TDval in TDvals][:],
+#     colorrange = (-200, 200),
+#     colormap = :berlin,
+#     marker = :cross,
+#     transformation = Transformation(ax.scene.transformation; transform_func = identity)
+# )
 
 # Plot reference (AA age)
 scatter!(ax, Point2(xy_from_R_and_σ(1, σr));

@@ -98,30 +98,30 @@
 # obs_ds = open_dataset(AAfile)
 # obs_data = obs_ds.age_global[Time=1].data[wet3D]
 
-# iters = 0:35
-# obs_data2 = map(iters) do iter
-#     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
-#     obs_ds = open_dataset(AAfile)
-#     obs_data = obs_ds.age_global[Time=1].data[wet3D]
-# end
+# # iters = 0:35
+# # obs_data2 = map(iters) do iter
+# #     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
+# #     obs_ds = open_dataset(AAfile)
+# #     obs_data = obs_ds.age_global[Time=1].data[wet3D]
+# # end
 
 
-# # Matrix steady ages for varied members
-# @info "Loading steady age computed from matrices of different members"
-# model_data2 = map(members) do member
-#     f = "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-#     age_ds = open_dataset(joinpath(inputdir(member), f))
-#     age3D = age_ds.age.data
-#     age3D[wet3D]
-# end
-# # Mean-flow steady ages for varied members
-# @info "Loading steady age computed from mean-flow matrices of different members"
-# model_data3 = map(members) do member
-#     f = "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.nc"
-#     age_ds = open_dataset(joinpath(inputdir(member), f))
-#     age3D = age_ds.age.data
-#     age3D[wet3D]
-# end
+# # # Matrix steady ages for varied members
+# # @info "Loading steady age computed from matrices of different members"
+# # model_data2 = map(members) do member
+# #     f = "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+# #     age_ds = open_dataset(joinpath(inputdir(member), f))
+# #     age3D = age_ds.age.data
+# #     age3D[wet3D]
+# # end
+# # # Mean-flow steady ages for varied members
+# # @info "Loading steady age computed from mean-flow matrices of different members"
+# # model_data3 = map(members) do member
+# #     f = "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.nc"
+# #     age_ds = open_dataset(joinpath(inputdir(member), f))
+# #     age3D = age_ds.age.data
+# #     age3D[wet3D]
+# # end
 
 
 # # Taylor diagram function that returns all the required values
@@ -160,14 +160,12 @@
 
 # # Calculate the Taylor diagram values
 # w = weights(v3D[wet3D])
-# TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
-# σr = TDvals[1].σr
-# σmax = 2TDvals[1].σr
-# TDvals2 = [taylordiagramvalues(data, obs_data, w) for data in model_data2]
-# TDvals3 = [taylordiagramvalues(data, obs_data, w) for data in model_data3]
-# TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
+# # TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
+# # Note this below is a bit slow!
+# TDvals = [taylordiagramvalues(data1, data2, w) for (data1, data2) in Iterators.product(model_data, model_data)]
 
-
+# σ̂r = 1
+# σ̂max = 1.5
 
 
 
@@ -179,7 +177,6 @@ fig = Figure(size=(400, 400))
 κVdeep_str = rich("κVdeep = ", format(κVdeep, conversion="e"), " m", superscript("−2"), " s")
 κH_str = rich("κH = ", format(κH, conversion="d"), " m", superscript("−2"), " s")
 κVML_str = rich("κVML = ", format(κVML, conversion="e"), " m", superscript("−2"), " s")
-title = rich(κH_str, ", ", κVdeep_str, ", ", κVML_str)
 
 # Corrticks for Taylor diagram
 # corrticks = [-1; -0.99; -0.95; -0.9:0.1:-0.7; -0.6:0.2:0.6; 0.7:0.1:0.9; 0.95; 0.99; 1.0]
@@ -189,30 +186,30 @@ function myformat(corrtick)
     str = string(corrtick)
     return replace(str, "-" => "−")
 end
-rtickformat(rs) = map(r -> "$(format(round(10r/σr)/10, stripzeros = true))σᵣ", rs)
+rtickformat(rs) = map(r -> "$(format(round(10r/σ̂r)/10, stripzeros = true))σ̂ᵣ", rs)
 ax = PolarAxis(fig[1, 1];
     thetalimits = (0, π/2), # first quadrant only
     thetagridcolor = (:black, 0.5),
     thetagridstyle = :dot,
     thetaticks = (acos.(corrticks), myformat.(corrticks)),
     # thetaminorticks,
-    rlimits = (0, σmax),
+    rlimits = (0, σ̂max),
     rgridcolor = cgrad(:Archambault, categorical = true)[1],
     rticklabelcolor = cgrad(:Archambault, categorical = true)[1],
     rgridstyle = :dash,
-    rticks = (0:σr/2:σmax),
+    rticks = (0:σ̂r:σ̂max),
     rtickformat,
 )
 
 # Create isolines of root centered mean squared difference (E′) and labels
-levels = (0.5:0.5:4) .* σr
-rgrid = (0:0.01:1) .* σmax
+levels = (0.5:0.5:4) .* σ̂r
+rgrid = (0:0.01:1) .* σ̂max
 θgrid = (0:0.01:π)
-E′fun(σf, σr, R) = sqrt(σf^2 + σr^2 - 2 * σf * σr * R)
-# E′grid = [sqrt(r^2 + σr^2 - 2 * σr * r * cos(θ)) for θ in θgrid, r in rgrid]
-E′grid = [E′fun(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
-# labelformatter(E′s) = map(E′ -> rich("$(E′/σr)", rich(" σ", subscript("ref"))), E′s)
-labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σr)/10, stripzeros = true))σᵣ", E′s)
+E′fun(σ̂f, σ̂r, R) = sqrt(σ̂f^2 + σ̂r^2 - 2 * σ̂f * σ̂r * R)
+# E′grid = [sqrt(r^2 + σ̂r^2 - 2 * σ̂r * r * cos(θ)) for θ in θgrid, r in rgrid]
+E′grid = [E′fun(r, σ̂r, cos(θ)) for θ in θgrid, r in rgrid]
+# labelformatter(E′s) = map(E′ -> rich("$(E′/σ̂r)", rich(" σ", subscript("ref"))), E′s)
+labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σ̂r)/10, stripzeros = true))σᵣ", E′s)
 contour!(ax, θgrid, rgrid, E′grid;
     levels,
     labels = true,
@@ -220,54 +217,72 @@ contour!(ax, θgrid, rgrid, E′grid;
     color = cgrad(:Archambault, categorical = true)[3]
 )
 
-# # skill score isolines
-# R₀ = 1 # maximum correlation obtainable. Don't think I'll need this but may be useful
-# S(σf, σr, R) = 4 * (1 + R) / ((σf/σr + σr/σf)^2 * (1 + R₀))
-# # S(σf, σr, R) = 4 * (1 + R)^4 / ((σf/σr + σr/σf)^2 * (1 + R₀)^4)
-# Sgrid = [S(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
-# Slevels = [0:0.1:0.9; 0.95; 0.99]
-# contour!(ax, θgrid, rgrid, Sgrid;
-#     levels = Slevels,
-#     labels = true,
-#     color = cgrad(:Archambault, categorical = true)[4]
-# )
+
+Rs_nans = copy(Rs)
+for i in 1:size(Rs, 1)
+    Rs_nans[i, i] = NaN
+end
+# maximum correlation obtainable
+@show R₀ = nanmean(Rs_nans)
+# skill score isolines
+S(σ̂f, σ̂r, R) = 4 * (1 + R) / ((σ̂f/σ̂r + σ̂r/σ̂f)^2 * (1 + R₀))
+# S(σ̂f, σ̂r, R) = 4 * (1 + R)^4 / ((σ̂f/σ̂r + σ̂r/σ̂f)^2 * (1 + R₀)^4)
+Sgrid = [S(r, σ̂r, cos(θ)) for θ in θgrid, r in rgrid]
+Slevels = [0:0.1:0.9; 0.95; 0.99]
+contour!(ax, θgrid, rgrid, Sgrid;
+    levels = Slevels,
+    labels = true,
+    color = cgrad(:Archambault, categorical = true)[4]
+)
 
 # Now, plot the actual data
-σfs = [vals.σf for vals in TDvals]
+σ̂fs = [vals.σ̂f for vals in TDvals]
 Rs = [vals.R for vals in TDvals]
-σfs2 = [vals.σf for vals in TDvals2]
-Rs2 = [vals.R for vals in TDvals2]
-σfs3 = [vals.σf for vals in TDvals3]
-Rs3 = [vals.R for vals in TDvals3]
+# σ̂fs2 = [vals.σ̂f for vals in TDvals2]
+# Rs2 = [vals.R for vals in TDvals2]
+# σ̂fs3 = [vals.σ̂f for vals in TDvals3]
+# Rs3 = [vals.R for vals in TDvals3]
 
 # Transform data to Cartesian space?
 "A transformation function that goes from correlation and standard deviation to the Taylor plot's Cartesian space."
-xy_from_R_and_σ(R, σ) = Point2(σ * R, sqrt(σ^2 - (σ * R)^2))
+xy_from_R_and_σ̂(R, σ̂) = Point2(σ̂ * R, sqrt(σ̂^2 - (σ̂ * R)^2))
 
 # Plot all matrix ages
 transformation = Transformation(ax.scene.transformation; transform_func = identity)
-x, y = collect.(zip(xy_from_R_and_σ.(Rs, σfs)...) |> collect)
-scatter!(ax, x, y; color = :red, markersize = 3, transformation)
+x, y = collect.(zip(xy_from_R_and_σ̂.(Rs, σ̂fs)...) |> collect)
+scatter!(ax, x, y;
+    color = :red,
+    markersize = 3,
+    transformation,
+)
 offset = 100
 txtline = [offset, offset/5]
 fontsize = 10
 lines!(ax, mean(x) .- txtline, mean(y) .+ txtline / 2; linewidth = 1, color = :black, transformation)
 text!(ax, mean(x) - offset, mean(y) + offset / 2; text = "cyclostationary\nage", transformation, align = (:right, :bottom), offset = (0, 0), fontsize)
 
-offset = 100
-txtline = [offset, offset/5]
-x2, y2 = collect.(zip(xy_from_R_and_σ.(Rs2, σfs2)...) |> collect)
-scatter!(ax, x2, y2; color = :blue, markersize = 3, transformation)
-lines!(ax, mean(x2) .+ txtline / 2, mean(y2) .+ txtline; linewidth = 1, color = :black, transformation)
-text!(ax, mean(x2) + offset / 2, mean(y2) + offset; text = "steady age\n(mean matrices)", transformation, align = (:center, :bottom), offset = (0, 0), fontsize)
+# offset = 100
+# txtline = [offset, offset/5]
+# x2, y2 = collect.(zip(xy_from_R_and_σ̂.(Rs2, σ̂fs2)...) |> collect)
+# scatter!(ax, x2, y2;
+#     color = :blue,
+#     markersize = 3,
+#     transformation,
+# )
+# lines!(ax, mean(x2) .+ txtline / 2, mean(y2) .+ txtline; linewidth = 1, color = :black, transformation)
+# text!(ax, mean(x2) + offset / 2, mean(y2) + offset; text = "steady age\n(mean matrices)", transformation, align = (:center, :bottom), offset = (0, 0), fontsize)
 
 
-offset = 50
-txtline = [offset, offset/2.5]
-x3, y3 = collect.(zip(xy_from_R_and_σ.(Rs3, σfs3)...) |> collect)
-scatter!(ax, x3, y3; color = :purple, markersize = 3, transformation)
-lines!(ax, mean(x3) .+ txtline, mean(y3) .- txtline; linewidth = 1, color = :black, transformation)
-text!(ax, mean(x3) + offset, mean(y3) - offset; text = "steady age\n(mean flow)", transformation, align = (:left, :top), offset = (0, 0), fontsize)
+# offset = 50
+# txtline = [offset, offset/2.5]
+# x3, y3 = collect.(zip(xy_from_R_and_σ̂.(Rs3, σ̂fs3)...) |> collect)
+# scatter!(ax, x3, y3;
+#     color = :purple,
+#     markersize = 3,
+#     transformation,
+# )
+# lines!(ax, mean(x3) .+ txtline, mean(y3) .- txtline; linewidth = 1, color = :black, transformation)
+# text!(ax, mean(x3) + offset, mean(y3) - offset; text = "steady age\n(mean flow)", transformation, align = (:left, :top), offset = (0, 0), fontsize)
 # text!(ax, x[end], y[end]; text = "max", transformation, align = (:center, :center), fontsize)
 # scatter!(ax, x, y;
 #     color = :red,
@@ -275,34 +290,23 @@ text!(ax, mean(x3) + offset, mean(y3) - offset; text = "steady age\n(mean flow)"
 #     transformation = Transformation(ax.scene.transformation; transform_func = identity)
 # )
 
-# single scatter to identify r20i1p1f1 member
-scatter!(ax, x2[20], y2[20]; color = :black, markersize = 5, marker=:cross, transformation)
-scatter!(ax, x[20], y[20]; color = :black, markersize = 5, marker=:cross, transformation)
-scatter!(ax, x3[20], y3[20]; color = :black, markersize = 5, marker=:cross, transformation)
-
-# Add lines for AA Interation
-σfsobs = [vals.σf for vals in TDvalsobs]
-Rsobs = [vals.R for vals in TDvalsobs]
-xobs, yobs = collect.(zip(xy_from_R_and_σ.(Rsobs, σfsobs)...) |> collect)
-scatterlines!(ax, xobs, yobs; color = :black, linewidth = 1, markersize = 3, transformation)
-text!(ax, xobs[1], yobs[1]; text = "AA sequence", transformation, align = (:left, :bottom), offset = (0, 3), fontsize)
-lines!(ax, xobs[end] .+ txtline, yobs[end] .+ txtline; linewidth = 1, color = :black, transformation)
-text!(ax, xobs[end] + offset, yobs[end] + offset; text = "AA age", transformation, align = (:left, :bottom), offset = (0, 0), fontsize)
 
 # Add text for kappas
-σκ = 1.5σr
+σ̂κ = 1.5σ̂r
 Rκ = 0.4
-xκ, yκ = xy_from_R_and_σ(Rκ, σκ)
-text!(ax, xκ - 0.2σr, yκ - 0.2σr; text = κH_str, transformation, align = (:left, :bottom), fontsize)
-text!(ax, xκ - 0.2σr, yκ - 0.2σr - offset; text = κVdeep_str, transformation, align = (:left, :bottom), fontsize)
-text!(ax, xκ - 0.2σr, yκ - 0.2σr - 2offset; text = κVML_str, transformation, align = (:left, :bottom), fontsize)
+xκ, yκ = xy_from_R_and_σ̂(Rκ, σ̂κ)
+text!(ax, xκ - 0.2σ̂r, yκ - 0.2σ̂r; text = κH_str, transformation, align = (:left, :bottom), fontsize)
+text!(ax, xκ - 0.2σ̂r, yκ - 0.2σ̂r - offset; text = κVdeep_str, transformation, align = (:left, :bottom), fontsize)
+text!(ax, xκ - 0.2σ̂r, yκ - 0.2σ̂r - 2offset; text = κVML_str, transformation, align = (:left, :bottom), fontsize)
 
 
 # Plot reference (AA age)
-scatter!(ax, Point2(xy_from_R_and_σ(1, σr)); color = :black, transformation)
+scatter!(ax, Point2(xy_from_R_and_σ̂(1, σ̂r));
+    color = :black,
+    transformation,
+)
 
-outputfile = joinpath(outputdir, "Taylor_diagram_members.png")
-outputfile = joinpath(outputdir, "Taylor_diagram_members.pdf")
+outputfile = joinpath(outputdir, "Taylor_diagram_pairs.png")
 @info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
 
