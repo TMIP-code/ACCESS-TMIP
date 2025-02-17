@@ -21,8 +21,8 @@ time_window=Jan1850-Dec1859
 # time_window=Jan2030-Dec2039
 # time_window=Jan2090-Dec2099
 
-for member in r{1..40}i1p1f1; do
-# for member in r{20..20}i1p1f1; do
+# for member in r{1..40}i1p1f1; do
+for member in r{20..20}i1p1f1; do
     echo "building $experiment $member $time_window"
     julia src/build_cyclomonthmatrices_varied_diffusivities.jl $experiment $member $time_window &> output/build_cyclomonthmatrices_varied_diffusivities.$experiment.$member.$time_window.$PBS_JOBID.out
 done

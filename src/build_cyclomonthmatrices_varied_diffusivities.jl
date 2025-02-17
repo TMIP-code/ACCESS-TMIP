@@ -81,15 +81,19 @@ indices = makeindices(gridmetrics.v3D)
 # κVMLs = [1e-7, 1e-6, 1e-5, 1e-4] # m^2/s
 # κVdeep = 1e-5 # m^2/s
 # κH = 500.0    # m^2/s
-κVML = 1e-7    # m^2/s
-κVdeep = 1e-7 # m^2/s
-κH = 5    # m^2/s
+# κVML = 1e-7    # m^2/s
+# κVdeep = 1e-7 # m^2/s
+# κH = 5    # m^2/s
 # κVdeeps = [1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
 # κHs = [50, 150, 500, 1500, 5000] # m^2/s
 # κVdeeps = [1e-7, 3e-7] # m^2/s
 # κHs = [50, 150, 500, 1500, 5000] # m^2/s
 # κVdeeps = [1e-7, 3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
 # κHs = [5, 15] # m^2/s
+# After internal deliberation: this is the range I think I need:
+kVdeeps = [1e-9, 1e-8, 1e-7, 1e-6, 1e-5] # m^2/s
+kVMLs = [0, 1e-7, 1e-5, 1e-3, 1e-1] # m^2/s
+kHs = [0, 1, 10, 100, 1000] # m^2/s
 
 
 for month in months
@@ -128,21 +132,24 @@ for month in months
         facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     end
 
+    for κVdeep in κVdeeps, κVML in κVMLs, κH in κHs
 
-    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+        (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
-    # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-    κH_str = "kH" * format(κH, conversion="d")
-    κVML_str = "kVML" * format(κVML, conversion="e")
-    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
-    @info "Saving matrix as $outputfile"
-    save(outputfile,
-        Dict(
-            "T" => T,
-            "mean_days_in_month" => mean_days_in_month,
+        # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
+        κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+        κVML_str = "kVML" * format(κVML, conversion="e")
+        κH_str = "kH" * format(κH, conversion="d")
+        outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+        @info "Saving matrix as $outputfile"
+        save(outputfile,
+            Dict(
+                "T" => T,
+                "mean_days_in_month" => mean_days_in_month,
+            )
         )
-    )
+
+    end
 
 
 end
