@@ -122,7 +122,7 @@ end
 
 
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κVML_str)_$(κH_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies Mₜ is δ(t-1..t)
@@ -136,7 +136,7 @@ end
 
 # Build matrices
 @time "building Ms" Ms = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κVML_str)_$(κH_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     T + Ω
@@ -257,7 +257,7 @@ arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVdeep_str)_$(κVML_str)_$(κH_str).nc")
+outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
