@@ -169,104 +169,114 @@
 # TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
 # TDvals2 = taylordiagramvalues(model_data2, obs_data, w)
 # # TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
-σr = TDvals[1].σr
-σmax = 1.25TDvals[1].σr
-σmax2 = (1.25 + 0.1) * TDvals[1].σr
+# σr = TDvals[1].σr
+# σmax = 1.25TDvals[1].σr
+# σmax2 = (1.25 + 0.1) * TDvals[1].σr
 
-σfs = [vals.σf for vals in TDvals]
-Rs = [vals.R for vals in TDvals]
-E′s = [vals.E′ for vals in TDvals]
-Ēs = [vals.Ē for vals in TDvals]
-Es = [vals.E for vals in TDvals]
+# σfs = [vals.σf for vals in TDvals]
+# Rs = [vals.R for vals in TDvals]
+# E′s = [vals.E′ for vals in TDvals]
+# Ēs = [vals.Ē for vals in TDvals]
+# Es = [vals.E for vals in TDvals]
 
-# taken from MakieExtra (not using Pkg because it has outdated Makie dep)
-using Makie.IntervalSets
-Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
-corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
-_which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
-fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
-Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
-intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
-function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
-    pscene = parent(parent(Makie.parent_scene(ax1)))
-    @assert parent(parent(Makie.parent_scene(ax2))) === pscene
-    obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
-        lims = [ax1.finallimits[], ax2.finallimits[]]
-        axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
-              lims[2] ⊆ lims[1] ? (ax2, ax1) :
-              nothing
-        slines = if isnothing(axs)
-            nothing
-        else
-            r1 = fullproject(axs[1], axs[1].finallimits[])
-            r2 = fullproject(axs[2], axs[1].finallimits[])
-            # cornsets = [
-            #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
-            #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
-            #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
-            #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
-            # ]
-            # argmin(cornsets) do ((a1, a2), (b1, b2))
-            #     min(norm(a1-a2), norm(b1-b2))
-            # end
-            # BP: below is my zoom lines that does not work in general
-            # cornsets2 = [
-            #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
-            #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
-            # ]
-            # argmin(cornsets2) do ((a1, a2), (b1, b2))
-            #     max(norm(a1-a2), norm(b1-b2))
-            # end
-            [
-                corner(r1, (1,1)), corner(r2, (1,1)),
-                corner(r1, (-1,-1)), corner(r2, (-1,-1)),
-                corner(r1, (1,-1)), corner(r2, (1,-1)),
-                corner(r1, (-1,1)), corner(r2, (-1,1)),
-            ]
-            # BP: below is my zoom lines that does not work in general
-            # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
-            # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
-        end
-        (
-            rect1=ax2.finallimits[],
-            rect2=ax1.finallimits[],
-            # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
-            slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
-        )
-    end
+# # taken from MakieExtra (not using Pkg because it has outdated Makie dep)
+# using Makie.IntervalSets
+# Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
+# corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
+# _which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
+# fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
+# Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
+# intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
+# function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
+#     pscene = parent(parent(Makie.parent_scene(ax1)))
+#     @assert parent(parent(Makie.parent_scene(ax2))) === pscene
+#     obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
+#         lims = [ax1.finallimits[], ax2.finallimits[]]
+#         axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
+#               lims[2] ⊆ lims[1] ? (ax2, ax1) :
+#               nothing
+#         slines = if isnothing(axs)
+#             nothing
+#         else
+#             r1 = fullproject(axs[1], axs[1].finallimits[])
+#             r2 = fullproject(axs[2], axs[1].finallimits[])
+#             # cornsets = [
+#             #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
+#             #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
+#             #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
+#             #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
+#             # ]
+#             # argmin(cornsets) do ((a1, a2), (b1, b2))
+#             #     min(norm(a1-a2), norm(b1-b2))
+#             # end
+#             # BP: below is my zoom lines that does not work in general
+#             # cornsets2 = [
+#             #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
+#             #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
+#             # ]
+#             # argmin(cornsets2) do ((a1, a2), (b1, b2))
+#             #     max(norm(a1-a2), norm(b1-b2))
+#             # end
+#             [
+#                 corner(r1, (1,1)), corner(r2, (1,1)),
+#                 corner(r1, (-1,-1)), corner(r2, (-1,-1)),
+#                 corner(r1, (1,-1)), corner(r2, (1,-1)),
+#                 corner(r1, (-1,1)), corner(r2, (-1,1)),
+#             ]
+#             # BP: below is my zoom lines that does not work in general
+#             # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
+#             # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
+#         end
+#         (
+#             rect1=ax2.finallimits[],
+#             rect2=ax1.finallimits[],
+#             # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
+#             slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
+#         )
+#     end
 
-    rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
-    p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
-    p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
-    translate!(p1, 0, 0, 200)
-    translate!(p2, 0, 0, 200)
-    plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
-    translate!(plt, 0, 0, 200)
-    return nothing
-end
+#     rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
+#     p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
+#     p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
+#     translate!(p1, 0, 0, 200)
+#     translate!(p2, 0, 0, 200)
+#     plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
+#     translate!(plt, 0, 0, 200)
+#     return nothing
+# end
 
-# Functions to transform data to and from Cartesian
-#   x = r cos(θ)
-#   y = r sin(θ)
-#   r = √(x² + y²)
-#   θ = acos(x / r) = asin(x / r)
-# To get correlation (R) and STD (σ), we have
-#   σ = r
-#   R = cos(θ)
-# so
-#   σ = √(x² + y²)
-#   R = cos(θ) = x / √(x² + y²) = x / σ
-# and
-#   x = R * σ
-#   y = √(σ² - x²)
-function xy_from_Rσ(R, σ)
-    x = R * σ
-    Point2(x, sqrt(σ^2 - x^2))
-end
-function Rσ_from_xy(x, y)
-    σ = √(x^2 + y^2)
-    Point2(x / σ, σ)
-end
+# # Functions to transform data to and from Cartesian
+# #   x = r cos(θ)
+# #   y = r sin(θ)
+# #   r = √(x² + y²)
+# #   θ = acos(x / r) = asin(x / r)
+# # To get correlation (R) and STD (σ), we have
+# #   σ = r
+# #   R = cos(θ)
+# # so
+# #   σ = √(x² + y²)
+# #   R = cos(θ) = x / √(x² + y²) = x / σ
+# # and
+# #   x = R * σ
+# #   y = √(σ² - x²)
+# function xy_from_Rσ(R, σ)
+#     x = R * σ
+#     Point2(x, sqrt(σ^2 - x^2))
+# end
+# function Rσ_from_xy(x, y)
+#     σ = √(x^2 + y^2)
+#     Point2(x / σ, σ)
+# end
+
+
+
+
+
+
+
+
+
+
 
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
@@ -391,7 +401,8 @@ Slevels2 = [0.7:0.05:0.85; 0.9:0.01:0.99]
 colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
 ctrf = contourf!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
     levels = Slevels2,
-    colormap = :nuuk,
+    # colormap = :nuuk,
+    colormap = cgrad(:Anemone, rev = true),
     # colormap = cgrad(cgrad(:watermelon, categorical = true)[5:7], rev = true),
     extendhigh = :auto,
     extendlow = :auto,
@@ -446,7 +457,7 @@ markersize = 5
 scatter!(axa, Ps[ikeep];
     color = Ēs,
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
     # marker = :cross,
     markersize,
     strokewidth = 2,
@@ -455,9 +466,9 @@ scatter!(axa, Ps[ikeep];
 sc = scatter!(axa, Ps[ikeep];
     color = Ēs,
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
-    highclip = cgrad(:tableau_red_blue, rev = true)[end],
-    lowclip =  cgrad(:tableau_red_blue, rev = true)[1],
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
+    highclip = cgrad(:tableau_red_blue_white, rev = true)[end],
+    lowclip =  cgrad(:tableau_red_blue_white, rev = true)[1],
     # marker = :cross,
     markersize,
 )
@@ -496,7 +507,7 @@ xopt, yopt = xy_from_Rσ(Rs[iopt], σfs[iopt])
 scatter!(axa, [xopt], [yopt];
     color = Ēs[iopt],
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
     marker = :star5,
     markersize = 2markersize,
     strokewidth = 2,
@@ -508,7 +519,7 @@ text!(axa, xopt + 2offset, yopt; text = "preferred", align = (:left, :center), o
 scatter!(axa, [xopt], [yopt];
     color = Ēs[iopt],
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
     marker = :star5,
     markersize = 2markersize,
 )
@@ -558,14 +569,18 @@ axb = Axis(fig[1, 2];
 )
 
 # Plot polar axis grid
-for θ in thetaticks[1]
-    ablines!(axb, 0, sin(θ); color = (:black, 0.2), linewidth = 1)
+for (θ, text) in zip(thetaticks...)
+    local offset, rtext = 0.02, 0.92
+    lines!(axb, σr * cos(θ) * [0, rtext - offset], σr * sin(θ) * [0, rtext - offset]; color = (:black, 0.2), linewidth = 1)
+    lines!(axb, σr * cos(θ) * [rtext + offset, 1], σr * sin(θ) * [rtext + offset, 1]; color = (:black, 0.2), linewidth = 1)
+    text!(axb, σr * cos(θ) * rtext, σr * sin(θ) * rtext; text = "correlation = $text", color = (:black, 0.2), align = (:center, :center), rotation = θ, fontsize)
 end
 # θs = acos(Rlimits[2]):0.01:acos(Rlimits[1])
 θs = 0:0.01:π/2
 for r in rticks
     lines!(axb, r * cos.(θs), r * sin.(θs); color = (:black, 0.2), linewidth = 1)
 end
+
 
 
 xgrid = range(xlow, xhigh, length = 200)
@@ -593,7 +608,8 @@ contour!(axb, xgrid, ygrid, Sgridxy;
 )
 ctrf = contourf!(axb, xgrid, ygrid, Sgridxy;
     levels = Slevels2,
-    colormap = :nuuk,
+    # colormap = :nuuk,
+    colormap = cgrad(:Anemone, rev = true),
     extendhigh = :auto,
     extendlow = :auto,
     colorscale,
@@ -604,7 +620,7 @@ markersize = 10
 scatter!(axb, Ps[ikeep];
     color = Ēs,
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
     # marker = :cross,
     markersize,
     strokewidth = 2,
@@ -613,21 +629,22 @@ scatter!(axb, Ps[ikeep];
 sc = scatter!(axb, Ps[ikeep];
     color = Ēs,
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
-    highclip = cgrad(:tableau_red_blue, rev = true)[end],
-    lowclip =  cgrad(:tableau_red_blue, rev = true)[1],
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
+    highclip = cgrad(:tableau_red_blue_white, rev = true)[end],
+    lowclip =  cgrad(:tableau_red_blue_white, rev = true)[1],
     # marker = :cross,
     markersize,
 )
 
 scatter!(axb, [xopt], [yopt];
-    color = Ēs[iopt],
-    colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    # color = Ēs[iopt],
+    color = :black,
+    # colorrange = (-200, 200),
+    # colormap = cgrad(:tableau_red_blue_white, rev = true),
     marker = :star5,
-    markersize = 2markersize,
-    strokewidth = 2,
-    strokecolor = :black,
+    markersize = 2.5markersize,
+    # strokewidth = 4,
+    # strokecolor = :black,
 )
 offset = 10
 txtline = [offset, 0]
@@ -636,9 +653,9 @@ text!(axb, xopt + offset, yopt; text = "preferred", align = (:left, :center), of
 sc2 = scatter!(axb, [xopt], [yopt];
     color = Ēs[iopt],
     colorrange = (-200, 200),
-    colormap = cgrad(:tableau_red_blue, rev = true),
+    colormap = cgrad(:tableau_red_blue_white, rev = true),
     marker = :star5,
-    markersize = 2markersize,
+    markersize = 1.8markersize,
 )
 translate!(sc2, 0, 0, 100)
 
@@ -741,7 +758,7 @@ save(outputfile, fig)
 #     ax = Axis(fig[irow, 4]; options...)
 #     kwargs = (
 #         colorrange = (-200, 200),
-#         colormap = cgrad(:tableau_red_blue, rev = true),
+#         colormap = cgrad(:tableau_red_blue_white, rev = true),
 #     )
 #     hm4 = heatmap!(ax, Ēs[irow, :, :]; kwargs...)
 #     hideydecorations!(ax)
@@ -751,7 +768,7 @@ save(outputfile, fig)
 #     ax = Axis(fig[irow, 5]; options...)
 #     kwargs = (
 #         colorrange = (0.9, 0.97),
-#         colormap = :cividis,
+#         colormap = cgrad(:Anemone, rev = true),
 #         colorscale,
 #     )
 #     hm5 = heatmap!(ax, S.(σfs, σr, Rs)[irow, :, :]; kwargs...)
