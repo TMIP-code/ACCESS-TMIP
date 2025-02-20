@@ -25,6 +25,6 @@ time_window=Jan2030-Dec2039
 member=member_placeholder
 
 echo "Computing age for $experiment $member $time_window"
-julia src/compute_cycloidealage_iterative_varied_members.jl $experiment $member $time_window &> output/$PBS_JOBID.compute_cycloidealage_iterative_varied_members.$experiment.$member.$time_window.out
+julia src/compute_cycloreemergencetimes_iterative_varied_members.jl $experiment $member $time_window &> output/$PBS_JOBID.compute_cycloreemergencetimes_iterative_varied_members.$experiment.$member.$time_window.out
 
 

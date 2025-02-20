@@ -58,9 +58,20 @@ if isempty(ARGS)
 else
     experiment, member, time_window = ARGS
 end
+# preferred diffusivities
+κH = 3.0        # m^2/s
+κVML = 0.003    # m^2/s
+κVdeep = 1.0e-7 # m^2/s
 @show experiment
 @show member
 @show time_window
+@show κVdeep
+@show κH
+@show κVML
+
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+κVML_str = "kVML" * format(κVML, conversion="e")
 
 lumpby = "month"
 months = 1:12

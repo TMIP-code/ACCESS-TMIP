@@ -58,9 +58,10 @@ if isempty(ARGS)
 else
     experiment, member, time_window = ARGS
 end
-κVML = 1e-7   # m^2/s
-κVdeep = 1e-7 # m^2/s
-κH = 5        # m^2/s
+# preferred diffusivities
+κH = 3.0        # m^2/s
+κVML = 0.003    # m^2/s
+κVdeep = 1.0e-7 # m^2/s
 @show experiment
 @show member
 @show time_window

@@ -23,22 +23,21 @@ using LinearSolve
 import Pardiso # import Pardiso instead of using (to avoid name clash?)
 using NonlinearSolve
 
-# The adjoint tracer equation is
+# The tracer equation is
 #
-#   -∂x̃(t)/∂t + T̃(t) x̃(t) = s(t) - Ω x̃(t)
+#   ∂x(t)/∂t + T(t) x(t) = s(t) - Ω x(t)
 #
-# where Ω "relaxes" x̃ to zero in the top layer.
+# where Ω "relaxes" x to zero in the top layer.
 #
-# Applying Forward Euler time step gives
-# (which is the way to go since in adjoint equation time goes backwards)
+# Applying Backward Euler time step gives
 #
-#   (I + δt M̃(t-δt)) x̃(t-δt) = x̃(t) + δt s(t-δt)
+#   (I + δt M(t+δt)) x(t+δt) = x(t) + δt s(t+δt)
 #
-# where M̃(t) = T̃(t) + Ω.
+# where M(t) = T(t) + Ω.
 #
 # More succintly, if m represents the months (1..12)
 #
-#   (I + δt Mₘ₋₁) xₘ₋₁ = xₘ + δt sₘ₋₁          (1)
+#   (I + δt Mₘ₊₁) xₘ₊₁ = xₘ + δt sₘ₊₁          (1)
 #
 # Here δt = δt(m-1..m) is the time that separates
 # the "center time" of climatological months m-1 and m.
@@ -49,19 +48,30 @@ using NonlinearSolve
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
-    member = "r1i1p1f1"
-    # experiment = "historical"
-    # time_window = "Jan1850-Dec1859"
+    member = "r20i1p1f1"
+    experiment = "historical"
+    time_window = "Jan1850-Dec1859"
     # time_window = "Jan1990-Dec1999"
-    experiment = "ssp370"
-    time_window = "Jan2030-Dec2039"
+    # experiment = "ssp370"
+    # time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
 else
     experiment, member, time_window = ARGS
 end
+# preferred diffusivities
+κH = 3.0        # m^2/s
+κVML = 0.003    # m^2/s
+κVdeep = 1.0e-7 # m^2/s
 @show experiment
 @show member
 @show time_window
+@show κVdeep
+@show κH
+@show κVML
+
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+κVML_str = "kVML" * format(κVML, conversion="e")
 
 lumpby = "month"
 months = 1:12
@@ -111,7 +121,7 @@ end
 
 
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies M̃ₜ is δ(t..t+1)
@@ -121,7 +131,7 @@ end
 end
 # Build matrices
 @time "building M̃s" M̃s = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     V⁻¹ * T' * V + Ω
@@ -242,7 +252,7 @@ arrays = Dict(:adjointage => cube4D, :lat => volcello_ds.lat, :lon => volcello_d
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save to netCDF file
-outputfile = joinpath(cycloinputdir, "reemergence_time.nc")
-@info "Saving reemergence time as netCDF file:\n  $(outputfile)"
+outputfile = joinpath(cycloinputdir, "reemergence_time_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+@info "Saving reemergence_time as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 

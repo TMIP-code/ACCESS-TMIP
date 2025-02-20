@@ -152,13 +152,13 @@ months = 1:12
 
 # Build matrices
 @time "building M̃s" M̃s = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(m).jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     V⁻¹ * T' * V + Ω
 end
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(m).jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies M̃ₜ is δ(t..t+1)

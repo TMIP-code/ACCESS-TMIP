@@ -16,8 +16,8 @@
 # time_window=Jan1850-Dec1859
 # time_window=Jan1990-Dec1999
 experiment=ssp370
-# time_window=Jan2030-Dec2039
-time_window=Jan2090-Dec2099
+time_window=Jan2030-Dec2039
+# time_window=Jan2090-Dec2099
 member=member_placeholder
 finalmonth=finalmonth_placeholder
 WRITEDATA=true
@@ -26,4 +26,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/timestep_adjoint_propagator.jl $experiment $member $time_window $finalmonth $WRITEDATA &> output/timestep_Carbon_multi_injection.$experiment.$member.$time_window.$finalmonth.$PBS_JOBID.out
+julia src/timestep_adjoint_propagator.jl $experiment $member $time_window $finalmonth $WRITEDATA &> output/timestep_adjoint_propagator.$experiment.$member.$time_window.$finalmonth.$PBS_JOBID.out
