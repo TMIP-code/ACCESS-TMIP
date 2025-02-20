@@ -67,9 +67,17 @@ indices = makeindices(gridmetrics.v3D)
 
 # Some parameter values
 ρ = 1035.0    # kg/m^3
-κH = 500.0    # m^2/s
-κVML = 0.1    # m^2/s
-κVdeep = 1e-5 # m^2/s
+# κH = 500.0    # m^2/s
+# κVML = 0.1    # m^2/s
+# κVdeep = 1e-5 # m^2/s
+# Replacing default diffusivities with preferred values
+# Row │ skillscore  bias      correlation  RMSD     CRMSD    ΔSTD      κVdeep   κVML     κH
+#     │ Float64     Float64   Float64      Float64  Float64  Float64   Float64  Float64  Float64
+#─────┼──────────────────────────────────────────────────────────────────────────────────────────
+# 130 │   0.967534  -19.2099     0.942211  203.699  202.792  -47.3347   1.0e-7    0.003      3.0
+κH = 3.0        # m^2/s
+κVML = 0.003    # m^2/s
+κVdeep = 1.0e-7 # m^2/s
 
 
 for month in months
@@ -111,7 +119,10 @@ for month in months
     (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$month.jld2")
+    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+    κVML_str = "kVML" * format(κVML, conversion="e")
+    κH_str = "kH" * format(κH, conversion="d")
+    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
     @info "Saving matrix as $outputfile"
     save(outputfile,
         Dict(
