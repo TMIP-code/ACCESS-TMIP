@@ -141,15 +141,24 @@ end
 
 months = 1:12
 
+# preferred diffusivities
+κH = 3.0        # m^2/s
+κVML = 0.003    # m^2/s
+κVdeep = 1.0e-7 # m^2/s
+
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+
 # Build matrices
 @time "building M̃s" M̃s = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     V⁻¹ * T' * V + Ω
 end
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies M̃ₜ is δ(t..t+1)
@@ -286,7 +295,8 @@ arrays = Dict(:calgtilde => ℊ̃cube, :lat => volcello_ds.lat, :lon => volcello
 ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
-outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+
+outputfile = joinpath(inputdir, "calgtilde_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
@@ -310,7 +320,8 @@ arrays = Dict(:seqeff => ℰcube, :lat => volcello_ds.lat, :lon => volcello_ds.l
 ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
-outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
+outputfile = joinpath(inputdir, "seqeff_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
+
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
