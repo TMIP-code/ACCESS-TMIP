@@ -1,272 +1,276 @@
-# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# # using SparseArrays
-# # using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using Interpolations
-# using OceanBasins
-# using Statistics
-# using NaNStatistics
-# using StatsBase
-# using FileIO
-# using Contour
-# using GeometryBasics
-# using GeometryOps
-# using LibGEOS
-# # using LaTeXStrings
-# using Format
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+using Unitful
+using Unitful: s, yr
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using Interpolations
+using OceanBasins
+using Statistics
+using NaNStatistics
+using StatsBase
+using FileIO
+using Contour
+using GeometryBasics
+using GeometryOps
+using LibGEOS
+# using LaTeXStrings
+using Format
+using KernelDensity
 
-# model = "ACCESS-ESM1-5"
+include("plotting_functions.jl")
 
-# time_window = "Jan1850-Dec1859"
-# experiment = "historical"
-# member = "r20i1p1f1"
+model = "ACCESS-ESM1-5"
 
-# # Gadi directory for input files
-# # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
-# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$(member)/$(time_window)/cyclomonth"
-# outputdir = inputdir
+time_window = "Jan1850-Dec1859"
+experiment = "historical"
+member = "r20i1p1f1"
 
-# # Load areacello and volcello for grid geometry
-# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+# Gadi directory for input files
+# inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
+inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$(member)/$(time_window)/cyclomonth"
+outputdir = inputdir
 
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# volcello_keys = propertynames(volcello_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
-# lev = zt
-# # Make indices
-# indices = makeindices(gridmetrics.v3D)
-# (; wet3D, N) = indices
+# Load areacello and volcello for grid geometry
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-
-
-
-# # # Matrix ages for varied diffusivities
-# # @info "Loading age computed from matrices with different diffusivities"
-# # κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
-# # κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
-# # κHs = [0, 1, 3, 10, 30, 100] # m^2/s
-
-# # κs = Iterators.product(κVdeeps, κVMLs, κHs)
-# # model_data = map(κs) do κ
-# #     κVdeep, κVML, κH = κ
-# #     κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-# #     κVML_str = "kVML" * format(κVML, conversion="e")
-# #     κH_str = "kH" * format(κH, conversion="d")
-# #     f = "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-# #     age_ds = open_dataset(joinpath(inputdir, f))
-# #     age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
-# #     age3D[wet3D]
-# # end
-
-# isvalidagefile(f) = startswith(f, "ideal_mean_age") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
-# function parse_κs(f)
-#     κVdeep_str, κH_str, κVML_str = split(f, "_")[4:6]
-#     κVdeep = parse(Float64, κVdeep_str[7:11])
-#     κVML = parse(Float64, κVML_str[5:9])
-#     κH = parse(Float64, κH_str[3:end])
-#     return κVdeep, κVML, κH
-# end
-# files = [f for f in readdir(inputdir) if isvalidagefile(f)]
-# model_data = map(files) do f
-#     age_ds = open_dataset(joinpath(inputdir, f))
-#     age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
-#     age3D[wet3D]
-# end
-# κs = parse_κs.(files)
-# κVdeeps = map(x -> x[1], κs)
-# κVMLs = map(x -> x[2], κs)
-# κHs = map(x -> x[3], κs)
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
+lev = zt
+# Make indices
+indices = makeindices(gridmetrics.v3D)
+(; wet3D, N) = indices
 
 
-# @info "Loading Anderson Acceleration age"
-# # Anderson Accelerated age
-# AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0035.nc"
-# obs_ds = open_dataset(AAfile)
-# obs_data = obs_ds.age_global[Time=1].data[wet3D]
-# # iters = 0:35
-# # obs_data2 = map(iters) do iter
-# #     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
-# #     obs_ds = open_dataset(AAfile)
-# #     obs_data = obs_ds.age_global[Time=1].data[wet3D]
-# # end
 
-# @info "Loading age with same constants as Matt"
-# model_data2 = begin
-#     f = "/scratch/xv83/TMIP/data/ACCESS-ESM1-5/historical/r20i1p1f1/Jan1850-Dec1859/cyclomonth/ideal_mean_age_kVdeep3e-05_kH500.nc"
+
+# # Matrix ages for varied diffusivities
+# @info "Loading age computed from matrices with different diffusivities"
+# κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
+# κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
+# κHs = [0, 1, 3, 10, 30, 100] # m^2/s
+
+# κs = Iterators.product(κVdeeps, κVMLs, κHs)
+# model_data = map(κs) do κ
+#     κVdeep, κVML, κH = κ
+#     κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+#     κVML_str = "kVML" * format(κVML, conversion="e")
+#     κH_str = "kH" * format(κH, conversion="d")
+#     f = "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
 #     age_ds = open_dataset(joinpath(inputdir, f))
 #     age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
 #     age3D[wet3D]
 # end
 
+isvalidagefile(f) = startswith(f, "ideal_mean_age") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
+function parse_κs(f)
+    κVdeep_str, κH_str, κVML_str = split(f, "_")[4:6]
+    κVdeep = parse(Float64, κVdeep_str[7:11])
+    κVML = parse(Float64, κVML_str[5:9])
+    κH = parse(Float64, κH_str[3:end])
+    return κVdeep, κVML, κH
+end
+files = [f for f in readdir(inputdir) if isvalidagefile(f)]
+model_data = map(files) do f
+    age_ds = open_dataset(joinpath(inputdir, f))
+    age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
+    age3D[wet3D]
+end
+κs = parse_κs.(files)
+κVdeeps = map(x -> x[1], κs)
+κVMLs = map(x -> x[2], κs)
+κHs = map(x -> x[3], κs)
 
-# # Taylor diagram function that returns all the required values
-# # notation taken from the original Taylor paper
-# # TODO check that the identity holds when using weights!
-# function taylordiagramvalues(f, r, args...)
 
-#     # STDs and means
-#     σf = std(f, args...; corrected = false)
-#     σr = std(r, args...; corrected = false)
-#     f̄ = mean(f, args...)
-#     r̄ = mean(r, args...)
-
-#     # Correlation coefficient
-#     R = cor([f r], args...)[2]
-
-#     # Root Mean Square Difference
-#     E = sqrt(mean((f .- r) .^ 2, args...))
-
-#     # Bias
-#     Ē = f̄ - r̄
-
-#     # Centered Root Mean Square Difference
-#     E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
-
-#     # Full Mean Square Difference
-#     E² = E′^2 + Ē^2
-
-#     # Normalized values (maybe that needs to be a kwarg)
-#     Ê′ = E′ / σr
-#     σ̂f = σf / σr
-#     σ̂r = 1.0
-
-#     return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r, f̄, r̄)
+@info "Loading Anderson Acceleration age"
+# Anderson Accelerated age
+AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0035.nc"
+obs_ds = open_dataset(AAfile)
+obs_data = obs_ds.age_global[Time=1].data[wet3D]
+# AAdir = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/"
+# iters = 0:35
+# obs_data2 = map(iters) do iter
+#     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
+#     obs_ds = open_dataset(AAfile)
+#     obs_data = obs_ds.age_global[Time=1].data[wet3D]
 # end
 
-# # Calculate the Taylor diagram values
-# w = weights(v3D[wet3D])
-# TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
-# TDvals2 = taylordiagramvalues(model_data2, obs_data, w)
-# # TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
-# σr = TDvals[1].σr
-# σmax = 1.25TDvals[1].σr
-# σmax2 = (1.25 + 0.1) * TDvals[1].σr
+@info "Loading age with same constants as Matt"
+model_data2 = begin
+    f = "/scratch/xv83/TMIP/data/ACCESS-ESM1-5/historical/r20i1p1f1/Jan1850-Dec1859/cyclomonth/ideal_mean_age_kVdeep3e-05_kH500.nc"
+    age_ds = open_dataset(joinpath(inputdir, f))
+    age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
+    age3D[wet3D]
+end
 
-# σfs = [vals.σf for vals in TDvals]
-# Rs = [vals.R for vals in TDvals]
-# E′s = [vals.E′ for vals in TDvals]
-# Ēs = [vals.Ē for vals in TDvals]
-# Es = [vals.E for vals in TDvals]
 
-# # taken from MakieExtra (not using Pkg because it has outdated Makie dep)
-# using Makie.IntervalSets
-# Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
-# corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
-# _which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
-# fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
-# Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
-# intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
-# function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
-#     pscene = parent(parent(Makie.parent_scene(ax1)))
-#     @assert parent(parent(Makie.parent_scene(ax2))) === pscene
-#     obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
-#         lims = [ax1.finallimits[], ax2.finallimits[]]
-#         axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
-#               lims[2] ⊆ lims[1] ? (ax2, ax1) :
-#               nothing
-#         slines = if isnothing(axs)
-#             nothing
-#         else
-#             r1 = fullproject(axs[1], axs[1].finallimits[])
-#             r2 = fullproject(axs[2], axs[1].finallimits[])
-#             # cornsets = [
-#             #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
-#             #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
-#             #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
-#             #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
-#             # ]
-#             # argmin(cornsets) do ((a1, a2), (b1, b2))
-#             #     min(norm(a1-a2), norm(b1-b2))
-#             # end
-#             # BP: below is my zoom lines that does not work in general
-#             # cornsets2 = [
-#             #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
-#             #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
-#             # ]
-#             # argmin(cornsets2) do ((a1, a2), (b1, b2))
-#             #     max(norm(a1-a2), norm(b1-b2))
-#             # end
-#             [
-#                 corner(r1, (1,1)), corner(r2, (1,1)),
-#                 corner(r1, (-1,-1)), corner(r2, (-1,-1)),
-#                 corner(r1, (1,-1)), corner(r2, (1,-1)),
-#                 corner(r1, (-1,1)), corner(r2, (-1,1)),
-#             ]
-#             # BP: below is my zoom lines that does not work in general
-#             # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
-#             # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
-#         end
-#         (
-#             rect1=ax2.finallimits[],
-#             rect2=ax1.finallimits[],
-#             # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
-#             slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
-#         )
-#     end
+# Taylor diagram function that returns all the required values
+# notation taken from the original Taylor paper
+# TODO check that the identity holds when using weights!
+function taylordiagramvalues(f, r, args...)
 
-#     rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
-#     p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
-#     p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
-#     translate!(p1, 0, 0, 200)
-#     translate!(p2, 0, 0, 200)
-#     plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
-#     translate!(plt, 0, 0, 200)
-#     return nothing
-# end
+    # STDs and means
+    σf = std(f, args...; corrected = false)
+    σr = std(r, args...; corrected = false)
+    f̄ = mean(f, args...)
+    r̄ = mean(r, args...)
 
-# # Functions to transform data to and from Cartesian
-# #   x = r cos(θ)
-# #   y = r sin(θ)
-# #   r = √(x² + y²)
-# #   θ = acos(x / r) = asin(x / r)
-# # To get correlation (R) and STD (σ), we have
-# #   σ = r
-# #   R = cos(θ)
-# # so
-# #   σ = √(x² + y²)
-# #   R = cos(θ) = x / √(x² + y²) = x / σ
-# # and
-# #   x = R * σ
-# #   y = √(σ² - x²)
-# function xy_from_Rσ(R, σ)
-#     x = R * σ
-#     Point2(x, sqrt(σ^2 - x^2))
-# end
-# function Rσ_from_xy(x, y)
-#     σ = √(x^2 + y^2)
-#     Point2(x / σ, σ)
-# end
+    # Correlation coefficient
+    R = cor([f r], args...)[2]
+
+    # Root Mean Square Difference
+    E = sqrt(mean((f .- r) .^ 2, args...))
+
+    # Bias
+    Ē = f̄ - r̄
+
+    # Centered Root Mean Square Difference
+    E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
+
+    # Full Mean Square Difference
+    E² = E′^2 + Ē^2
+
+    # Normalized values (maybe that needs to be a kwarg)
+    Ê′ = E′ / σr
+    σ̂f = σf / σr
+    σ̂r = 1.0
+
+    return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r, f̄, r̄)
+end
+
+# Calculate the Taylor diagram values
+w = weights(v3D[wet3D])
+TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
+TDvals2 = taylordiagramvalues(model_data2, obs_data, w)
+# TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
+σr = TDvals[1].σr
+σmax = 1.25TDvals[1].σr
+σmax2 = (1.25 + 0.1) * TDvals[1].σr
+
+σfs = [vals.σf for vals in TDvals]
+Rs = [vals.R for vals in TDvals]
+E′s = [vals.E′ for vals in TDvals]
+Ēs = [vals.Ē for vals in TDvals]
+Es = [vals.E for vals in TDvals]
+
+# taken from MakieExtra (not using Pkg because it has outdated Makie dep)
+using Makie.IntervalSets
+Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
+corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
+_which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
+fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
+Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
+intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
+function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
+    pscene = parent(parent(Makie.parent_scene(ax1)))
+    @assert parent(parent(Makie.parent_scene(ax2))) === pscene
+    obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
+        lims = [ax1.finallimits[], ax2.finallimits[]]
+        axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
+              lims[2] ⊆ lims[1] ? (ax2, ax1) :
+              nothing
+        slines = if isnothing(axs)
+            nothing
+        else
+            r1 = fullproject(axs[1], axs[1].finallimits[])
+            r2 = fullproject(axs[2], axs[1].finallimits[])
+            # cornsets = [
+            #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
+            #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
+            #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
+            #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
+            # ]
+            # argmin(cornsets) do ((a1, a2), (b1, b2))
+            #     min(norm(a1-a2), norm(b1-b2))
+            # end
+            # BP: below is my zoom lines that does not work in general
+            # cornsets2 = [
+            #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
+            #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
+            # ]
+            # argmin(cornsets2) do ((a1, a2), (b1, b2))
+            #     max(norm(a1-a2), norm(b1-b2))
+            # end
+            [
+                corner(r1, (1,1)), corner(r2, (1,1)),
+                corner(r1, (-1,-1)), corner(r2, (-1,-1)),
+                corner(r1, (1,-1)), corner(r2, (1,-1)),
+                corner(r1, (-1,1)), corner(r2, (-1,1)),
+            ]
+            # BP: below is my zoom lines that does not work in general
+            # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
+            # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
+        end
+        (
+            rect1=ax2.finallimits[],
+            rect2=ax1.finallimits[],
+            # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
+            slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
+        )
+    end
+
+    rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
+    p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
+    p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
+    translate!(p1, 0, 0, 200)
+    translate!(p2, 0, 0, 200)
+    plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
+    translate!(plt, 0, 0, 200)
+    return nothing
+end
+
+# Functions to transform data to and from Cartesian
+#   x = r cos(θ)
+#   y = r sin(θ)
+#   r = √(x² + y²)
+#   θ = acos(x / r) = asin(x / r)
+# To get correlation (R) and STD (σ), we have
+#   σ = r
+#   R = cos(θ)
+# so
+#   σ = √(x² + y²)
+#   R = cos(θ) = x / √(x² + y²) = x / σ
+# and
+#   x = R * σ
+#   y = √(σ² - x²)
+function xy_from_Rσ(R, σ)
+    x = R * σ
+    Point2(x, sqrt(σ^2 - x^2))
+end
+function Rσ_from_xy(x, y)
+    σ = √(x^2 + y^2)
+    Point2(x / σ, σ)
+end
 
 
 
@@ -709,109 +713,180 @@ save(outputfile, fig)
 
 
 
-# fig = Figure(size=(1200, 1200))
+fig = Figure(size=(1200, 1200))
 
-# options = (
-#     xlabel = "κVML",
-#     xticks = (1:length(κVMLs), format.(κVMLs, conversion = "g")),
-#     ylabel = "κH",
-#     yticks = (1:length(κHs), format.(κHs, conversion = "e")),
+options = (
+    xlabel = "κVML",
+    xticks = (1:length(κVMLs), format.(κVMLs, conversion = "g")),
+    ylabel = "κH",
+    yticks = (1:length(κHs), format.(κHs, conversion = "e")),
+)
+
+colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
+
+
+
+for irow in 1:5
+    # Correlation
+    ax = Axis(fig[irow, 1]; options...)
+    kwargs = (
+        colorrange = (0.5, 1),
+        colormap = :viridis,
+        colorscale,
+    )
+    hm1 = heatmap!(ax, Rs[irow, :, :]; kwargs...)
+    (irow ≠ 5) && hidexdecorations!(ax)
+
+    # STD - STDref
+    ax = Axis(fig[irow, 2]; options...)
+    kwargs = (
+        colorrange = (-σr/2, σr/2),
+        colormap = cgrad(:RdBu, rev = true),
+    )
+    hm2 = heatmap!(ax, σfs[irow, :, :] .- σr; kwargs...)
+    hideydecorations!(ax)
+    (irow ≠ 5) && hidexdecorations!(ax)
+
+
+    # RMS
+    ax = Axis(fig[irow, 3]; options...)
+    kwargs = (
+        colorrange = (0, σr/2),
+        colormap = :plasma,
+    )
+    hm3 = heatmap!(ax, E′s[irow, :, :]; kwargs...)
+    hideydecorations!(ax)
+    (irow ≠ 5) && hidexdecorations!(ax)
+
+    # bias
+    ax = Axis(fig[irow, 4]; options...)
+    kwargs = (
+        colorrange = (-200, 200),
+        colormap = cgrad(:tableau_red_blue_white, rev = true),
+    )
+    hm4 = heatmap!(ax, Ēs[irow, :, :]; kwargs...)
+    hideydecorations!(ax)
+    (irow ≠ 5) && hidexdecorations!(ax)
+
+    # score
+    ax = Axis(fig[irow, 5]; options...)
+    kwargs = (
+        colorrange = (0.9, 0.97),
+        colormap = cgrad(:Anemone, rev = true),
+        colorscale,
+    )
+    hm5 = heatmap!(ax, S.(σfs, σr, Rs)[irow, :, :]; kwargs...)
+    hideydecorations!(ax)
+    (irow ≠ 5) && hidexdecorations!(ax)
+
+    Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π/2, tellheight = false)
+
+    if irow == 5
+        cbopt = (
+            vertical = false,
+            flipaxis = false,
+            tellheight = true,
+            width = Relative(0.85),
+        )
+        cb = Colorbar(fig[6, 1], hm1; cbopt..., label = rich("correlation"), ticks = [0, 0.5, 0.8, 0.95, 1])
+        cb = Colorbar(fig[6, 2], hm2; cbopt..., label = rich("STD - STDref"))
+        cb = Colorbar(fig[6, 3], hm3; cbopt..., label = rich("RMS"))
+        cb = Colorbar(fig[6, 4], hm4; cbopt..., label = rich("bias"))
+        cb = Colorbar(fig[6, 5], hm5; cbopt..., label = rich("skill score"), ticks = [0.9, 0.95, 0.97])
+    end
+
+end
+
+
+
+Label(fig[0,1]; text = "correlation", tellwidth = false)
+Label(fig[0,2]; text = "STD - STDref", tellwidth = false)
+Label(fig[0,3]; text = "RMS", tellwidth = false)
+Label(fig[0,4]; text = "bias", tellwidth = false)
+Label(fig[0,5]; text = "skill score", tellwidth = false)
+
+outputfile = joinpath(outputdir, "Taylor_diagram_3D_heatmaps_v2.png")
+@info "Saving image file:\n  $(outputfile)"
+save(outputfile, fig)
+
+
+
+
+
+
+@show sort(df, :skillscore, rev = true)
+@show sort(df, :RMSD)
+
+
+
+
+
+fig = Figure()
+
+x = obs_data
+y = model_data[1]
+boundary = (0, 2000)
+bw = 5
+D = kde((x, y))
+# D = kde((x, y); boundary=(boundary, boundary))
+# D = kde((x, y); boundary=(boundary, boundary), bandwidth=(bw,bw))
+
+# calculate cumulative density from density
+# δx = step(D.x)
+# δy = step(D.y)
+# Q = vec(D.density) * δx * δy
+# idx = sortperm(Q)
+# Q_sorted = Q[idx]
+# Dcum = similar(D.density)
+# Dcum[idx] .= 100cumsum(Q_sorted)
+
+
+
+ax = fig[1, 1] = Axis(fig;
+    aspect = DataAspect(),
+    limits = (boundary..., boundary...),
+)
+
+co = hexbin!(ax, x, y;
+    weights = w,
+    colormap = :viridis,
+    highclip = cgrad(:viridis)[end],
+    lowclip = :white,
+    cellsize = 20,
+)
+# h = fit(Histogram, (x, y), Weights(w))
+
+
+# co = contourf!(ax, D.x, D.y, Dcum;
+#     levels = 5:5:95,
+#     colormap = :viridis,
+#     extendhigh = :auto,
+#     extendlow = :white,
 # )
 
-# colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
+# 1:1 line
+ablines!(ax, 0, 1, linestyle=:dash, color=:black)
+
+cb = Colorbar(fig[1, 2], co;
+    vertical = true,
+    flipaxis = true,
+    tellwidth = true,
+    ticks = 10:10:90,
+    # tickformat = v -> map(x -> format(x, conversion = "f", stripzeros = true), v),
+    label = rich("percentile"),
+)
+cb.height = Relative(0.6)
+
+outputfile = joinpath(outputdir, "age_preferred_vs_AA_age_jointPDF.png")
+@info "Saving image file:\n  $(outputfile)"
+save(outputfile, fig)
+
+# points = Makie.StructArray{Point2f}((x, y))
+# ds = datashader!(ax, points; colormap = :binary, async = false)
 
 
 
-# for irow in 1:5
-#     # Correlation
-#     ax = Axis(fig[irow, 1]; options...)
-#     kwargs = (
-#         colorrange = (0.5, 1),
-#         colormap = :viridis,
-#         colorscale,
-#     )
-#     hm1 = heatmap!(ax, Rs[irow, :, :]; kwargs...)
-#     (irow ≠ 5) && hidexdecorations!(ax)
-
-#     # STD - STDref
-#     ax = Axis(fig[irow, 2]; options...)
-#     kwargs = (
-#         colorrange = (-σr/2, σr/2),
-#         colormap = cgrad(:RdBu, rev = true),
-#     )
-#     hm2 = heatmap!(ax, σfs[irow, :, :] .- σr; kwargs...)
-#     hideydecorations!(ax)
-#     (irow ≠ 5) && hidexdecorations!(ax)
-
-
-#     # RMS
-#     ax = Axis(fig[irow, 3]; options...)
-#     kwargs = (
-#         colorrange = (0, σr/2),
-#         colormap = :plasma,
-#     )
-#     hm3 = heatmap!(ax, E′s[irow, :, :]; kwargs...)
-#     hideydecorations!(ax)
-#     (irow ≠ 5) && hidexdecorations!(ax)
-
-#     # bias
-#     ax = Axis(fig[irow, 4]; options...)
-#     kwargs = (
-#         colorrange = (-200, 200),
-#         colormap = cgrad(:tableau_red_blue_white, rev = true),
-#     )
-#     hm4 = heatmap!(ax, Ēs[irow, :, :]; kwargs...)
-#     hideydecorations!(ax)
-#     (irow ≠ 5) && hidexdecorations!(ax)
-
-#     # score
-#     ax = Axis(fig[irow, 5]; options...)
-#     kwargs = (
-#         colorrange = (0.9, 0.97),
-#         colormap = cgrad(:Anemone, rev = true),
-#         colorscale,
-#     )
-#     hm5 = heatmap!(ax, S.(σfs, σr, Rs)[irow, :, :]; kwargs...)
-#     hideydecorations!(ax)
-#     (irow ≠ 5) && hidexdecorations!(ax)
-
-#     Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π/2, tellheight = false)
-
-#     if irow == 5
-#         cbopt = (
-#             vertical = false,
-#             flipaxis = false,
-#             tellheight = true,
-#             width = Relative(0.85),
-#         )
-#         cb = Colorbar(fig[6, 1], hm1; cbopt..., label = rich("correlation"), ticks = [0, 0.5, 0.8, 0.95, 1])
-#         cb = Colorbar(fig[6, 2], hm2; cbopt..., label = rich("STD - STDref"))
-#         cb = Colorbar(fig[6, 3], hm3; cbopt..., label = rich("RMS"))
-#         cb = Colorbar(fig[6, 4], hm4; cbopt..., label = rich("bias"))
-#         cb = Colorbar(fig[6, 5], hm5; cbopt..., label = rich("skill score"), ticks = [0.9, 0.95, 0.97])
-#     end
-
-# end
-
-
-
-# Label(fig[0,1]; text = "correlation", tellwidth = false)
-# Label(fig[0,2]; text = "STD - STDref", tellwidth = false)
-# Label(fig[0,3]; text = "RMS", tellwidth = false)
-# Label(fig[0,4]; text = "bias", tellwidth = false)
-# Label(fig[0,5]; text = "skill score", tellwidth = false)
-
-# outputfile = joinpath(outputdir, "Taylor_diagram_3D_heatmaps_v2.png")
-# @info "Saving image file:\n  $(outputfile)"
-# save(outputfile, fig)
-
-
-
-
-
-
-# @show sort(df, :skillscore, rev = true)
-# @show sort(df, :RMSD)
-
-
-
+fig, plt, ax = hist(x, bins = 1850:0.1:1870)
+outputfile = joinpath(outputdir, "AA_age_hist.png")
+@info "Saving image file:\n  $(outputfile)"
+save(outputfile, fig)
