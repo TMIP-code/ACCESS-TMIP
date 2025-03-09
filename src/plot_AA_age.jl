@@ -129,7 +129,7 @@ lines!(ax2, x, diff(meanage4000m); label = "4000m mean")
 linkxaxes!(ax2, ax1)
 
 outputfile = joinpath(outputdir, "AA_age_timeseries_postmaxagefix.png")
-@info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
+@info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
 
 
@@ -149,8 +149,8 @@ Ncycles = length(age_idx) - 1
 Label(fig[0, :], "Anderson-Acceleration age after $(10Ncycles) simulation years ($(Ncycles) cycles)", tellwidth = false)
 yticks = -60:30:60
 xticks = -120:60:120 + 360
-levels = 0:100:1800
-colormap = cgrad(:viridis, 19, categorical = true)
+levels = 0:100:2400
+colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
 colormap = cgrad(colormap[1:end-1], categorical = true)
 colorrange = extrema(levels)
@@ -169,11 +169,11 @@ ctrf = plotmap!(ax, finalage4000m, gridmetrics; colorrange, colormap, highclip) 
 Label(fig[2, 0]; text = rich(𝑧, " = 4000 m"), rotation = π/2, tellheight = false)
 
 # Colorbar
-cb = Colorbar(fig[1:2, 2], ctrf; label = "age (years)", vertical = true, flipaxis = true, ticks = 0:200:2000)
+cb = Colorbar(fig[1:2, 2], ctrf; label = "age (years)", vertical = true, flipaxis = true, ticks = levels[1:2:end])
 cb.height = Relative(2/3)
 
 outputfile = joinpath(outputdir, "AA_age_maps_$(Ncycles)_postmaxagefix.png")
-@info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
+@info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
 
 
@@ -232,5 +232,5 @@ ylims!(ax, nothing, nothing)
 axislegend(ax, position = :lt)
 
 outputfile = joinpath(outputdir, "AA_fraction_of_small_drift_postmaxagefix.png")
-@info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
+@info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
