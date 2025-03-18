@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:20:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -149,23 +149,24 @@ Ncycles = length(age_idx) - 1
 Label(fig[0, :], "Anderson-Acceleration age after $(10Ncycles) simulation years ($(Ncycles) cycles)", tellwidth = false)
 yticks = -60:30:60
 xticks = -120:60:120 + 360
-levels = 0:100:2400
+levels = 0:100:2500
 colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
 colormap = cgrad(colormap[1:end-1], categorical = true)
+lowclip = :red
 colorrange = extrema(levels)
 
 
 # 2000m age
 ax = Axis(fig[1, 1]; yticks, xticks, xtickformat, ytickformat)
-ctrf = plotmap!(ax, finalage2000m, gridmetrics; colorrange, colormap, highclip) # <- need to fix wrapping longitude for contour levels
+ctrf = plotmap!(ax, finalage2000m, gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
 myhidexdecorations!(ax, true)
 𝑧 = rich("z", font = :italic)
 Label(fig[1, 0]; text = rich(𝑧, " = 2000 m"), rotation = π/2, tellheight = false)
 
 # 4000m age
 ax = Axis(fig[2, 1]; yticks, xticks, xtickformat, ytickformat)
-ctrf = plotmap!(ax, finalage4000m, gridmetrics; colorrange, colormap, highclip) # <- need to fix wrapping longitude for contour levels
+ctrf = plotmap!(ax, finalage4000m, gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
 Label(fig[2, 0]; text = rich(𝑧, " = 4000 m"), rotation = π/2, tellheight = false)
 
 # Colorbar
