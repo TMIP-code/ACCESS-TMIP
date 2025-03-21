@@ -106,6 +106,11 @@ meanage4000m = volumeintegralage4000m ./ volumeintergal4000m
 include("plotting_functions.jl")
 
 
+
+
+
+
+
 fig = Figure()
 axisoptions = (
     limits = (0, nothing, nothing, nothing),
@@ -217,12 +222,12 @@ xlims!(ax, 0, nothing)
 ylims!(ax, 0, 1)
 hidexdecorations!(ax, grid = false)
 
-ax = Axis(fig[2, 1]; axisoptions..., ylabel = "drift (yr/yr)")
+ax = Axis(fig[2, 1]; axisoptions..., ylabel = "drift (yr/yr)", yscale = log10)
 lines!(ax, 10 * x, meanfracdrift2000, label = "mean 2000 m")
 lines!(ax, 10 * x, meanfracdrift4000, label = "mean 4000 m")
 lines!(ax, 10 * x, meanfracdrift, color = :black, label = "mean global")
 xlims!(ax, 0, nothing)
-ylims!(ax, 0, 1)
+ylims!(ax, 1e-5, 1)
 hidexdecorations!(ax, grid = false)
 axislegend(ax, position = :lt)
 
