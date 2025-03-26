@@ -95,10 +95,23 @@ indices = makeindices(gridmetrics.v3D)
 # κVMLs = [0, 1e-7, 1e-5, 1e-3, 1e-1] # m^2/s
 # κHs = [0, 1, 10, 100, 1000] # m^2/s
 # Refined range:
-κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
-κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
-κHs = [0, 1, 3, 10, 30, 100] # m^2/s
+# κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
+# κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
+# κHs = [0, 1, 3, 10, 30, 100] # m^2/s
 
+# Build centered matrices (no upwind)
+upwind = false
+κVdeeps = round.(10.0 .^ (-8:1:-4), sigdigits = 2) # m^2/s
+κVMLs = round.(10.0 .^ (-8:2:0), sigdigits = 2) # m^2/s
+κHs = round.(10.0 .^ (0:3), sigdigits = 2) # m^2/s
+# Refined range after checking steady-state centered ages
+κVdeeps = [1e-5 2e-5 3e-5 4e-5 7e-5 1e-4] # m^2/s
+κVMLs = round.(10.0 .^ (-8:2:0), sigdigits = 2) # m^2/s
+κHs = [50 100 200 500 1000 2000] # m^2/s
+# Refined range 2 after plugging in AA member
+κVdeeps = [2e-5 3e-5 4e-5] # m^2/s
+κVMLs = [0.001 0.01 0.1 1 10] # m^2/s
+κHs = [50 100 200 300 400 500 600] # m^2/s
 
 for month in months
 
@@ -138,13 +151,14 @@ for month in months
 
     for κVdeep in κVdeeps, κVML in κVMLs, κH in κHs
 
-        (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+        (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
         # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
         κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
         κVML_str = "kVML" * format(κVML, conversion="e")
         κH_str = "kH" * format(κH, conversion="d")
-        outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+        upwind_str = upwind ? "" : "_centered"
+        outputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
         @info "Saving matrix as $outputfile"
         save(outputfile,
             Dict(

@@ -1,9 +1,10 @@
-# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
+# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:30:00 -l ncpus=12
+# qsub -I -P xv83 -q express -l mem=190GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:30:00 -l ncpus=48
 
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-const nprocs = 24
+# const nprocs = 24
 
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using OceanTransportMatrixBuilder
@@ -16,12 +17,16 @@ using LinearAlgebra
 using Unitful
 using Unitful: s, yr, d
 using Statistics
+using StatsBase
 using Format
 using Dates
 using FileIO
-using LinearSolve
-import Pardiso # import Pardiso instead of using (to avoid name clash?)
-using NonlinearSolve
+# using LinearSolve
+# import Pardiso # import Pardiso instead of using (to avoid name clash?)
+# using NonlinearSolve
+using MUMPS
+using MPI
+
 
 # The tracer equation is
 #
@@ -48,7 +53,8 @@ using NonlinearSolve
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
-    member = "r20i1p1f1"
+    # member = "r20i1p1f1"
+    member = "AA"
     experiment = "historical"
     time_window = "Jan1850-Dec1859"
     # time_window = "Jan1990-Dec1999"
@@ -56,23 +62,32 @@ if isempty(ARGS)
     # time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
     average_over = "monthlymatrices"
+    κVdeep = 1e-5 # m^2/s
+    κVML = 0.01 # m^2/s for centered
+    # κVML = 0.001 # m^2/s for upwind
+    κH = 100 # m^2/s
 else
-    experiment, member, time_window, average_over = ARGS
+    experiment, member, time_window, average_over, κVdeep_str_in, κVML_str_in, κH_str_in = ARGS
+    κVdeep = parse(Float64, κVdeep_str_in)
+    κVML = parse(Float64, κVML_str_in)
+    κH = parse(Float64, κH_str_in)
 end
-κVML = 1e-7   # m^2/s
-κVdeep = 1e-7 # m^2/s
-κH = 5        # m^2/s
 @show experiment
 @show member
 @show time_window
 @show κVdeep
-@show κH
 @show κVML
+@show κH
 @show average_over
 
+upwind = false
+@show upwind
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+
 κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
 κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
 
 lumpby = "month"
 months = 1:12
@@ -108,6 +123,7 @@ gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices
 indices = makeindices(v3D)
 (; N, wet3D) = indices
 
+
 issrf = let
     issrf3D = falses(size(wet3D))
     issrf3D[:,:,1] .= true
@@ -115,25 +131,28 @@ issrf = let
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
 
+@time "building mean_days_in_months" mean_days_in_months = map(months) do m
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+    load(inputfile, "mean_days_in_month")
+end
 
-M̄ = if average_over == "monthlymatrices"
+M̄ = begin
     # Load monthly matrices
     @time "Loading monthly matrices" Ms = map(months) do m
-        inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+        inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
         @info "  Loading T from $inputfile"
         T = load(inputfile, "T")
         T + Ω
     end
-    mean(Ms)
-elseif average_over == "flow"
-    # Or load the mean flow matrix
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
-    @info "Loading T from $inputfile"
-    T = load(inputfile, "T")
-    T + Ω
+    mean(Ms, Weights(mean_days_in_months))
 end
 
-@time "steady state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+# @time "steady state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+# @time "steady state solve" u0 = M̄ \ ones(N)
+MPI.Init()
+@time u0 = MUMPS.solve(M̄, ones(N))
+@show norm(M̄ * u0 - ones(N)) / norm(ones(N))
+MPI.Finalize()
 
 # Save steady-state age
 Γinyr = ustrip.(yr, u0 .* s)
@@ -143,7 +162,12 @@ cube3D = rebuild(volcello_ds["volcello"];
     data = Γinyr3D,
     dims = dims(volcello_ds["volcello"]),
     metadata = Dict(
-        "origin" => "steady-state ideal age from mean $average_over computed from $model $experiment $member $(time_window)",
+        "name" => "steady-state ideal age from mean $average_over",
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time_window" => time_window,
+        "upwind" => upwind_str2,
         "units" => "yr",
     )
 )
@@ -152,7 +176,7 @@ arrays = Dict(:age => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_mean$(average_over).nc")
+outputfile = joinpath(cycloinputdir, "steady_state_ideal_mean_age_$(upwind_str2)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_mean$(average_over).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 

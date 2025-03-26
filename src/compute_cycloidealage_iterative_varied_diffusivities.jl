@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -q hugemem -l mem=360GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=48
+# qsub -I -P xv83 -q hugemem -l mem=500GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=24
 
 using Pkg
 Pkg.activate(".")
@@ -55,9 +55,15 @@ if isempty(ARGS)
     # experiment = "ssp370"
     # time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
-    κVdeep = 1e-5 # m^2/s
-    κVML = 0.1 # m^2/s
-    κH = 500 # m^2/s
+    # κVdeep = 1e-5 # m^2/s
+    # κVML = 0.01 # m^2/s for centered
+    # # κVML = 0.001 # m^2/s for upwind
+    # κH = 100 # m^2/s
+    # higher values as test for Pardiso
+    κVdeep = 1e-4 # m^2/s
+    κVML = 1 # m^2/s for centered
+    # κVML = 0.001 # m^2/s for upwind
+    κH = 1000 # m^2/s
 else
     # experiment, member, time_window, κVdeep_str_in, κH_str_in = ARGS
     # κVdeep = parse(Float64, κVdeep_str_in)
@@ -73,6 +79,11 @@ end
 @show κVdeep
 @show κVML
 @show κH
+
+upwind = false
+@show upwind
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
 
 κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
 κVML_str = "kVML" * format(κVML, conversion="e")
@@ -122,7 +133,7 @@ end
 
 
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies Mₜ is δ(t-1..t)
@@ -136,7 +147,7 @@ end
 
 # Build matrices
 @time "building Ms" Ms = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     T + Ω
@@ -166,17 +177,52 @@ M̄ = mean(Ms) #
 Δt = sum(δts)
 
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-8)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+# Saving matrix for testing by SciML peeps
+testfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_mean.jld2")
+@info "Saving M̄ matrix as $testfile"
+save(testfile, Dict("M" => M̄))
+
+# Testing matrix type
+@show issymmetric(M̄)
+@show issymmetric(M̄ .≠ 0)
+
+
+using MUMPS, MPI
+MPI.Init()
+A = sprand(10, 10, 0.2) + I
+rhs = rand(10)
+u0 = MUMPS.solve(M̄, ones(N))
+@show norm(M̄ * u0 - ones(N)) / norm(ones(N))
+MPI.Finalize()
+foo
+
+using Pardiso
+ps = MKLPardisoSolver()
+set_matrixtype!(ps, Pardiso.REAL_SYM)
+set_msglvl!(ps, Pardiso.MESSAGE_LEVEL_ON)
+set_phase!(ps, 23)
+pardisoinit(ps)
+x1 = Pardiso.solve(ps, M̄, ones(N))
+@show norm(M̄ * x1 - ones(N)) / norm(ones(N))
+
+
+
+@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoFactorize(; nprocs), rtol = 1e-10, verbose = true).u
+@show norm(M̄ * u0 - ones(N)) / norm(ones(N))
+foo
+@time "initial state solve" u0 = M̄ \ ones(N)
+@show norm(M̄ * u0 - ones(N)) / norm(ones(N))
+@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10, verbose = true).u
 @show norm(M̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-8)
 end
 
 p = (;
@@ -223,17 +269,17 @@ end
 f! = NonlinearFunction(G!; jvp = jvp!)
 nonlinearprob! = NonlinearProblem(f!, u0, p)
 
-@info "solve cyclo-stationary state"
+@info "solve periodic state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-10)); show_trace = Val(true), reltol=Inf, abstol=1e-8norm(u0, Inf));
 
 
-@info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
+@info "Check the RMS drift, should be order 10⁻⁹‰ (1e-9 per thousands)"
 du = deepcopy(u0)
 @show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
 
 
-# Save cyclo-stationary age
+# Save periodic age
 du = sol!.u # The last month solved for is December (m = 12, implicit in forward time)
 data4D = reduce((a, b) -> cat(a, b, dims=4),
     map(months) do m
@@ -248,7 +294,13 @@ cube4D = rebuild(volcello_ds["volcello"];
     data = data4D,
     dims = axlist,
     metadata = Dict(
-        "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
+        "name" => "periodic ideal age",
+        "time step" => lumpby,
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time_window" => time_window,
+        "upwind" => upwind,
         "units" => "yr",
     )
 )
@@ -257,7 +309,7 @@ arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+outputfile = joinpath(cycloinputdir, "ideal_mean_age$(upwind)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
