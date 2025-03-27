@@ -1,274 +1,274 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:15:00 -l ncpus=12
 
-using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
+# using Pkg
+# Pkg.activate(".")
+# Pkg.instantiate()
 
-using OceanTransportMatrixBuilder
-using NetCDF
-using YAXArrays
-using DataFrames
-using DimensionalData
-# using SparseArrays
-# using LinearAlgebra
-using Unitful
-using Unitful: s, yr
-try
-    using CairoMakie
-catch
-    using CairoMakie
-end
-using GeoMakie
-using Interpolations
-using OceanBasins
-using Statistics
-using NaNStatistics
-using StatsBase
-using FileIO
-using Contour
-using GeometryBasics
-using GeometryOps
-using LibGEOS
-# using LaTeXStrings
-using Format
-using KernelDensity
+# using OceanTransportMatrixBuilder
+# using NetCDF
+# using YAXArrays
+# using DataFrames
+# using DimensionalData
+# # using SparseArrays
+# # using LinearAlgebra
+# using Unitful
+# using Unitful: s, yr
+# try
+#     using CairoMakie
+# catch
+#     using CairoMakie
+# end
+# using GeoMakie
+# using Interpolations
+# using OceanBasins
+# using Statistics
+# using NaNStatistics
+# using StatsBase
+# using FileIO
+# using Contour
+# using GeometryBasics
+# using GeometryOps
+# using LibGEOS
+# # using LaTeXStrings
+# using Format
+# using KernelDensity
 
-include("plotting_functions.jl")
+# include("plotting_functions.jl")
 
-model = "ACCESS-ESM1-5"
+# model = "ACCESS-ESM1-5"
 
-time_window = "Jan1850-Dec1859"
-experiment = "historical"
-member = "AA"
+# time_window = "Jan1850-Dec1859"
+# experiment = "historical"
+# member = "AA"
 
-# Gadi directory for input files
-# inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
-inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$(member)/$(time_window)/cyclomonth"
-outputdir = inputdir
+# # Gadi directory for input files
+# # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
+# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$(member)/$(time_window)/cyclomonth"
+# outputdir = inputdir
 
-# Load areacello and volcello for grid geometry
-fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+# # Load areacello and volcello for grid geometry
+# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-# Load fixed variables in memory
-areacello = readcubedata(areacello_ds.areacello)
-volcello = readcubedata(volcello_ds.volcello)
-lon = readcubedata(volcello_ds.lon)
-lat = readcubedata(volcello_ds.lat)
-lev = volcello_ds.lev
-# Identify the vertices keys (vary across CMIPs / models)
-volcello_keys = propertynames(volcello_ds)
-lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
-# Make makegridmetrics
-gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
-lev = zt
-# Make indices
-indices = makeindices(gridmetrics.v3D)
-(; wet3D, N) = indices
-
-
+# # Load fixed variables in memory
+# areacello = readcubedata(areacello_ds.areacello)
+# volcello = readcubedata(volcello_ds.volcello)
+# lon = readcubedata(volcello_ds.lon)
+# lat = readcubedata(volcello_ds.lat)
+# lev = volcello_ds.lev
+# # Identify the vertices keys (vary across CMIPs / models)
+# volcello_keys = propertynames(volcello_ds)
+# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# # Make makegridmetrics
+# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+# (; lon_vertices, lat_vertices, lon, lat, zt, v3D, thkcello, Z3D) = gridmetrics
+# lev = zt
+# # Make indices
+# indices = makeindices(gridmetrics.v3D)
+# (; wet3D, N) = indices
 
 
-# # Matrix ages for varied diffusivities
-# @info "Loading age computed from matrices with different diffusivities"
-# κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
-# κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
-# κHs = [0, 1, 3, 10, 30, 100] # m^2/s
 
-# κs = Iterators.product(κVdeeps, κVMLs, κHs)
-# model_data = map(κs) do κ
-#     κVdeep, κVML, κH = κ
-#     κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-#     κVML_str = "kVML" * format(κVML, conversion="e")
-#     κH_str = "kH" * format(κH, conversion="d")
-#     f = "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+
+# # # Matrix ages for varied diffusivities
+# # @info "Loading age computed from matrices with different diffusivities"
+# # κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
+# # κVMLs = [0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2] # m^2/s
+# # κHs = [0, 1, 3, 10, 30, 100] # m^2/s
+
+# # κs = Iterators.product(κVdeeps, κVMLs, κHs)
+# # model_data = map(κs) do κ
+# #     κVdeep, κVML, κH = κ
+# #     κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+# #     κVML_str = "kVML" * format(κVML, conversion="e")
+# #     κH_str = "kH" * format(κH, conversion="d")
+# #     f = "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+# #     age_ds = open_dataset(joinpath(inputdir, f))
+# #     age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
+# #     age3D[wet3D]
+# # end
+
+# # isvalidagefile(f) = startswith(f, "ideal_mean_age") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
+# isvalidagefile(f) = startswith(f, "steady_state_ideal_mean_age_centered") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
+# function parse_κs(f)
+#     # κVdeep_str, κH_str, κVML_str = split(f, "_")[4:6]
+#     κVdeep_str, κH_str, κVML_str = split(f, "_")[7:9] # steady state centered
+#     κVdeep = parse(Float64, κVdeep_str[7:11])
+#     κVML = parse(Float64, κVML_str[5:9])
+#     κH = parse(Float64, κH_str[3:end])
+#     return κVdeep, κVML, κH
+# end
+# files = [f for f in readdir(inputdir) if isvalidagefile(f)]
+# model_data = map(files) do f
 #     age_ds = open_dataset(joinpath(inputdir, f))
-#     age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
+#     # age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2 # periodic age is 4D.
+#     age3D = age_ds.age.data # steady state age is already 3D
 #     age3D[wet3D]
 # end
-
-# isvalidagefile(f) = startswith(f, "ideal_mean_age") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
-isvalidagefile(f) = startswith(f, "steady_state_ideal_mean_age_centered") && contains(f, "kVdeep") && contains(f, "kVML") && contains(f, "kH")
-function parse_κs(f)
-    # κVdeep_str, κH_str, κVML_str = split(f, "_")[4:6]
-    κVdeep_str, κH_str, κVML_str = split(f, "_")[7:9] # steady state centered
-    κVdeep = parse(Float64, κVdeep_str[7:11])
-    κVML = parse(Float64, κVML_str[5:9])
-    κH = parse(Float64, κH_str[3:end])
-    return κVdeep, κVML, κH
-end
-files = [f for f in readdir(inputdir) if isvalidagefile(f)]
-model_data = map(files) do f
-    age_ds = open_dataset(joinpath(inputdir, f))
-    # age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2 # periodic age is 4D.
-    age3D = age_ds.age.data # steady state age is already 3D
-    age3D[wet3D]
-end
-κs = parse_κs.(files)
-κVdeeps = map(x -> x[1], κs)
-κVMLs = map(x -> x[2], κs)
-κHs = map(x -> x[3], κs)
+# κs = parse_κs.(files)
+# κVdeeps = map(x -> x[1], κs)
+# κVMLs = map(x -> x[2], κs)
+# κHs = map(x -> x[3], κs)
 
 
-@info "Loading Anderson Acceleration age"
-# Anderson Accelerated age
-AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0040.nc"
-obs_ds = open_dataset(AAfile)
-obs_data = obs_ds.age_global[Time=1].data[wet3D]
-# TODO this is the Jan 1 age. Since I'm comparing to steady-state. Should I get the mean age of the last decade of the AA output instead?
-# obs_data = mean(obs_ds.age_global, dims = Time).data[wet3D]
+# @info "Loading Anderson Acceleration age"
+# # Anderson Accelerated age
+# AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0040.nc"
+# obs_ds = open_dataset(AAfile)
+# obs_data = obs_ds.age_global[Time=1].data[wet3D]
+# # TODO this is the Jan 1 age. Since I'm comparing to steady-state. Should I get the mean age of the last decade of the AA output instead?
+# # obs_data = mean(obs_ds.age_global, dims = Time).data[wet3D]
 
-# @info "Loading AA sequence"
-# AAdir = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/"
-# iters = 0:35
-# obs_data2 = map(iters) do iter
-#     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
-#     obs_ds = open_dataset(AAfile)
-#     obs_data = obs_ds.age_global[Time=1].data[wet3D]
+# # @info "Loading AA sequence"
+# # AAdir = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/"
+# # iters = 0:35
+# # obs_data2 = map(iters) do iter
+# #     AAfile = joinpath(AAdir, "ocean_age.res_$(format(iter; width = 4, zeropadding = true)).nc")
+# #     obs_ds = open_dataset(AAfile)
+# #     obs_data = obs_ds.age_global[Time=1].data[wet3D]
+# # end
+
+
+# κs_Matt = (κVdeep = 3e-05, κH = 500, κVML = 0.1)
+
+
+# # Taylor diagram function that returns all the required values
+# # notation taken from the original Taylor paper
+# # TODO check that the identity holds when using weights!
+# function taylordiagramvalues(f, r, args...)
+
+#     # STDs and means
+#     σf = std(f, args...; corrected = false)
+#     σr = std(r, args...; corrected = false)
+#     f̄ = mean(f, args...)
+#     r̄ = mean(r, args...)
+
+#     # Correlation coefficient
+#     R = cor([f r], args...)[2]
+
+#     # Root Mean Square Difference
+#     E = sqrt(mean((f .- r) .^ 2, args...))
+
+#     # Bias
+#     Ē = f̄ - r̄
+
+#     # Centered Root Mean Square Difference
+#     E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
+
+#     # Full Mean Square Difference
+#     E² = E′^2 + Ē^2
+
+#     # Normalized values (maybe that needs to be a kwarg)
+#     Ê′ = E′ / σr
+#     σ̂f = σf / σr
+#     σ̂r = 1.0
+
+#     return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r, f̄, r̄)
 # end
 
+# # Calculate the Taylor diagram values
+# w = weights(v3D[wet3D])
+# TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
+# # TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
 
-κs_Matt = (κVdeep = 3e-05, κH = 500, κVML = 0.1)
+# σfs = [vals.σf for vals in TDvals]
+# Rs = [vals.R for vals in TDvals]
+# E′s = [vals.E′ for vals in TDvals]
+# Ēs = [vals.Ē for vals in TDvals]
+# Es = [vals.E for vals in TDvals]
 
+# # taken from MakieExtra (not using Pkg because it has outdated Makie dep)
+# using Makie.IntervalSets
+# Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
+# corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
+# _which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
+# fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
+# Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
+# intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
+# function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
+#     pscene = parent(parent(Makie.parent_scene(ax1)))
+#     @assert parent(parent(Makie.parent_scene(ax2))) === pscene
+#     obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
+#         lims = [ax1.finallimits[], ax2.finallimits[]]
+#         axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
+#               lims[2] ⊆ lims[1] ? (ax2, ax1) :
+#               nothing
+#         slines = if isnothing(axs)
+#             nothing
+#         else
+#             r1 = fullproject(axs[1], axs[1].finallimits[])
+#             r2 = fullproject(axs[2], axs[1].finallimits[])
+#             # cornsets = [
+#             #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
+#             #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
+#             #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
+#             #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
+#             # ]
+#             # argmin(cornsets) do ((a1, a2), (b1, b2))
+#             #     min(norm(a1-a2), norm(b1-b2))
+#             # end
+#             # BP: below is my zoom lines that does not work in general
+#             # cornsets2 = [
+#             #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
+#             #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
+#             # ]
+#             # argmin(cornsets2) do ((a1, a2), (b1, b2))
+#             #     max(norm(a1-a2), norm(b1-b2))
+#             # end
+#             [
+#                 corner(r1, (1,1)), corner(r2, (1,1)),
+#                 corner(r1, (-1,-1)), corner(r2, (-1,-1)),
+#                 corner(r1, (1,-1)), corner(r2, (1,-1)),
+#                 corner(r1, (-1,1)), corner(r2, (-1,1)),
+#             ]
+#             # BP: below is my zoom lines that does not work in general
+#             # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
+#             # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
+#         end
+#         (
+#             rect1=ax2.finallimits[],
+#             rect2=ax1.finallimits[],
+#             # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
+#             slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
+#         )
+#     end
 
-# Taylor diagram function that returns all the required values
-# notation taken from the original Taylor paper
-# TODO check that the identity holds when using weights!
-function taylordiagramvalues(f, r, args...)
+#     rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
+#     p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
+#     p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
+#     translate!(p1, 0, 0, 200)
+#     translate!(p2, 0, 0, 200)
+#     plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
+#     translate!(plt, 0, 0, 200)
+#     return nothing
+# end
 
-    # STDs and means
-    σf = std(f, args...; corrected = false)
-    σr = std(r, args...; corrected = false)
-    f̄ = mean(f, args...)
-    r̄ = mean(r, args...)
-
-    # Correlation coefficient
-    R = cor([f r], args...)[2]
-
-    # Root Mean Square Difference
-    E = sqrt(mean((f .- r) .^ 2, args...))
-
-    # Bias
-    Ē = f̄ - r̄
-
-    # Centered Root Mean Square Difference
-    E′ = sqrt(mean(((f .- f̄) - (r .- r̄)) .^ 2, args...))
-
-    # Full Mean Square Difference
-    E² = E′^2 + Ē^2
-
-    # Normalized values (maybe that needs to be a kwarg)
-    Ê′ = E′ / σr
-    σ̂f = σf / σr
-    σ̂r = 1.0
-
-    return (; σr, σf, R, E, Ē, E′, E², Ê′, σ̂f, σ̂r, f̄, r̄)
-end
-
-# Calculate the Taylor diagram values
-w = weights(v3D[wet3D])
-TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
-# TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
-
-σfs = [vals.σf for vals in TDvals]
-Rs = [vals.R for vals in TDvals]
-E′s = [vals.E′ for vals in TDvals]
-Ēs = [vals.Ē for vals in TDvals]
-Es = [vals.E for vals in TDvals]
-
-# taken from MakieExtra (not using Pkg because it has outdated Makie dep)
-using Makie.IntervalSets
-Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
-corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
-_which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
-fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
-Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
-intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
-function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
-    pscene = parent(parent(Makie.parent_scene(ax1)))
-    @assert parent(parent(Makie.parent_scene(ax2))) === pscene
-    obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
-        lims = [ax1.finallimits[], ax2.finallimits[]]
-        axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
-              lims[2] ⊆ lims[1] ? (ax2, ax1) :
-              nothing
-        slines = if isnothing(axs)
-            nothing
-        else
-            r1 = fullproject(axs[1], axs[1].finallimits[])
-            r2 = fullproject(axs[2], axs[1].finallimits[])
-            # cornsets = [
-            #     ((corner(r1, (1,1)), corner(r2, (-1,1))), (corner(r1, (1,-1)), corner(r2, (-1,-1)))),
-            #     ((corner(r1, (1,-1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,1)))),
-            #     ((corner(r1, (-1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (1,1)))),
-            #     ((corner(r1, (-1,1)), corner(r2, (-1,-1))), (corner(r1, (1,1)), corner(r2, (1,-1)))),
-            # ]
-            # argmin(cornsets) do ((a1, a2), (b1, b2))
-            #     min(norm(a1-a2), norm(b1-b2))
-            # end
-            # BP: below is my zoom lines that does not work in general
-            # cornsets2 = [
-            #     ((corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))),
-            #     ((corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))),
-            # ]
-            # argmin(cornsets2) do ((a1, a2), (b1, b2))
-            #     max(norm(a1-a2), norm(b1-b2))
-            # end
-            [
-                corner(r1, (1,1)), corner(r2, (1,1)),
-                corner(r1, (-1,-1)), corner(r2, (-1,-1)),
-                corner(r1, (1,-1)), corner(r2, (1,-1)),
-                corner(r1, (-1,1)), corner(r2, (-1,1)),
-            ]
-            # BP: below is my zoom lines that does not work in general
-            # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
-            # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
-        end
-        (
-            rect1=ax2.finallimits[],
-            rect2=ax1.finallimits[],
-            # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
-            slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
-        )
-    end
-
-    rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
-    p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
-    p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
-    translate!(p1, 0, 0, 200)
-    translate!(p2, 0, 0, 200)
-    plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
-    translate!(plt, 0, 0, 200)
-    return nothing
-end
-
-# Functions to transform data to and from Cartesian
-#   x = r cos(θ)
-#   y = r sin(θ)
-#   r = √(x² + y²)
-#   θ = acos(x / r) = asin(x / r)
-# To get correlation (R) and STD (σ), we have
-#   σ = r
-#   R = cos(θ)
-# so
-#   σ = √(x² + y²)
-#   R = cos(θ) = x / √(x² + y²) = x / σ
-# and
-#   x = R * σ
-#   y = √(σ² - x²)
-function xy_from_Rσ(R, σ)
-    x = R * σ
-    Point2(x, sqrt(σ^2 - x^2))
-end
-function Rσ_from_xy(x, y)
-    σ = √(x^2 + y^2)
-    Point2(x / σ, σ)
-end
+# # Functions to transform data to and from Cartesian
+# #   x = r cos(θ)
+# #   y = r sin(θ)
+# #   r = √(x² + y²)
+# #   θ = acos(x / r) = asin(x / r)
+# # To get correlation (R) and STD (σ), we have
+# #   σ = r
+# #   R = cos(θ)
+# # so
+# #   σ = √(x² + y²)
+# #   R = cos(θ) = x / √(x² + y²) = x / σ
+# # and
+# #   x = R * σ
+# #   y = √(σ² - x²)
+# function xy_from_Rσ(R, σ)
+#     x = R * σ
+#     Point2(x, sqrt(σ^2 - x^2))
+# end
+# function Rσ_from_xy(x, y)
+#     σ = √(x^2 + y^2)
+#     Point2(x / σ, σ)
+# end
 
 
 
@@ -286,7 +286,7 @@ fig = Figure(size=(1000, 600))
 
 σr = TDvals[1].σr
 σmax = 1.5TDvals[1].σr
-σmax2 = (1.5 + 0.1) * TDvals[1].σr
+σmax2 = (1.5 + 0.12) * TDvals[1].σr
 
 
 # Corrticks for Taylor diagram
@@ -451,7 +451,8 @@ text!(axa, xAA + offset, yAA + offset; text = "AA age", align = (:left, :bottom)
 # Plot Age with Matt's constants
 idxMatt = findall((κVdeeps .== κs_Matt.κVdeep) .& (κHs .== κs_Matt.κH) .& (κVMLs .== κs_Matt.κVML))
 if length(idxMatt) == 1
-    xMatt, yMatt = xy_from_Rσ(only(TDvals.R[idxMatt]), only(TDvals.σf[idxMatt]))
+    iMatt = only(idxMatt)
+    xMatt, yMatt = xy_from_Rσ(only(TDvals[iMatt].R), only(TDvals[iMatt].σf))
     # No need for a cross if there is already a dot
     # scatter!(axa, xMatt, yMatt;
     #     color = :black,
@@ -549,9 +550,9 @@ txt2 = text!(axa, 0, 1; text = "a", labeloptions...)
 translate!(txt1, 0, 0, 100)
 translate!(txt2, 0, 0, 100)
 
-Rlimits = (0.92, 0.96)
+Rlimits = (0.95, 0.995)
 thetalimits = acos.(Rlimits[[2,1]]) # zoom in
-rlimits = (0.82σr, 1.02σr)
+rlimits = (0.85σr, 1.15σr)
 corrtickszoom = Rlimits[1]:0.01:Rlimits[2]
 
 # plot zoomed in
@@ -572,9 +573,9 @@ axb = Axis(fig[1, 2];
 
 # Plot polar axis grid
 for (θ, text) in zip(thetaticks...)
-    local offset, rtext = 0.02, 0.92
+    local offset, rtext = 0.03, 1
     lines!(axb, σr * cos(θ) * [0, rtext - offset], σr * sin(θ) * [0, rtext - offset]; color = (:black, 0.2), linewidth = 1)
-    lines!(axb, σr * cos(θ) * [rtext + offset, 1], σr * sin(θ) * [rtext + offset, 1]; color = (:black, 0.2), linewidth = 1)
+    lines!(axb, σr * cos(θ) * [rtext + offset, 1.25], σr * sin(θ) * [rtext + offset, 1.25]; color = (:black, 0.2), linewidth = 1)
     text!(axb, σr * cos(θ) * rtext, σr * sin(θ) * rtext; text = "correlation = $text", color = (:black, 0.2), align = (:center, :center), rotation = θ, fontsize)
 end
 # θs = acos(Rlimits[2]):0.01:acos(Rlimits[1])
