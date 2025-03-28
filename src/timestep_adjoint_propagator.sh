@@ -2,11 +2,11 @@
 
 #PBS -P xv83
 #PBS -N adjoint_member_placeholder_finalmonth_placeholder
-#PBS -l ncpus=48
+#PBS -l ncpus=24
 #PBS -q hugemem
 #PBS -l mem=500GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=15:00:00
+#PBS -l walltime=48:00:00
 #PBS -l storage=scratch/gh0+scratch/xv83
 #PBS -l wd
 #PBS -o output/PBS/

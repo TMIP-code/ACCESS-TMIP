@@ -29,6 +29,8 @@ using Contour
 using GeometryBasics
 using GeometryOps
 using LibGEOS
+using Format
+
 
 model = "ACCESS-ESM1-5"
 
@@ -37,7 +39,7 @@ time_window2 = "Jan2090-Dec2099"
 experiment1 = parse(Int, time_window1[4:7]) ≤ 2010 ? "historical" : "ssp370"
 experiment2 = parse(Int, time_window2[4:7]) ≤ 2010 ? "historical" : "ssp370"
 
-# members = ["r$(r)i1p1f1" for r in 1:40]
+members_mean = ["r$(r)i1p1f1" for r in 1:40]
 members = ["r$(r)i1p1f1" for r in 1:3]
 
 # Gadi directory for input files
@@ -120,11 +122,25 @@ end
 
 
 # Load \Gamma out
-Gammaoutfile1 = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/cyclomonth/adjointage_timemean.nc"
-Γoutyr3D1_timemean = readcubedata(open_dataset(Gammaoutfile1).adjointage_timemean)
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+
+Gammaout_files1 = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc" for member in members_mean]
+Γoutyr3D1_ds = open_mfdataset(DimArray(Gammaout_files1, Dim{:member}(members_mean)))
+Γoutyr3D1 = readcubedata(Γoutyr3D1_ds.adjointage)
+Γoutyr3D1_timemean = dropdims(mean(Γoutyr3D1, dims = Ti), dims = Ti) # TODO use monthly weights
 Γoutyr3D1_ensemblemean = dropdims(mean(Γoutyr3D1_timemean, dims = 4), dims = 4)
-Gammaoutfile2 = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/cyclomonth/adjointage_timemean.nc"
-Γoutyr3D2_timemean = readcubedata(open_dataset(Gammaoutfile2).adjointage_timemean)
+Gammaout_files2 = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc" for member in members_mean]
+Γoutyr3D2_ds = open_mfdataset(DimArray(Gammaout_files2, Dim{:member}(members_mean)))
+Γoutyr3D2 = readcubedata(Γoutyr3D2_ds.adjointage)
+Γoutyr3D2_timemean = dropdims(mean(Γoutyr3D2, dims = Ti), dims = Ti) # TODO use monthly weights
 Γoutyr3D2_ensemblemean = dropdims(mean(Γoutyr3D2_timemean, dims = 4), dims = 4)
 
 include("plotting_functions.jl")
@@ -146,18 +162,22 @@ xticks = -120:60:120 + 360
 
 datamean = (Γout2_ensemblemean, ℰ50_2_ensemblemean, ℰ10_2_ensemblemean)
 datadiff = (Γout_ensemblemean_diff, ℰ50_diff, ℰ10_diff)
-Γstr = rich("Γ", superscript("↑"))
-Qstr = rich("Q", font = :italic)
-Q10 = rich(Qstr, "(0.1)")
-Q50 = rich(Qstr, "(0.5)")
-rowlabels = (rich("Mean, ", Γstr), rich("Median, ", Q50), rich("10th percentile, ", Q10))
+𝒓 = rich("r", font = :bold_italic)
+Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
+Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
+# Qstr = rich("Q", font = :italic)
+ℰstr = rich("ℰ", rich("‾", offset = (-0.5, 0.15)))
+# Q10 = rich(Qstr, "(0.1)")
+# Q50 = rich(Qstr, "(0.5)")
+rowlabels = (rich("Mean time, ", Γfun), rich("Median, ", ℰstr, " = 50 %"), rich("10th percentile, ", ℰstr, " = 90 %"))
+
 
 for (irow, (x2Dmean, x2Ddiff, text)) in enumerate(zip(datamean, datadiff, rowlabels))
 
     # Plot ensemble mean
     icol = 1
-    levels = 0:200:2000
-    colormap = cgrad(:viridis, 11, categorical = true)
+    levels = 0:200:4000
+    colormap = cgrad(:viridis, length(levels), categorical = true)
     highclip = colormap[end]
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
@@ -175,8 +195,8 @@ for (irow, (x2Dmean, x2Ddiff, text)) in enumerate(zip(datamean, datadiff, rowlab
 
     # Plot ensemble diff
     icol = 2
-    levels = -300:50:300
-    colormap = cgrad(cgrad(:balance, 13, categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+    levels = -1000:100:1000
+    colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
     highclip = colormap[end]
     lowclip = colormap[1]
     colormap = cgrad(colormap[2:end-1], categorical = true)
@@ -199,11 +219,11 @@ end
 
 
 label = rich("ensemble mean (years)")
-cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:400:2000)
+cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:1000:4000)
 cb.width = Relative(2/3)
 
-label = rich("mean 2090s − mean 2030s (years)")
-cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -300:200:300, tickformat = divergingcbarticklabelformat)
+label = rich("ensemble mean 2090s − 2030s (years)")
+cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -1000:500:1000, tickformat = divergingcbarticklabelformat)
 cb.width = Relative(2/3)
 
 # column labels

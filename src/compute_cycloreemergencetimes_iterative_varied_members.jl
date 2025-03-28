@@ -48,30 +48,35 @@ using NonlinearSolve
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
-    member = "r20i1p1f1"
-    experiment = "historical"
-    time_window = "Jan1850-Dec1859"
+    member = "r1i1p1f1"
+    # experiment = "historical"
+    # time_window = "Jan1850-Dec1859"
     # time_window = "Jan1990-Dec1999"
-    # experiment = "ssp370"
-    # time_window = "Jan2030-Dec2039"
+    experiment = "ssp370"
+    time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
 else
     experiment, member, time_window = ARGS
 end
 # preferred diffusivities
-κH = 3.0        # m^2/s
-κVML = 0.003    # m^2/s
-κVdeep = 1.0e-7 # m^2/s
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
 @show experiment
 @show member
 @show time_window
 @show κVdeep
-@show κH
 @show κVML
+@show κH
+
+upwind = false
+@show upwind
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
 
 κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
 κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
 
 lumpby = "month"
 months = 1:12
@@ -121,7 +126,7 @@ end
 
 
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies M̃ₜ is δ(t..t+1)
@@ -131,7 +136,7 @@ end
 end
 # Build matrices
 @time "building M̃s" M̃s = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     V⁻¹ * T' * V + Ω
@@ -160,18 +165,21 @@ end
 M̃̄ = mean(M̃s) #
 Δt = sum(δts)
 
+matrix_type = Pardiso.REAL_STRUCT_SYM
+@show solver = MKLPardisoIterate(; nprocs, matrix_type)
+
 Plprob = LinearProblem(-Δt * M̃̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+Plprob = init(Plprob, solver, rtol = 1e-10)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̃̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+@time "initial state solve" u0 = solve(LinearProblem(M̃̄, ones(N)), solver, rtol = 1e-10, verbose = true).u
 @show norm(M̃̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+    return init(prob, solver, rtol = 1e-10)
 end
 
 p = (;
@@ -218,17 +226,17 @@ end
 f! = NonlinearFunction(G!; jvp = jvp!)
 nonlinearprob! = NonlinearProblem(f!, u0, p)
 
-@info "solve cyclo-stationary state"
+@info "solve periodic state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
 @time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
 
 
-@info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
+@info "Check the RMS drift, should be order 10⁻⁹‰ (1e-9 per thousands)"
 du = deepcopy(u0)
 @show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
 
 
-# Save cyclo-stationary reemergence time
+# Save periodic reemergence time
 du = sol!.u # The last month solved for is January (m = 1, implicit in backward time)
 data4D = reduce((a, b) -> cat(b, a, dims=4), # <- note how the order is reversed here
     map(reverse(months)) do m
@@ -243,7 +251,13 @@ cube4D = rebuild(volcello_ds["volcello"];
     data = data4D,
     dims = axlist,
     metadata = Dict(
-        "origin" => "cyclo-stationary reemergence time (by $lumpby) computed from $model $experiment $member $(time_window)",
+        "name" => "periodic reemergence time",
+        "time step" => lumpby,
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time_window" => time_window,
+        "upwind" => upwind_str2,
         "units" => "yr",
     )
 )
@@ -252,7 +266,7 @@ arrays = Dict(:adjointage => cube4D, :lat => volcello_ds.lat, :lon => volcello_d
 ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Save to netCDF file
-outputfile = joinpath(cycloinputdir, "reemergence_time_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+outputfile = joinpath(cycloinputdir, "reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
 @info "Saving reemergence_time as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 

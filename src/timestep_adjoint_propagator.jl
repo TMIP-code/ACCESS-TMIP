@@ -3,7 +3,7 @@
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-
+const nprocs = 24
 
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using OceanTransportMatrixBuilder
@@ -93,7 +93,21 @@ WRITEDATA = parse(Bool, WRITEDATA)
 @show time_window
 @show finalmonth
 
+# preferred diffusivities
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+@show κVdeep
+@show κVML
+@show κH
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
 
+upwind = false
+@show upwind
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
 
 
 # Load areacello and volcello for grid geometry
@@ -141,24 +155,15 @@ end
 
 months = 1:12
 
-# preferred diffusivities
-κH = 3.0        # m^2/s
-κVML = 0.003    # m^2/s
-κVdeep = 1.0e-7 # m^2/s
-
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-
 # Build matrices
 @time "building M̃s" M̃s = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(m).jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     @info "Loading matrix from $inputfile"
     T = load(inputfile, "T")
     V⁻¹ * T' * V + Ω
 end
 @time "building mean_days_in_months" mean_days_in_months = map(months) do m
-    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(m).jld2")
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$m.jld2")
     load(inputfile, "mean_days_in_month")
 end
 # So the δt that multiplies M̃ₜ is δ(t..t+1)
@@ -167,9 +172,12 @@ end
     ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
 end
 
+matrix_type = Pardiso.REAL_STRUCT_SYM
+@show solver = MKLPardisoIterate(; nprocs, matrix_type)
+
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+    return init(prob, solver, rtol = 1e-10)
 end
 
 p = (;
@@ -245,7 +253,7 @@ end
 
 
 
-Nyears = 2002
+Nyears = 3000
 
 Nmonths = 12Nyears
 
@@ -277,16 +285,17 @@ end
 
 # save yearly values of ℊ̃
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℊ̃cube = rebuild(volcello_ds["volcello"];
+ℊ̃cube = DimensionalData.rebuild(volcello_ds["volcello"];
     data = ℊ̃_seafloor,
     dims = axlist,
     metadata = Dict(
-        "origin" => "cyclo-stationary adjoint propagator, calgtilde",
+        "description" => "periodic adjoint propagator",
         "finalmonth" => finalmonth,
         "model" => model,
         "experiment" => experiment,
         "member" => member,
         "time window" => time_window,
+        "upwind" => upwind_str2,
         "units" => "s^-1",
         "Ti unit" => "yr",
     )
@@ -296,17 +305,17 @@ ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
 
-outputfile = joinpath(inputdir, "calgtilde_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
+outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 # save yearly values of ℰ
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℰcube = rebuild(volcello_ds["volcello"];
+ℰcube = DimensionalData.rebuild(volcello_ds["volcello"];
     data = ℰ_seafloor,
     dims = axlist,
     metadata = Dict(
-        "origin" => "cyclo-stationary adjoint propagator, calgtilde",
+        "description" => "periodic sequestration efficiency",
         "finalmonth" => finalmonth,
         "model" => model,
         "experiment" => experiment,
@@ -320,7 +329,7 @@ arrays = Dict(:seqeff => ℰcube, :lat => volcello_ds.lat, :lon => volcello_ds.l
 ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
 finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
-outputfile = joinpath(inputdir, "seqeff_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
+outputfile = joinpath(inputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
 
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
@@ -328,11 +337,11 @@ savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 # axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(1:Nmonths)))[1])
 
-# cube4D = rebuild(volcello_ds["volcello"];
+# cube4D = DimensionalData.rebuild(volcello_ds["volcello"];
 #     data = data4D,
 #     dims = axlist,
 #     metadata = Dict(
-#         "origin" => "cyclo-stationary calg tilde",
+#         "origin" => "periodic calg tilde",
 #         "finalmonth" => finalmonth,
 #         "model" => model,
 #         "experiment" => experiment,

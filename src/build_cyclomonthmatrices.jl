@@ -18,13 +18,23 @@ using FileIO
 
 # Making monthly matrices for every MONTH from 1990s and averaging them into a single matrix, and computing the age
 
+# script options
 @show model = "ACCESS-ESM1-5"
-# member = "r1i1p1f1"
-# experiment = "historical"
-# time_window = "Jan1990-Dec1999"
-@show experiment = ARGS[1]
-@show member = ARGS[2]
-@show time_window = ARGS[3]
+if isempty(ARGS)
+    member = "r20i1p1f1"
+    experiment = "historical"
+    time_window = "Jan1850-Dec1859"
+    # time_window = "Jan1990-Dec1999"
+    # experiment = "ssp370"
+    # time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
+else
+    experiment, member, time_window = ARGS
+end
+@show experiment
+@show member
+@show time_window
+
 lumpby = "month"
 months = 1:12
 
@@ -42,7 +52,6 @@ vmo_ds = open_dataset(joinpath(cycloinputdir, "vmo.nc"))
 ψᵢsubmeso_ds = open_dataset(joinpath(cycloinputdir, "tx_trans_submeso.nc"))
 ψⱼsubmeso_ds = open_dataset(joinpath(cycloinputdir, "ty_trans_submeso.nc"))
 mlotst_ds = open_dataset(joinpath(cycloinputdir, "mlotst.nc"))
-
 
 
 # Load fixed variables in memory
@@ -71,13 +80,10 @@ indices = makeindices(gridmetrics.v3D)
 # κVML = 0.1    # m^2/s
 # κVdeep = 1e-5 # m^2/s
 # Replacing default diffusivities with preferred values
-# Row │ skillscore  bias      correlation  RMSD     CRMSD    ΔSTD      κVdeep   κVML     κH
-#     │ Float64     Float64   Float64      Float64  Float64  Float64   Float64  Float64  Float64
-#─────┼──────────────────────────────────────────────────────────────────────────────────────────
-# 130 │   0.967534  -19.2099     0.942211  203.699  202.792  -47.3347   1.0e-7    0.003      3.0
-κH = 3.0        # m^2/s
-κVML = 0.003    # m^2/s
-κVdeep = 1.0e-7 # m^2/s
+upwind = false
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
 
 
 for month in months
@@ -116,13 +122,14 @@ for month in months
         facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     end
 
-    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
     κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
     κVML_str = "kVML" * format(κVML, conversion="e")
     κH_str = "kH" * format(κH, conversion="d")
-    outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    upwind_str = upwind ? "" : "_centered"
+    outputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
     @info "Saving matrix as $outputfile"
     save(outputfile,
         Dict(

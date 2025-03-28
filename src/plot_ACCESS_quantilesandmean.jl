@@ -29,13 +29,14 @@ using Contour
 using GeometryBasics
 using GeometryOps
 using LibGEOS
+using Format
 
 model = "ACCESS-ESM1-5"
 
 time_window = "Jan2030-Dec2039"
 experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
 
-# members = ["r$(r)i1p1f1" for r in 1:40]
+members_mean = ["r$(r)i1p1f1" for r in 1:40]
 members = ["r$(r)i1p1f1" for r in 1:3]
 
 # Gadi directory for input files
@@ -114,8 +115,20 @@ end
 
 
 # Load \Gamma out
-Gammaoutfile = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth/adjointage_timemean.nc"
-Γoutyr3D_timemean = readcubedata(open_dataset(Gammaoutfile).adjointage_timemean)
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+
+Gammaout_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc" for member in members_mean]
+Γoutyr3D_ds = open_mfdataset(DimArray(Gammaout_files, Dim{:member}(members_mean)))
+Γoutyr3D = readcubedata(Γoutyr3D_ds.adjointage)
+Γoutyr3D_timemean = dropdims(mean(Γoutyr3D, dims = :month), dims = :month) # TODO use monthly weights
 Γoutyr3D_ensemblemean = dropdims(mean(Γoutyr3D_timemean, dims = 4), dims = 4)
 Γoutyr3D_ensemblemax = dropdims(maximum(Γoutyr3D_timemean, dims = 4), dims = 4)
 Γoutyr3D_ensemblemin = dropdims(minimum(Γoutyr3D_timemean, dims = 4), dims = 4)
@@ -153,8 +166,8 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
 
     # Plot ensemble mean
     icol = 1
-    levels = 0:200:2000
-    colormap = cgrad(:viridis, 11, categorical = true)
+    levels = 0:200:3000
+    colormap = cgrad(:viridis, length(levels), categorical = true)
     highclip = colormap[end]
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
@@ -172,8 +185,8 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
 
     # Plot ensemble range
     icol = 2
-    levels = 0:50:300
-    colormap = cgrad(:amp, 7, categorical = true)
+    levels = 0:100:1000
+    colormap = cgrad(:amp, length(levels), categorical = true)
     highclip = colormap[end]
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
@@ -195,11 +208,11 @@ end
 
 
 label = rich("ensemble mean (years)")
-cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:400:2000)
+cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:1000:3000)
 cb.width = Relative(2/3)
 
 label = rich("ensemble range, max − min (years)")
-cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:100:300)
+cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:200:1000)
 cb.width = Relative(2/3)
 
 # column labels

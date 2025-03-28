@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P xv83
-#PBS -N age_member_placeholder
+#PBS -N adjointage_member_placeholder
 #PBS -l ncpus=24
 #PBS -q hugemem
 #PBS -l mem=500GB

@@ -224,7 +224,7 @@ precs = Returns((Pl, Pr))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs, matrix_type), rtol = 1e-10)
+    return init(prob, solver, rtol = 1e-10)
 end
 
 p = (;
@@ -273,7 +273,7 @@ nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve periodic state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-8norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
 
 
 @info "Check the RMS drift, should be order 10⁻⁹‰ (1e-9 per thousands)"
@@ -310,8 +310,8 @@ cube4D = rebuild(volcello_ds["volcello"];
 arrays = Dict(:age => cube4D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 
-# Save Γinyr3D to netCDF file
-outputfile = joinpath(cycloinputdir, "ideal_mean_age$(upwind)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+# Save to netCDF file
+outputfile = joinpath(cycloinputdir, "ideal_mean_age$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
