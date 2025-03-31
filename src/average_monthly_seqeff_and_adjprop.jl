@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=48
+# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -42,8 +42,8 @@ if isempty(ARGS)
     # time_window = "Jan1850-Dec1859"
     # time_window = "Jan1990-Dec1999"
     experiment = "ssp370"
-    # time_window = "Jan2030-Dec2039"
-    time_window = "Jan2090-Dec2099"
+    time_window = "Jan2030-Dec2039"
+    # time_window = "Jan2090-Dec2099"
     WRITEDATA = "true"
 else
     experiment, member, time_window, finalmonth, WRITEDATA = ARGS
@@ -54,12 +54,23 @@ WRITEDATA = parse(Bool, WRITEDATA)
 @show time_window
 
 
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
 areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-members = ["r$(i)i1p1f1" for i in 1:3]
+# members = ["r$(i)i1p1f1" for i in 1:3]
+members = ["r$(i)i1p1f1" for i in 1:4]
 
 for member in members
 
@@ -116,7 +127,7 @@ for member in members
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
         # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
-        outputfile = joinpath(inputdir, "seqeff_$(finalmonthstr).nc")
+        outputfile = joinpath(inputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
         @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
         ds = open_dataset(outputfile)
         ωs[finalmonth] * readcubedata(ds.seqeff)
@@ -141,7 +152,7 @@ for member in members
     ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Save to netCDF file
-    outputfile = joinpath(inputdir, "calE.nc")
+    outputfile = joinpath(inputdir, "calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
     @info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
     savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
@@ -152,7 +163,7 @@ for member in members
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
         # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
-        outputfile = joinpath(inputdir, "calgtilde_$(finalmonthstr).nc")
+        outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
         @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
         ds = open_dataset(outputfile)
         ωs[finalmonth] * readcubedata(ds.calgtilde)
@@ -177,7 +188,7 @@ for member in members
     ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Save to netCDF file
-    outputfile = joinpath(inputdir, "calgtilde.nc")
+    outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
     @info "Saving mean adjoint propagator as netCDF file:\n  $(outputfile)"
     savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
