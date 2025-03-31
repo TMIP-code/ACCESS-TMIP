@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=180GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=48
 
 using Pkg
 Pkg.activate(".")
@@ -29,6 +29,7 @@ using Contour
 using GeometryBasics
 using GeometryOps
 using LibGEOS
+using Format
 # using LaTeXStrings
 
 model = "ACCESS-ESM1-5"
@@ -37,8 +38,8 @@ time_window = "Jan2030-Dec2039"
 # time_window = "Jan2090-Dec2099"
 experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
 
-# members = ["r$(r)i1p1f1" for r in 1:40]
-members = ["r$(r)i1p1f1" for r in 1:3]
+members = ["r$(r)i1p1f1" for r in 1:40]
+# members = ["r$(r)i1p1f1" for r in 1:3]
 
 # Gadi directory for input files
 # inputdirfun(member) = "/scratch/xv83/TMIP/data/$model/$experiment/all members/$(time_window)"
@@ -80,11 +81,30 @@ lev = zt
 indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
+# Load \Gamma out
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+yearly = true
+yearly_str = yearly ? "_yearly" : ""
+yearly_str2 = yearly ? "(yearly)" : ""
 
-
-ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calE.nc" for member in members]
-ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-ℰ = readcubedata(ℰ_ds.calE)
+# TODO Adapt idea of just grabbing τs before from diff plot
+if yearly
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    ℰ = readcubedata(ℰ_ds.seqeff)
+else
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    ℰ = readcubedata(ℰ_ds.calE)
+end
 
 
 
@@ -116,7 +136,7 @@ for (irow, year) in enumerate([100, 300, 1000])
     # Plot ensemble mean
     icol = 1
     levels = 0:10:100
-    colormap = cgrad(:Zissou1Continuous, 10, categorical = true, rev = true)
+    colormap = cgrad(:Zissou1Continuous, length(levels) - 1, categorical = true, rev = true)
     # colormap = cgrad(:Hiroshige, 10, categorical = true, rev = true)
     colorrange = extrema(levels)
 
@@ -133,8 +153,8 @@ for (irow, year) in enumerate([100, 300, 1000])
 
     # Plot ensemble range
     icol = 2
-    levels = 0:5:25
-    colormap = cgrad(:tol_ylorbr, 6, categorical = true)
+    levels = 0:10:60
+    colormap = cgrad(:tol_ylorbr, length(levels), categorical = true)
     highclip = colormap[end]
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
@@ -164,7 +184,7 @@ cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipax
 cb.width = Relative(2/3)
 
 label = rich("ensemble range, max ", ℰfun, " − min ", ℰfun, " (%)")
-cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:5:25)
+cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:10:60)
 cb.width = Relative(2/3)
 
 # column labels
@@ -184,17 +204,17 @@ for (ax, label) in zip(axs, labels)
     translate!(txt, 0, 0, 100)
 end
 
-Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Sequestration Efficiency ($(length(members)) members)", fontsize = 24, tellwidth = false)
+Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Sequestration Efficiency ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 
 # save plot
 suffix = usecontourf ? "_ctrf" : ""
 
-outputfile = joinpath(outputdir, "seqeff_$(time_window)$(suffix).png")
+outputfile = joinpath(outputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).png")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
-outputfile = joinpath(outputdir, "seqeff_$(time_window)$(suffix).pdf")
+outputfile = joinpath(outputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).pdf")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
