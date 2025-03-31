@@ -127,9 +127,9 @@ for member in members
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
         # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
-        outputfile = joinpath(inputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
-        @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
-        ds = open_dataset(outputfile)
+        inputfile = joinpath(inputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
+        @info "Loading adjoint propagrator as netCDF file:\n  $(inputfile)"
+        ds = open_dataset(inputfile)
         ωs[finalmonth] * readcubedata(ds.seqeff)
     end)
 
@@ -163,9 +163,9 @@ for member in members
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
         # because I messed up the file name to save to (overwrote ℊ̃ with ℰ)
-        outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
-        @info "Loading adjoint propagrator as netCDF file:\n  $(outputfile)"
-        ds = open_dataset(outputfile)
+        inputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(finalmonthstr).nc")
+        @info "Loading adjoint propagrator as netCDF file:\n  $(inputfile)"
+        ds = open_dataset(inputfile)
         ωs[finalmonth] * readcubedata(ds.calgtilde)
     end)
 
