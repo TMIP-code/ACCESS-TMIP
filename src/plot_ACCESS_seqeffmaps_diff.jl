@@ -155,9 +155,9 @@ for (irow, year) in enumerate([100, 300, 1000])
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
     contours[irow, icol] = if usecontourf
-        plotcontourfmap!(ax, 100 * ℰ_ensemblemean2[:, :, iyear], gridmetrics; levels, colormap)
+        plotcontourfmap!(ax, 100 * ℰ_ensemblemean2[:, :, irow], gridmetrics; levels, colormap)
     else
-        plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, irow], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
     end
 
     myhidexdecorations!(ax, irow < nrows)
@@ -175,9 +175,9 @@ for (irow, year) in enumerate([100, 300, 1000])
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
     contours[irow, icol] = if usecontourf
-        plotcontourfmap!(ax, 100 * ℰ_diff[:, :, iyear], gridmetrics; levels, colormap)
+        plotcontourfmap!(ax, 100 * ℰ_diff[:, :, irow], gridmetrics; levels, colormap)
     else
-        contours[irow, icol] = plotmap!(ax, 100 * ℰ_diff[:, :, iyear], gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = plotmap!(ax, 100 * ℰ_diff[:, :, irow], gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
     end
 
     myhidexdecorations!(ax, irow < nrows)
@@ -197,7 +197,7 @@ cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipax
 cb.width = Relative(2/3)
 
 label = rich("mean 2090s ", ℰfun, " − mean 2030s ", ℰfun, " (%)")
-cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -25:10:25, tickformat = divergingcbarticklabelformat)
+cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
 cb.width = Relative(2/3)
 
 # column labels
@@ -224,10 +224,10 @@ colgap!(fig.layout, 10)
 # save plot
 suffix = usecontourf ? "_ctrf" : ""
 
-outputfile = joinpath(outputdir, "seqeff_diff_$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).png")
+outputfile = joinpath(outputdir, "seqeff_diff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window2)$(suffix).png")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
-outputfile = joinpath(outputdir, "seqeff_diff_$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).pdf")
+outputfile = joinpath(outputdir, "seqeff_diff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window2)$(suffix).pdf")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
 

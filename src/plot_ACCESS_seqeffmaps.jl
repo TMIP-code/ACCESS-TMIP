@@ -95,11 +95,15 @@ yearly = true
 yearly_str = yearly ? "_yearly" : ""
 yearly_str2 = yearly ? "(yearly)" : ""
 
+# τ = timescales for which we plot ℰ(τ)
+τs = [100, 300, 1000]
+
 # TODO Adapt idea of just grabbing τs before from diff plot
 if yearly
     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-    ℰ = readcubedata(ℰ_ds.seqeff)
+    # Load the data for the selected timescales only (to avoid using too much memory)
+    ℰ = readcubedata(ℰ_ds.seqeff[Ti = At(τs)])
 else
     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
@@ -143,9 +147,9 @@ for (irow, year) in enumerate([100, 300, 1000])
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
     contours[irow, icol] = if usecontourf
-        plotcontourfmap!(ax, 100 * ℰ_ensemblemean[:, :, iyear], gridmetrics; levels, colormap)
+        plotcontourfmap!(ax, 100 * ℰ_ensemblemean[:, :, irow], gridmetrics; levels, colormap)
     else
-        plotmap!(ax, 100 * ℰ_ensemblemean[:, :, iyear], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
+        plotmap!(ax, 100 * ℰ_ensemblemean[:, :, irow], gridmetrics; colorrange, colormap) # <- need to fix wrapping longitude for contour levels
     end
 
     myhidexdecorations!(ax, irow < nrows)
@@ -162,9 +166,9 @@ for (irow, year) in enumerate([100, 300, 1000])
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
 
     contours[irow, icol] = if usecontourf
-        plotcontourfmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; levels, colormap)
+        plotcontourfmap!(ax, 100 * ℰ_ensemblerange[:, :, irow], gridmetrics; levels, colormap)
     else
-        contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, iyear], gridmetrics; colorrange, colormap, highclip) # <- need to fix wrapping longitude for contour levels
+        contours[irow, icol] = plotmap!(ax, 100 * ℰ_ensemblerange[:, :, irow], gridmetrics; colorrange, colormap, highclip) # <- need to fix wrapping longitude for contour levels
     end
 
     myhidexdecorations!(ax, irow < nrows)

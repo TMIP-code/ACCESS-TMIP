@@ -1,109 +1,129 @@
-# # qsub -I -P xv83 -l mem=32GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=6
+# qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
 
-# ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# using SparseArrays
-# using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr, d, kyr
-# using Statistics
-# using Format
-# using Dates
-# using FileIO
-# using LinearSolve
-# import Pardiso # import Pardiso instead of using (to avoid name clash?)
-# using NonlinearSolve
-# using ProgressMeter
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using OceanBasins
-# using NaNStatistics
-# using NaturalEarth
-# using GeometryOps
-# using GeometryBasics
-# using LibGEOS
+ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+using SparseArrays
+using LinearAlgebra
+using Unitful
+using Unitful: s, yr, d, kyr
+using Statistics
+using Format
+using Dates
+using FileIO
+using ProgressMeter
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using OceanBasins
+using NaNStatistics
+using NaturalEarth
+using GeometryOps
+using GeometryBasics
+using Format
+using LibGEOS
 
-# include("plotting_functions.jl")
-
+include("plotting_functions.jl")
 
 
 
 
-# # Load matrix and grid metrics
-# # @show model = "ACCESS-ESM1-5"
-# # @show experiment = ARGS[1]
-# # @show member = ARGS[2]
-# # @show time_window = ARGS[3]
+
+# Load matrix and grid metrics
 # @show model = "ACCESS-ESM1-5"
-# # @show experiment = "historical"
-# @show experiment = "ssp370"
-# @show experiment2 = "ssp370"
-# # @show time_window = "Jan1850-Dec1859"
-# # @show time_window = "Jan1990-Dec1999"
-# @show time_window = "Jan2030-Dec2039"
-# @show time_window2 = "Jan2090-Dec2099"
+# @show experiment1 = ARGS[1]
+# @show member = ARGS[2]
+# @show time_window1 = ARGS[3]
+@show model = "ACCESS-ESM1-5"
+# @show experiment1 = "historical"
+@show experiment1 = "ssp370"
+@show experiment2 = "ssp370"
+# @show time_window1 = "Jan1850-Dec1859"
+# @show time_window1 = "Jan1990-Dec1999"
+@show time_window1 = "Jan2030-Dec2039"
+@show time_window2 = "Jan2090-Dec2099"
 
-# lumpby = "month"
-# steps = 1:12
-# Nsteps = length(steps)
-# δt = ustrip(s, 1yr / Nsteps) # TODO maybe use exact mean number of days (more important for monthly because Feb)?
+# Load \Gamma out
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+yearly = true
+yearly_str = yearly ? "_yearly" : ""
+yearly_str2 = yearly ? "(yearly)" : ""
+
+# Gadi directory for input files
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# Load areacello and volcello for grid geometry
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+
+# Make indices
+indices = makeindices(v3D)
+(; N, wet3D) = indices
 
 
-# # Gadi directory for input files
-# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# # Load areacello and volcello for grid geometry
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+# Depth Polygons for map of location
+depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
+# maxdepth = 6000
+maxdepth = 5000
+@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# volcello_keys = propertynames(volcello_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, v3D, ) = gridmetrics
 
-# # Make indices
-# indices = makeindices(v3D)
-# (; N, wet3D) = indices
+function sourcelocation(srcname)
+    if srcname == "Karratha"
+        return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+    elseif srcname == "Portland"
+        return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+    elseif srcname == "Marlo"
+        return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
+    else
+        error("No source name matchin $srcname")
+    end
+end
 
-# function sourcelocation(srcname)
-#     if srcname == "Karratha"
-#         return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
-#     elseif srcname == "Portland"
-#         return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
-#     elseif srcname == "Marlo"
-#         return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
-#     else
-#         error("No source name matchin $srcname")
-#     end
-# end
 
-# members = map(m -> "r$(m)i1p1f1", 1:40)
-# srcnames = ["Karratha"]
-# year_start = parse(Int, time_window[4:7])
+srcnames = ["Karratha"]
+
+
+# year_start = parse(Int, time_window1[4:7])
 # # Nyears = 501
 # # Nyears = 2001
 # Nyears = 1001
@@ -118,9 +138,11 @@
 # data = fill(NaN, (Nyears, Nsrc, Nmembers))
 # yaxdata = YAXArray(axlist, data)
 
+# members = map(m -> "r$(m)i1p1f1", 1:40)
+
 # for member in members
 #     for srcname in srcnames
-#         datainputdir = joinpath(fixedvarsinputdir, experiment, member, time_window)
+#         datainputdir = joinpath(fixedvarsinputdir, experiment1, member, time_window1)
 #         outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
 #         isfile(outputfile) || continue
 #         @info "Loading injection time series file:\n  $(outputfile)"
@@ -134,79 +156,103 @@
 #     end
 # end
 
-# @info "Grab mean reemergence time at injection locations for all members"
-# all_members_inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
-# Γoutyr3D_timemean_ds = open_dataset(joinpath(all_members_inputdir, "adjointage_timemean.nc")).adjointage_timemean
-# Γouts = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     src_k = findlast(wet3D[src_i, src_j,:])
-#     readcubedata(Γoutyr3D_timemean_ds[src_i, src_j, src_k, :]).data
-# end
-# all_members_inputdir2 = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/cyclomonth"
-# Γoutyr3D_timemean_ds2 = open_dataset(joinpath(all_members_inputdir2, "adjointage_timemean.nc")).adjointage_timemean
-# Γouts2 = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     src_k = findlast(wet3D[src_i, src_j,:])
-#     readcubedata(Γoutyr3D_timemean_ds2[src_i, src_j, src_k, :]).data
-# end
+members = map(m -> "r$(m)i1p1f1", 1:40)
 
-# depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
-# # maxdepth = 6000
-# maxdepth = 5000
-# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
-# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
-# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
+@info "Grab mean reemergence time at injection locations for all members"
+Γouts1 = map(srcnames) do srcname
+    src_P = sourcelocation(srcname)
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    src_k = findlast(wet3D[src_i, src_j,:])
+    map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
+    end
+end
+Γouts2 = map(srcnames) do srcname
+    src_P = sourcelocation(srcname)
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    src_k = findlast(wet3D[src_i, src_j,:])
+    map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
+    end
+end
+
+# TODO: This loading is very slow (about 6 minutes × 4 ≈ 25 minutes, many CPUs and mem don't help.
+# I should just save these time series and then load them separately.)
+reload = false
+# TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/TTD_timeseries.jld2"
+if isfile(fname) && !reload
+    @time "Loading pre-computed 2030s TTDs at injection location" 𝒢s1 = load(fname, "𝒢s1")
+else
+    𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
+    @time "Grab 2030s TTDs at injection location" 𝒢s1 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
+    end
+    save(fname, "𝒢s1", 𝒢s1)
+end
+
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/TTD_timeseries.jld2"
+if isfile(fname) && !reload
+    @time "Loading pre-computed 2090s TTDs at injection location" 𝒢s2 = load(fname, "𝒢s2")
+else
+    𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
+    @time "Grab 2090s TTDs at injection location" 𝒢s2 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
+    end
+    save(fname, "𝒢s2", 𝒢s2)
+end
+
+
+TTD_time = collect(axes(𝒢s1[1], 1)) # saved every year so index should be same as year
+
+# TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/seqeff_timeseries.jld2"
+if isfile(fname) && !reload
+    @time "Loading pre-computed 2030s seq. eff. at injection location" ℰs1 = load(fname, "ℰs1")
+else
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    @time "Grab 2030s seq. eff. at injection location" ℰs1 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(ℰ_ds.seqeff[src_i, src_j, :, :]).data
+    end
+    save(fname, "ℰs1", ℰs1)
+end
+
+# TTDs for 2090s circulation
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/seqeff_timeseries.jld2"
+if isfile(fname) && !reload
+    @time "Loading pre-computed 2090s seq. eff. at injection location" ℰs2 = load(fname, "ℰs2")
+else
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    @time "Grab 2090s seq. eff. at injection location" ℰs2 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(ℰ_ds.seqeff[src_i, src_j, :, :]).data
+    end
+    save(fname, "ℰs2", ℰs2)
+end
 
 
 
 
 
-# @info "Grab TTDs at injection location"
-# members = ["r$(r)i1p1f1" for r in 1:3]
-# # Gadi directory for input files
-# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
-# 𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calgtilde.nc" for member in members]
-# 𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
-# 𝒢 = readcubedata(𝒢_ds.calgtilde)
-# 𝒢s = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     𝒢[src_i, src_j, :, :]
-# end
-# # TTDs for 2090s circulation
-# 𝒢_files2 = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calgtilde.nc" for member in members]
-# 𝒢_ds2 = open_mfdataset(DimArray(𝒢_files2, Dim{:member}(members)))
-# 𝒢2 = readcubedata(𝒢_ds2.calgtilde)
-# 𝒢s2 = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     𝒢2[src_i, src_j, :, :]
-# end
-# TTD_time = 𝒢s[1].Ti |> Array
 
-# @info "Grab sequestration efficiency at injection location"
-# members = ["r$(r)i1p1f1" for r in 1:3]
-# # Gadi directory for input files
-# inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$(time_window)/cyclomonth"
-# ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calE.nc" for member in members]
-# ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-# ℰ = readcubedata(ℰ_ds.calE)
-# ℰs = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     ℰ[src_i, src_j, :, :]
-# end
-# # TTDs for 2090s circulation
-# ℰ_files2 = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calE.nc" for member in members]
-# ℰ_ds2 = open_mfdataset(DimArray(ℰ_files2, Dim{:member}(members)))
-# ℰ2 = readcubedata(ℰ_ds2.calE)
-# ℰs2 = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     ℰ2[src_i, src_j, :, :]
-# end
+
 
 
 
@@ -274,7 +320,7 @@ Colorbar(fig;
     vertical = false,
     flipaxis = true,
     ticklabelsize = 10,
-    bbox = panela.scene.px_area,
+    bbox = panela.scene.viewport,
     alignmode = Outside(10),
     valign = :bottom,
     halign = :left,
@@ -293,13 +339,15 @@ Colorbar(fig;
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 # hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 # TODO: read src_P somehow (file name or variable inside file)
-# colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
-# colors = cgrad(:Egypt, categorical=true)[[3]]
-colors = cgrad(:galah, categorical=true)[[3]]
+# colors1 = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+# colors1 = cgrad(:Egypt, categorical=true)[[3]]
+colors1 = cgrad(:galah, categorical=true)[[3]]
 # color2 = cgrad(:Egypt, categorical=true)[4]
 colors2 = cgrad(:galah, categorical=true)[[6]]
-bdcolors = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors]
+bdcolors1 = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors1]
 bdcolors2 = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors2]
+Γcolors1 = [(c + 3 * RGBA(1,1,1,1)) / 4 for c in colors1]
+Γcolors2 = [(c + 3 * RGBA(1,1,1,1)) / 4 for c in colors2]
 # colors = Makie.wong_colors()[[1, 3, 6]]
 # offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
 # offsets = map(x -> x.* 2, [(-2, 1)])
@@ -311,14 +359,14 @@ aligns = [(:left, :center)]
 # texts = ["A"]
 texts = ["injection\nlocation"]
 
-for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors, texts))
+for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, offsets, aligns, colors1, texts))
     src_P = sourcelocation(srcname)
     # sc1 = scatter!(panela2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=3)
     # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
     # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
     # lines!(panela2, [src_P, src_P .+ offset]; color=:white)
     lines!(panela, kinkline(src_P .+ offset, src_P); color=:black)
-    sc = scatter!(panela, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
+    sc = scatter!(panela, src_P; marker=:star5, markersize=20, color=colors1[ksrc], strokecolor=:black, strokewidth=1)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color)
     text!(panela, src_P .+ offset; text, align, color=:black, strokecolor=:black)
@@ -351,8 +399,9 @@ end
 #######
 # TTD #
 #######
-xmin, xmax = 0, 2000
-ymin, ymax = 0, 1.2 # It's a pain but this needs to be set for my boxplots to match the size
+xmin, xmax = 0, 3000
+# ymin, ymax = 0, 1.2
+ymin, ymax = 0, 0.6 # It's a pain but this needs to be set for my boxplots to match the size
 axisoptions = (
     # ytrimspine = (false, true),
     # xtrimspine = (false, true),
@@ -375,16 +424,16 @@ axisoptions = (
     limits = (xmin, xmax, ymin, ymax),
 )
 panelb = Axis(fig[1, 2]; axisoptions...)
-maxall𝒢s = ustrip.(kyr^-1, maximum(maximum(𝒢s[ksrc].data) for ksrc in eachindex(srcnames)) * s^-1)
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors, bdcolors, colors2, bdcolors2))
-    vspan!(panelb, minimum(Γouts[ksrc]), maximum(Γouts[ksrc]), color = bdcolor)
-    vspan!(panelb, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = bdcolor2)
-    𝒢2030smin = ustrip.(kyr^-1, dropdims(minimum(𝒢s[ksrc].data, dims = 2), dims = 2) * s^-1)
-    𝒢2030smax = ustrip.(kyr^-1, dropdims(maximum(𝒢s[ksrc].data, dims = 2), dims = 2) * s^-1)
-    𝒢2090smin = ustrip.(kyr^-1, dropdims(minimum(𝒢s2[ksrc].data, dims = 2), dims = 2) * s^-1)
-    𝒢2090smax = ustrip.(kyr^-1, dropdims(maximum(𝒢s2[ksrc].data, dims = 2), dims = 2) * s^-1)
-    𝒢2030s = ustrip.(kyr^-1, dropdims(mean(𝒢s[ksrc].data, dims = 2), dims = 2) * s^-1)
-    𝒢2090s = ustrip.(kyr^-1, dropdims(mean(𝒢s2[ksrc].data, dims = 2), dims = 2) * s^-1)
+maxall𝒢s1 = ustrip.(kyr^-1, maximum(maximum(𝒢s1[ksrc]) for ksrc in eachindex(srcnames)) * s^-1)
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+    vspan!(panelb, minimum(Γouts1[ksrc]), maximum(Γouts1[ksrc]), color = Γcolors1[ksrc])
+    vspan!(panelb, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = Γcolors2[ksrc])
+    𝒢2030smin = ustrip.(kyr^-1, dropdims(minimum(𝒢s1[ksrc], dims = 2), dims = 2) * s^-1)
+    𝒢2030smax = ustrip.(kyr^-1, dropdims(maximum(𝒢s1[ksrc], dims = 2), dims = 2) * s^-1)
+    𝒢2090smin = ustrip.(kyr^-1, dropdims(minimum(𝒢s2[ksrc], dims = 2), dims = 2) * s^-1)
+    𝒢2090smax = ustrip.(kyr^-1, dropdims(maximum(𝒢s2[ksrc], dims = 2), dims = 2) * s^-1)
+    𝒢2030s = ustrip.(kyr^-1, dropdims(mean(𝒢s1[ksrc], dims = 2), dims = 2) * s^-1)
+    𝒢2090s = ustrip.(kyr^-1, dropdims(mean(𝒢s2[ksrc], dims = 2), dims = 2) * s^-1)
     bd2030s = band!(panelb, TTD_time, 𝒢2030smin, 𝒢2030smax; color = bdcolor)
     bd2090s = band!(panelb, TTD_time, 𝒢2090smin, 𝒢2090smax; color = bdcolor2)
     ln2030s = lines!(panelb, TTD_time, 𝒢2030s; color = color, linewidth=2, linecap=:round, joinstyle=:round)
@@ -396,11 +445,18 @@ end
 
 
 
+
+
+
+
+
 ############################
 # sequestration efficiency #
 ############################
-xmin, xmax = 0, 350
-ymin, ymax = 70, 100
+# xmin, xmax = 0, 350
+# ymin, ymax = 70, 100
+xmin, xmax = 0, 400
+ymin, ymax = 96.8, 100
 axisoptions = (
     # ytrimspine = (false, true),
     # xtrimspine = (false, true),
@@ -413,6 +469,7 @@ axisoptions = (
     yaxisposition = :left,
     xaxisposition = :bottom,
     # xticks = -100:100:Nyears,
+    # xticks = 0:100:xmax,
     xticks = 0:100:xmax,
     # xticks = MultipleTicks(100),
     # yticks = 0:10:100,
@@ -438,13 +495,13 @@ align = (:center, :center)
 # Band for injection time window
 # ibnd = vspan!(panelc, -10, 0; color = (:black, 0.1))
 # text!(panelc, 10, 50; text = "10-year injection", rotation = π/2, align = (:center, :center))
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors, bdcolors, colors2, bdcolors2))
-    ℰ2030smin = dropdims(minimum(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2030smax = dropdims(maximum(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2090smin = dropdims(minimum(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
-    ℰ2090smax = dropdims(maximum(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
-    ℰ2030s = dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2090s = dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+    ℰ2030smin = dropdims(minimum(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2030smax = dropdims(maximum(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2090smin = dropdims(minimum(100 * ℰs2[ksrc], dims = 2), dims = 2)
+    ℰ2090smax = dropdims(maximum(100 * ℰs2[ksrc], dims = 2), dims = 2)
+    ℰ2030s = dropdims(mean(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2090s = dropdims(mean(100 * ℰs2[ksrc], dims = 2), dims = 2)
     bd2030s = band!(panelc, TTD_time, ℰ2030smin, ℰ2030smax; color = bdcolor)
     bd2090s = band!(panelc, TTD_time, ℰ2090smin, ℰ2090smax; color = bdcolor2)
     ln2030s = lines!(panelc, TTD_time, ℰ2030s; color, linewidth=2, linecap=:round, joinstyle=:round)
@@ -455,9 +512,8 @@ ylims!(panelc, ymax, ymin)
 
 
 
-
 # Repeat for unzoomed time series
-xmin, xmax = 0, 2000
+xmin, xmax = 0, 3000
 ymin, ymax = 0, 100
 axisoptions = (
     # ytrimspine = (false, true),
@@ -489,22 +545,21 @@ linestyle = :dash
 align = (:center, :center)
 # hlines!(paneld, [50, 90]; color, linestyle)
 # vlines!(paneld, [100, 300, 1000]; color, linestyle)
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors, bdcolors, colors2, bdcolors2))
-    vspan!(paneld, minimum(Γouts[ksrc]), maximum(Γouts[ksrc]), color = bdcolor)
-    vspan!(paneld, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = bdcolor2)
-    ℰ2030smin = dropdims(minimum(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2030smax = dropdims(maximum(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2090smin = dropdims(minimum(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
-    ℰ2090smax = dropdims(maximum(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
-    ℰ2030s = dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2)
-    ℰ2090s = dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2)
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+    vspan!(paneld, minimum(Γouts1[ksrc]), maximum(Γouts1[ksrc]), color = Γcolors1[ksrc])
+    vspan!(paneld, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = Γcolors2[ksrc])
+    ℰ2030smin = dropdims(minimum(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2030smax = dropdims(maximum(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2090smin = dropdims(minimum(100 * ℰs2[ksrc], dims = 2), dims = 2)
+    ℰ2090smax = dropdims(maximum(100 * ℰs2[ksrc], dims = 2), dims = 2)
+    ℰ2030s = dropdims(mean(100 * ℰs1[ksrc], dims = 2), dims = 2)
+    ℰ2090s = dropdims(mean(100 * ℰs2[ksrc], dims = 2), dims = 2)
     bd2030s = band!(paneld, TTD_time, ℰ2030smin, ℰ2030smax; color = bdcolor)
     bd2090s = band!(paneld, TTD_time, ℰ2090smin, ℰ2090smax; color = bdcolor2)
     ln2030s = lines!(paneld, TTD_time, ℰ2030s; color = color, linewidth=2, linecap=:round, joinstyle=:round)
     ln2090s = lines!(paneld, TTD_time, ℰ2090s; color = color2, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
 end
 ylims!(paneld, ymax, ymin)
-
 
 
 
@@ -525,11 +580,11 @@ colgap!(fig.layout, 20)
 #############
 # (must come after resizing to get correct width of bar plots)
 # Box plot of mean age inside
-valuesΓ2030s = reduce(vcat, Γouts)
+valuesΓ2030s = reduce(vcat, Γouts1)
 categories = reduce(vcat, fill(label, 40) for label in texts)
 # Place Γ box plot close to top and stagger its display down for each injection locations (max 4)
-categorypositions = maxall𝒢s * (1 .- reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts))) / 4)
-color = reduce(vcat, fill(color, 40) for color in colors)
+categorypositions = maxall𝒢s1 * (1 .- reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts))) / 4)
+color = reduce(vcat, fill(color, 40) for color in colors1)
 # I want a 10 pixel width = width_dataspace / limits_dataspace * limits_figspace
 # so width_dataspace = 10 * limits_dataspace / limits_figspace
 limits_dataspace = panelb.finallimits[].widths[2]
@@ -540,8 +595,8 @@ boxplot!(panelb, categorypositions, valuesΓ2030s; color=color, orientation = :h
 valuesΓ2090s = reduce(vcat, Γouts2)
 categories = reduce(vcat, fill(label, 40) for label in texts)
 # Place Γ box plot close to top and stagger its display down for each injection locations (max 4)
-categorypositions = maxall𝒢s * (1 .- reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts))) / 4)
-color = reduce(vcat, fill(color, 40) for color in colors)
+categorypositions = maxall𝒢s1 * (1 .- reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts))) / 4)
+color = reduce(vcat, fill(color, 40) for color in colors1)
 color2 = reduce(vcat, fill(color, 40) for color in colors2)
 # I want a 10 pixel width = width_dataspace / limits_dataspace * limits_figspace
 # so width_dataspace = 10 * limits_dataspace / limits_figspace
@@ -553,31 +608,32 @@ text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2090s)) / 2, categorypos
 text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2030s)) / 2, categorypositions[1]; text = "2030s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
 text!(panelb, (minimum(valuesΓ2090s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = "2090s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
 # text!(panelb, maximum(values), categorypositions[1]; text = rich("mean time ", Γstr), align = (:left, :center), offset = (5, 0))
-# given ℰ
-for (ℰsdecade, colors) in zip((ℰs, ℰs2), (colors, colors2))
+
+
+for (ℰsdecade, colors) in zip((ℰs1, ℰs2), (colors1, colors2))
     for panel in (panelc, paneld)
+        # given ℰ
         for ℰval in [50, 90]
-            values = [findfirst(100 * ℰi .< ℰval) for ℰ in ℰsdecade for ℰi in eachcol(ℰ.data)]
-            categories = reduce(vcat, fill(label, 3) for label in texts)
-            categorypositions = fill(ℰval, length(categories))
-            color = reduce(vcat, fill(color, 3) for color in colors)
-            limits_dataspace = panel.finallimits[].widths[2]
-            limits_figspace = fullproject(panel, panel.finallimits[]).widths[2]
-            width = 20 * limits_dataspace / limits_figspace
-            boxplot!(panel, categorypositions, values; color=color, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
-            (ℰval == 50) && (panel == paneld) && (ℰsdecade == ℰs) && text!(panel, minimum(values), categorypositions[1]; text = "median\ntime", align = (:right, :center), offset = (-10, 0))
-            (ℰval == 90) && (panel == panelc) && (ℰsdecade == ℰs) && text!(panel, minimum(values), categorypositions[1]; text = "10th percentile\ntime", align = (:right, :center), offset = (-10, 0))
+            values = [findfirst(100 * ℰi .< ℰval) for ℰ in ℰsdecade for ℰi in eachcol(ℰ)]
+            local categorypositions = fill(ℰval, length(values))
+            local color = fill(colors[1], length(values))
+            local limits_dataspace = panel.finallimits[].widths[2]
+            local limits_figspace = abs(fullproject(panel, panel.finallimits[]).widths[2])
+            local width = 20 * limits_dataspace / limits_figspace
+            boxplot!(panel, categorypositions, values; color, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
+            (ℰval == 50) && (panel == paneld) && (ℰsdecade == ℰs1) && text!(panel, minimum(values), categorypositions[1]; text = "median\ntime", align = (:right, :center), offset = (-10, 0))
+            (ℰval == 90) && (panel == panelc) && (ℰsdecade == ℰs1) && text!(panel, minimum(values), categorypositions[1]; text = "10th percentile\ntime", align = (:right, :center), offset = (-10, 0))
         end
         # given τ
         for τval = [100, 300, 1000]
-            values = [100 * ℰi[τval] for ℰ in ℰsdecade for ℰi in eachcol(ℰ.data)]
-            categories = reduce(vcat, fill(label, 3) for label in texts)
-            categorypositions = fill(τval, length(categories))
-            color = reduce(vcat, fill(color, 3) for color in colors)
-            limits_dataspace = panel.finallimits[].widths[1]
-            limits_figspace = fullproject(panel, panel.finallimits[]).widths[1]
-            width = 20 * limits_dataspace / limits_figspace
-            boxplot!(panel, categorypositions, values; color=color, orientation = :vertical, width, strokewidth = 1, whiskerwidth = :match)
+            values = [100 * ℰi[τval] for ℰ in ℰsdecade for ℰi in eachcol(ℰ)]
+            local categorypositions = fill(τval, length(values))
+            local color = fill(colors[1], length(values))
+            local limits_dataspace = panel.finallimits[].widths[1]
+            local limits_figspace = fullproject(panel, panel.finallimits[]).widths[1]
+            local width = 20 * limits_dataspace / limits_figspace
+            boxplot!(panel, categorypositions, values; color, orientation = :vertical, width, strokewidth = 1, whiskerwidth = :match)
+            # scatter!(panel, fill(τval, length(values)), values)
         end
     end
 end
@@ -598,6 +654,7 @@ for (ax, label) in zip([panela, panelb, panelc, paneld], string.('a':'h'))
     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
     text!(ax, 0, 1; text = label, labeloptions...)
 end
+
 
 
 # save plot

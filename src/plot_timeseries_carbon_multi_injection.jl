@@ -240,7 +240,7 @@ Colorbar(fig;
     vertical = false,
     flipaxis = true,
     ticklabelsize = 10,
-    bbox = panelh2.scene.px_area,
+    bbox = panelh2.scene.viewport,
     alignmode = Outside(10),
     valign = :bottom,
     halign = :left,
