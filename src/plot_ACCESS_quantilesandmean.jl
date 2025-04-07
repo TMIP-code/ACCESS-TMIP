@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=47GB -q express -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -257,14 +257,15 @@ save(outputfile, fig)
 
 # datamean = (Γout_ensemblemean, ℰ50_ensemblemean, ℰ10_ensemblemean)
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
-data = datamean[2][ikeep] ./ datamean[1][ikeep]
+data = datamean[2][ikeep] ./ datamean[1][ikeep] .- 1
 weights = Weights(gridmetrics.area2D[ikeep])
-fig, ax, plt = hist(data; weights, bins = 0:0.05:3)
+fig, ax, plt = hist(data; weights, bins = -1:0.05:0)
 outputfile = joinpath(outputdir, "median_over_mean_histogram_$(time_window)$(suffix).png")
 @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
-mean(data, weights)
-quantile(data, weights, 0:0.1:1)
+@show mean(data, weights)
+@show std(data, weights)
+@show quantile(data, weights, 0:0.1:1)
 
 
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
@@ -273,10 +274,22 @@ weights = Weights(gridmetrics.area2D[ikeep])
 fig, ax, plt = hist(data; weights, bins = -1:0.05:1)
 outputfile = joinpath(outputdir, "tenthpercentile_over_median_histogram_$(time_window)$(suffix).png")
 @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
-save(outputfile, fig)
-mean(data, weights)
-quantile(data, weights, 0:0.1:1)
+@show save(outputfile, fig)
+@show mean(data, weights)
+@show quantile(data, weights, 0:0.1:1)
 
+
+
+ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = datamean[1][ikeep]
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = 0:100:3000)
+outputfile = joinpath(outputdir, "mean_histogram_$(time_window)$(suffix).png")
+@info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
+save(outputfile, fig)
+@show mean(data, weights)
+@show std(data, weights)
+@show quantile(data, weights, 0:0.1:1)
 
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
 data = datamean[2][ikeep]
@@ -287,3 +300,28 @@ outputfile = joinpath(outputdir, "median_histogram_$(time_window)$(suffix).png")
 save(outputfile, fig)
 mean(data, weights)
 quantile(data, weights, 0:0.1:1)
+
+ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = datamean[3][ikeep]
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = 0:100:3000)
+outputfile = joinpath(outputdir, "tenthpercentile_histogram_$(time_window)$(suffix).png")
+@info "Saving as image file:\n  $(outputfile)"
+save(outputfile, fig)
+@show mean(data, weights)
+@show std(data, weights)
+@show quantile(data, weights, 0:0.1:1)
+
+
+
+
+ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
+data = datarange[1][ikeep] ./ datamean[1][ikeep]
+weights = Weights(gridmetrics.area2D[ikeep])
+fig, ax, plt = hist(data; weights, bins = 0:0.1:2)
+outputfile = joinpath(outputdir, "rangemeanage_over_meanage_$(time_window)$(suffix).png")
+@info "Saving as image file:\n  $(outputfile)"
+save(outputfile, fig)
+@show mean(data, weights)
+@show std(data, weights)
+@show quantile(data, weights, 0:0.1:1)
