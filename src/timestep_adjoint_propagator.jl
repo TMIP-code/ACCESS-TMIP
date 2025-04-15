@@ -269,7 +269,7 @@ nx, ny, nz = size(wet3D)
 data_srcPs = fill(NaN, Nsrc, Nmonths)
 x3D = fill(NaN, nx, ny, nz)
 
-@showprogress "Time-stepping loop" for t in 1:Nmonths
+@showprogress dt=600 "Time-stepping loop" for t in 1:Nmonths
     stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
 end
 

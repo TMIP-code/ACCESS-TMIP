@@ -212,7 +212,7 @@ nx, ny, nz = size(wet3D)
 ℰ_seafloor = fill(NaN, nx, ny, Nyears)
 x3D = fill(NaN, nx, ny, nz)
 
-@showprogress "Time-stepping loop" for t in 1:Nyears
+@showprogress dt=600 "Time-stepping loop" for t in 1:Nyears
     stepbackoneyear!(ℊ̃, ∫ℊ̃dt, yearprob, t)
 end
 

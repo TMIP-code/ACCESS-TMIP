@@ -16,8 +16,8 @@
 # time_window=Jan1850-Dec1859
 # time_window=Jan1990-Dec1999
 experiment=ssp370
-# time_window=Jan2030-Dec2039
-time_window=Jan2090-Dec2099
+time_window=Jan2030-Dec2039
+# time_window=Jan2090-Dec2099
 member=member_placeholder
 finalmonth=finalmonth_placeholder
 WRITEDATA=true
