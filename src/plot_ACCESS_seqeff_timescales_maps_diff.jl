@@ -221,25 +221,10 @@ datadiff = (Γout_ensemblemean_diff, ℰ_diff[:,:,3])
 # levels_diff = (-1200:100:1200, -50:10:50)
 # cmaps = (:viridis, :balance)
 
-# a Plot 2090s ensemble mean reemergence time
+
+
+# a 2090s seqeff
 irow, icol = 1, 1
-levels = 0:200:4000
-colormap = cgrad(:viridis, length(levels), categorical = true)
-highclip = colormap[end]
-colormap = cgrad(colormap[1:end-1], categorical = true)
-colorrange = extrema(levels)
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, Γout_ensemblemean2, gridmetrics; colorrange, colormap, highclip)
-myhidexdecorations!(ax, irow < nrows)
-myhideydecorations!(ax, icol > 1)
-Label(fig[irow + 1, 0]; text = rich("Mean time, ", Γstr), rotation = π/2, tellheight = false)
-label = rich("ensemble mean 2090s ", Γstr, "  (years)")
-cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = 0:1000:4000)
-cb.width = Relative(2/3)
-
-
-# b Plot 2090s seqeff
-irow, icol = 2, 1
 levels = 0:10:100
 colormap = cgrad(:Zissou1Continuous, length(levels) - 1, categorical = true, rev = true)
 highclip = colormap[end]
@@ -251,30 +236,29 @@ myhideydecorations!(ax, icol > 1)
 year = τs[3]
 Label(fig[irow + 1, 0]; text = rich(ℰstr, "(τ = $year years)"), rotation = π/2, tellheight = false)
 label = rich("ensemble mean 2090s ", ℰfun, " (%)")
-cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = 0:20:100)
+cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = 0:20:100)
 cb.width = Relative(2/3)
 
-
-
-# c Plot ensemble mean reemergence time diff
-irow, icol = 1, 2
-levels = -1200:100:1200
-colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+# b 2090s ensemble mean reemergence time
+irow, icol = 2, 1
+levels = 0:200:4000
+colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
-lowclip = colormap[1]
-colormap = cgrad(colormap[2:end-1], categorical = true)
+colormap = cgrad(colormap[1:end-1], categorical = true)
 colorrange = extrema(levels)
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, Γout_ensemblemean_diff, gridmetrics; colorrange, colormap, highclip)
+co = plotmap!(ax, Γout_ensemblemean2, gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
-label = rich("ensemble mean 2090s − 2030s ", Γstr, "  (years)")
-cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = -1200:600:1200, tickformat = divergingcbarticklabelformat)
+Label(fig[irow + 1, 0]; text = rich("Mean time, ", Γstr), rotation = π/2, tellheight = false)
+label = rich("ensemble mean 2090s ", Γstr, "  (years)")
+cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = 0:1000:4000)
 cb.width = Relative(2/3)
 
 
-# d Plot seqeff diff
-irow, icol = 2, 2
+
+# c seqeff diff
+irow, icol = 1, 2
 levels = -50:10:50
 colormap = cgrad(cgrad(:tol_bu_rd, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
 highclip = colormap[end]
@@ -286,8 +270,27 @@ co = plotmap!(ax, 100 * ℰ_diff[:,:,3], gridmetrics; colorrange, colormap, high
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
 label = rich("ensemble mean 2090s − 2030s ", ℰfun, " (%)")
-cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
+cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
 cb.width = Relative(2/3)
+
+
+# d ensemble mean reemergence time diff
+irow, icol = 2, 2
+levels = -1200:100:1200
+colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+highclip = colormap[end]
+lowclip = colormap[1]
+colormap = cgrad(colormap[2:end-1], categorical = true)
+colorrange = extrema(levels)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+co = plotmap!(ax, Γout_ensemblemean_diff, gridmetrics; colorrange, colormap, highclip)
+myhidexdecorations!(ax, irow < nrows)
+myhideydecorations!(ax, icol > 1)
+label = rich("ensemble mean 2090s − 2030s ", Γstr, "  (years)")
+cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = -1200:600:1200, tickformat = divergingcbarticklabelformat)
+cb.width = Relative(2/3)
+
+
 
 
 
@@ -331,7 +334,6 @@ save(outputfile, fig)
 
 
 
-
 # Now same plot but for the SI figure
 
 axs = Array{Any,2}(undef, (4, 2))
@@ -363,39 +365,14 @@ datadiff = (Γout_ensemblemean_diff, ℰ_diff[:,:,3])
 # levels_diff = (-1200:100:1200, -50:10:50)
 # cmaps = (:viridis, :balance)
 
-# a,b Plots 2090s ensemble mean median and 10th percentile time
-levels = 0:200:4000
-colormap = cgrad(:viridis, length(levels), categorical = true)
-highclip = colormap[end]
-colormap = cgrad(colormap[1:end-1], categorical = true)
-colorrange = extrema(levels)
 
-irow, icol = 1, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,2], gridmetrics; colorrange, colormap, highclip)
-myhidexdecorations!(ax, irow < nrows)
-myhideydecorations!(ax, icol > 1)
-Label(fig[irow + 1, 0]; text = rich("Median, ", ℰstr, " = 50 %"), rotation = π/2, tellheight = false)
-
-label = rich("ensemble mean 2090s timescales (years)")
-cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = 0:1000:4000)
-cb.width = Relative(2/3)
-
-irow, icol = 2, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,1], gridmetrics; colorrange, colormap, highclip)
-myhidexdecorations!(ax, irow < nrows)
-myhideydecorations!(ax, icol > 1)
-Label(fig[irow + 1, 0]; text = rich("10th percentile, ", ℰstr, " = 90 %"), rotation = π/2, tellheight = false)
-
-
-# c,d Plot 2090s seqeff for 100 and 300 years
+# a,b Plot 2090s seqeff for 100 and 300 years
 levels = 0:10:100
 colormap = cgrad(:Zissou1Continuous, length(levels) - 1, categorical = true, rev = true)
 highclip = colormap[end]
 colorrange = extrema(levels)
 
-irow, icol = 3, 1
+irow, icol = 1, 1
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
 co = plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, 2], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
@@ -403,7 +380,11 @@ myhideydecorations!(ax, icol > 1)
 year = τs[2]
 Label(fig[irow + 1, 0]; text = rich(ℰstr, "(τ = $year years)"), rotation = π/2, tellheight = false)
 
-irow, icol = 4, 1
+label = rich("ensemble mean 2090s ", ℰfun, " (%)")
+cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = 0:20:100)
+cb.width = Relative(2/3)
+
+irow, icol = 2, 1
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
 co = plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, 1], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
@@ -411,37 +392,35 @@ myhideydecorations!(ax, icol > 1)
 year = τs[1]
 Label(fig[irow + 1, 0]; text = rich(ℰstr, "(τ = $year years)"), rotation = π/2, tellheight = false)
 
-label = rich("ensemble mean 2090s ", ℰfun, " (%)")
-cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = 0:20:100)
-cb.width = Relative(2/3)
 
-
-# e,f Plot ensemble mean median and 10th percentile time diff
-levels = -1200:100:1200
-colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+# c,d Plots 2090s ensemble mean median and 10th percentile time
+levels = 0:200:4000
+colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
-lowclip = colormap[1]
-colormap = cgrad(colormap[2:end-1], categorical = true)
+colormap = cgrad(colormap[1:end-1], categorical = true)
 colorrange = extrema(levels)
 
-irow, icol = 1, 2
+irow, icol = 3, 1
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 2], gridmetrics; colorrange, colormap, highclip)
+co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,2], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
+Label(fig[irow + 1, 0]; text = rich("Median, ", ℰstr, " = 50 %"), rotation = π/2, tellheight = false)
 
-label = rich("ensemble mean 2090s − 2030s  (years)")
-cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = -1200:600:1200, tickformat = divergingcbarticklabelformat)
+
+irow, icol = 4, 1
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,1], gridmetrics; colorrange, colormap, highclip)
+myhidexdecorations!(ax, irow < nrows)
+myhideydecorations!(ax, icol > 1)
+Label(fig[irow + 1, 0]; text = rich("10th percentile, ", ℰstr, " = 90 %"), rotation = π/2, tellheight = false)
+
+label = rich("ensemble mean 2090s timescales (years)")
+cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = 0:1000:4000)
 cb.width = Relative(2/3)
 
-irow, icol = 2, 2
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 1], gridmetrics; colorrange, colormap, highclip)
-myhidexdecorations!(ax, irow < nrows)
-myhideydecorations!(ax, icol > 1)
 
-
-# g,h Plot seqeff diff
+# e,f Plot seqeff diff
 levels = -50:10:50
 colormap = cgrad(cgrad(:tol_bu_rd, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
 highclip = colormap[end]
@@ -449,21 +428,45 @@ lowclip = colormap[1]
 colormap = cgrad(colormap[2:end-1], categorical = true)
 colorrange = extrema(levels)
 
-irow, icol = 3, 2
+irow, icol = 1, 2
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
 co = plotmap!(ax, 100 * ℰ_diff[:,:,2], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
-label = rich("ensemble mean 2090s − 2030s ", ℰfun, " (%)")
 
-irow, icol = 4, 2
+label = rich("ensemble mean 2090s − 2030s ", ℰfun, " (%)")
+cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
+cb.width = Relative(2/3)
+
+irow, icol = 2, 2
 axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
 co = plotmap!(ax, 100 * ℰ_diff[:,:,1], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
-label = rich("ensemble mean 2090s − 2030s ", ℰfun, " (%)")
 
-cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
+
+# g,h Plot ensemble mean median and 10th percentile time diff
+levels = -1200:100:1200
+colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+highclip = colormap[end]
+lowclip = colormap[1]
+colormap = cgrad(colormap[2:end-1], categorical = true)
+colorrange = extrema(levels)
+
+irow, icol = 3, 2
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 2], gridmetrics; colorrange, colormap, highclip)
+myhidexdecorations!(ax, irow < nrows)
+myhideydecorations!(ax, icol > 1)
+
+irow, icol = 4, 2
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 1], gridmetrics; colorrange, colormap, highclip)
+myhidexdecorations!(ax, irow < nrows)
+myhideydecorations!(ax, icol > 1)
+
+label = rich("ensemble mean 2090s − 2030s  (years)")
+cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = -1200:600:1200, tickformat = divergingcbarticklabelformat)
 cb.width = Relative(2/3)
 
 
