@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=47GB -q express -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -72,8 +72,6 @@ lev = zt
 indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
-
-
 # Preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
@@ -86,7 +84,7 @@ upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
 
 # Use yearly time-stepped simulations or monthly ones?
-yearly = true
+yearly = false
 yearly_str = yearly ? "_yearly" : ""
 yearly_str2 = yearly ? "(yearly)" : ""
 
@@ -99,34 +97,29 @@ end
 
 # To avoid loading and carrying 100s of GB of data around,
 # preprocess each member before and only save the 2D data needed for plots.
-if yearly
-    ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment/$(first(members))/$(time_window)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-    ℰ_ds0 = open_dataset(ℰ_file0)
-    years = ℰ_ds0.Ti |> Array
-    ℰ1050_ensemble = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-        @info "loading $member ℰ"
-        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-        ℰ_ds = open_dataset(ℰ_file)
-        ℰ = readcubedata(ℰ_ds.seqeff)
-        ℰ10 = map(
-            ts -> yearatquantile(ts, 0.9),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        ℰ50 = map(
-            ts -> yearatquantile(ts, 0.5),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        [ℰ10;;; ℰ50]
-    end)
-    ℰ1050_ensemblemean = dropdims(mean(ℰ1050_ensemble, dims = 4), dims = 4)
-    ℰ1050_ensemblemax = dropdims(maximum(ℰ1050_ensemble, dims = 4), dims = 4)
-    ℰ1050_ensemblemin = dropdims(minimum(ℰ1050_ensemble, dims = 4), dims = 4)
-    ℰ1050_ensemblerange = ℰ1050_ensemblemax - ℰ1050_ensemblemin
-
-
-else
-    # TODO (don't forget to deal with months)
-end
+varname = yearly ? "seqeff" : "calE"
+ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment/$(first(members))/$(time_window)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+ℰ_ds0 = open_dataset(ℰ_file0)
+years = ℰ_ds0.Ti |> Array
+τℰ1050_ensemble = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
+    @info "loading $member ℰ"
+    ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+    ℰ_ds = open_dataset(ℰ_file)
+    ℰ = readcubedata(ℰ_ds[varname])
+    τℰ10 = map(
+        ts -> yearatquantile(ts, 0.9),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    τℰ50 = map(
+        ts -> yearatquantile(ts, 0.5),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    [τℰ10;;; τℰ50]
+end)
+τℰ1050_ensemblemean = dropdims(mean(τℰ1050_ensemble, dims = 4), dims = 4)
+τℰ1050_ensemblemax = dropdims(maximum(τℰ1050_ensemble, dims = 4), dims = 4)
+τℰ1050_ensemblemin = dropdims(minimum(τℰ1050_ensemble, dims = 4), dims = 4)
+τℰ1050_ensemblerange = τℰ1050_ensemblemax - τℰ1050_ensemblemin
 
 include("plotting_functions.jl") # load seafloorvalue function
 
@@ -157,8 +150,8 @@ fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 yticks = -60:30:60
 xticks = -120:60:120 + 360
 
-datamean = (Γout_ensemblemean, ℰ1050_ensemblemean[:,:,2], ℰ1050_ensemblemean[:,:,1])
-datarange = (Γout_ensemblerange, ℰ1050_ensemblerange[:,:,2], ℰ1050_ensemblerange[:,:,1])
+datamean = (Γout_ensemblemean, τℰ1050_ensemblemean[:,:,2], τℰ1050_ensemblemean[:,:,1])
+datarange = (Γout_ensemblerange, τℰ1050_ensemblerange[:,:,2], τℰ1050_ensemblerange[:,:,1])
 𝒓 = rich("r", font = :bold_italic)
 Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
 Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
@@ -166,7 +159,9 @@ datarange = (Γout_ensemblerange, ℰ1050_ensemblerange[:,:,2], ℰ1050_ensemble
 ℰstr = rich("ℰ", rich("‾", offset = (-0.5, 0.15)))
 # Q10 = rich(Qstr, "(0.1)")
 # Q50 = rich(Qstr, "(0.5)")
-rowlabels = (rich("Mean time, ", Γfun), rich("Median, ", ℰstr, " = 50 %"), rich("10th percentile, ", ℰstr, " = 90 %"))
+# rowlabels = (rich("Mean time, ", Γfun), rich("Median time (", ℰstr, " = 50 %)"), rich("10th percentile time (", ℰstr, " = 90 %)"))
+rowlabels = (rich("Mean time, ", Γfun), rich("Median time (", ℰstr, " = 50 %)"), rich("10th %ile time (", ℰstr, " = 90 %)"))
+# rowlabels = (rich("Mean time, ", Γfun), rich("Median time (", ℰstr, " = 50 %)"), rich("10 % time (", ℰstr, " = 90 %)"))
 
 
 for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowlabels))
@@ -179,7 +174,7 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
 
-    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 
     contours[irow, icol] = if usecontourf
         plotcontourfmap!(ax, x2Dmean, gridmetrics; levels, colormap)
@@ -198,7 +193,7 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
 
-    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 
     contours[irow, icol] = if usecontourf
         plotcontourfmap!(ax, x2Drange, gridmetrics; levels, colormap)
@@ -214,7 +209,7 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
 end
 
 
-label = rich("ensemble mean (years)")
+label = rich("ensemble mean $(time_window[4:7])s characteristic timescales (years)")
 cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:1000:3000)
 cb.width = Relative(2/3)
 
@@ -240,12 +235,18 @@ for (ax, label) in zip(axs, labels)
 end
 
 # Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Reemergence Time ($(length(members)) members)", fontsize = 24, tellwidth = false)
-Label(fig[0, 1:2]; text = "$(time_window[4:7])s Characteristic Timescales of Reemergence ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
+# Label(fig[0, 1:2]; text = "$(time_window[4:7])s Characteristic Timescales of Reemergence ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 
+colsize!(fig.layout, 1, Aspect(1, 2.0))
+colsize!(fig.layout, 2, Aspect(1, 2.0))
+resize_to_layout!(fig)
+
 # save plot
 suffix = usecontourf ? "_ctrf" : ""
+
+
 outputfile = joinpath(outputdir, "reemergencetime$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).png")
 @info "Saving reemergencetime on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
@@ -255,7 +256,7 @@ save(outputfile, fig)
 
 
 
-# datamean = (Γout_ensemblemean, ℰ50_ensemblemean, ℰ10_ensemblemean)
+# datamean = (Γout_ensemblemean, τℰ50_ensemblemean, τℰ10_ensemblemean)
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
 data = datamean[2][ikeep] ./ datamean[1][ikeep] .- 1
 weights = Weights(gridmetrics.area2D[ikeep])

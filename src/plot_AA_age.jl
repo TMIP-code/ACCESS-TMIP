@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:20:00 -l ncpus=12
+# qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:30:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")

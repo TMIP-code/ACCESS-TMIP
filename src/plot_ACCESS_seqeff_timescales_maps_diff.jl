@@ -75,8 +75,6 @@ lev = zt
 indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
-
-
 # Preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
@@ -89,7 +87,7 @@ upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
 
 # Use yearly time-stepped simulations or monthly ones?
-yearly = true
+yearly = false
 yearly_str = yearly ? "_yearly" : ""
 yearly_str2 = yearly ? "(yearly)" : ""
 
@@ -104,62 +102,59 @@ end
 
 # To avoid loading and carrying 100s of GB of data around,
 # preprocess each member before and only save the 2D data needed for plots.
-if yearly
-    ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment1/$(first(members))/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-    ℰ_ds0 = open_dataset(ℰ_file0)
-    years = ℰ_ds0.Ti |> Array
-    τℰ1050_ensemble1 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-        @info "loading $member ℰ"
-        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-        ℰ_ds = open_dataset(ℰ_file)
-        ℰ = readcubedata(ℰ_ds.seqeff)
-        τℰ10 = map(
-            ts -> yearatquantile(ts, 0.9),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        τℰ50 = map(
-            ts -> yearatquantile(ts, 0.5),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        [τℰ10;;; τℰ50]
-    end)
-    τℰ1050_ensemble2 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-        @info "loading $member ℰ"
-        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-        ℰ_ds = open_dataset(ℰ_file)
-        ℰ = readcubedata(ℰ_ds.seqeff)
-        τℰ10 = map(
-            ts -> yearatquantile(ts, 0.9),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        τℰ50 = map(
-            ts -> yearatquantile(ts, 0.5),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        [τℰ10;;; τℰ50]
-    end)
-    τℰ1050_ensemblemean1 = dropdims(mean(τℰ1050_ensemble1, dims = 4), dims = 4)
-    τℰ1050_ensemblemean2 = dropdims(mean(τℰ1050_ensemble2, dims = 4), dims = 4)
-    τℰ1050_ensemblemean_diff = τℰ1050_ensemblemean2 - τℰ1050_ensemblemean1
+varname = yearly ? "seqeff" : "calE"
+ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment1/$(first(members))/$(time_window1)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+ℰ_ds0 = open_dataset(ℰ_file0)
+years = ℰ_ds0.Ti |> Array
+τℰ1050_ensemble1 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
+    @info "loading $member ℰ"
+    ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+    ℰ_ds = open_dataset(ℰ_file)
+    ℰ = readcubedata(ℰ_ds[varname])
+    τℰ10 = map(
+        ts -> yearatquantile(ts, 0.9),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    τℰ50 = map(
+        ts -> yearatquantile(ts, 0.5),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    [τℰ10;;; τℰ50]
+end)
+τℰ1050_ensemble2 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
+    @info "loading $member ℰ"
+    ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+    ℰ_ds = open_dataset(ℰ_file)
+    ℰ = readcubedata(ℰ_ds[varname])
+    τℰ10 = map(
+        ts -> yearatquantile(ts, 0.9),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    τℰ50 = map(
+        ts -> yearatquantile(ts, 0.5),
+        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+    )
+    [τℰ10;;; τℰ50]
+end)
+τℰ1050_ensemblemean1 = dropdims(mean(τℰ1050_ensemble1, dims = 4), dims = 4)
+τℰ1050_ensemblemean2 = dropdims(mean(τℰ1050_ensemble2, dims = 4), dims = 4)
+τℰ1050_ensemblemean_diff = τℰ1050_ensemblemean2 - τℰ1050_ensemblemean1
 
 
-    # Read 2030s files again for seq eff values now
-    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-    # Load the data for the selected timescales only (to avoid using too much memory)
-    ℰ = readcubedata(ℰ_ds.seqeff[Ti = At(τs)])
-    years = ℰ_ds.Ti |> Array
-    ℰ_ensemblemean1 = dropdims(mean(ℰ, dims = :member), dims = :member)
-    # Read 2090s files
-    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-    ℰ = readcubedata(ℰ_ds.seqeff[Ti = At(τs)])
-    ℰ_ensemblemean2 = dropdims(mean(ℰ, dims = :member), dims = :member)
-    ℰ_diff = ℰ_ensemblemean2 - ℰ_ensemblemean1
+# Read 2030s files again for seq eff values now
+ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+# Load the data for the selected timescales only (to avoid using too much memory)
+ℰ = readcubedata(ℰ_ds[varname][Ti = At(τs)])
+years = ℰ_ds.Ti |> Array
+ℰ_ensemblemean1 = dropdims(mean(ℰ, dims = :member), dims = :member)
+# Read 2090s files
+ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+ℰ = readcubedata(ℰ_ds[varname][Ti = At(τs)])
+ℰ_ensemblemean2 = dropdims(mean(ℰ, dims = :member), dims = :member)
+ℰ_diff = ℰ_ensemblemean2 - ℰ_ensemblemean1
 
-else
-    # TODO (don't forget to deal with months)
-end
 
 include("plotting_functions.jl") # load seafloorvalue function
 
@@ -181,7 +176,6 @@ end)
 Γout_ensemblemean1 = dropdims(mean(Γout_ensemble1, dims = 3), dims = 3)
 Γout_ensemblemean2 = dropdims(mean(Γout_ensemble2, dims = 3), dims = 3)
 Γout_ensemblemean_diff = Γout_ensemblemean2 - Γout_ensemblemean1
-
 
 
 
@@ -229,7 +223,7 @@ levels = 0:10:100
 colormap = cgrad(:Zissou1Continuous, length(levels) - 1, categorical = true, rev = true)
 highclip = colormap[end]
 colorrange = extrema(levels)
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, 3], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -246,7 +240,7 @@ colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
 colormap = cgrad(colormap[1:end-1], categorical = true)
 colorrange = extrema(levels)
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, Γout_ensemblemean2, gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -265,7 +259,7 @@ highclip = colormap[end]
 lowclip = colormap[1]
 colormap = cgrad(colormap[2:end-1], categorical = true)
 colorrange = extrema(levels)
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_diff[:,:,3], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -282,8 +276,8 @@ highclip = colormap[end]
 lowclip = colormap[1]
 colormap = cgrad(colormap[2:end-1], categorical = true)
 colorrange = extrema(levels)
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, Γout_ensemblemean_diff, gridmetrics; colorrange, colormap, highclip)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
+co = plotmap!(ax, Γout_ensemblemean_diff, gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
 label = rich("ensemble mean 2090s − 2030s ", Γstr, "  (years)")
@@ -313,6 +307,11 @@ end
 # Label(fig[0, 1:2]; text = "Climate Change Effect on Seafloor Reemergence Time ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
+
+colsize!(fig.layout, 1, Aspect(2, 2.0))
+colsize!(fig.layout, 2, Aspect(2, 2.0))
+resize_to_layout!(fig)
+
 
 # save plot
 suffix = usecontourf ? "_ctrf" : ""
@@ -373,7 +372,7 @@ highclip = colormap[end]
 colorrange = extrema(levels)
 
 irow, icol = 1, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, 2], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -385,7 +384,7 @@ cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, tic
 cb.width = Relative(2/3)
 
 irow, icol = 2, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_ensemblemean2[:, :, 1], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -401,21 +400,21 @@ colormap = cgrad(colormap[1:end-1], categorical = true)
 colorrange = extrema(levels)
 
 irow, icol = 3, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,2], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
-Label(fig[irow + 1, 0]; text = rich("Median, ", ℰstr, " = 50 %"), rotation = π/2, tellheight = false)
+Label(fig[irow + 1, 0]; text = rich("Median time (", ℰstr, " = 50 %)"), rotation = π/2, tellheight = false)
 
 
 irow, icol = 4, 1
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, τℰ1050_ensemblemean2[:,:,1], gridmetrics; colorrange, colormap, highclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
-Label(fig[irow + 1, 0]; text = rich("10th percentile, ", ℰstr, " = 90 %"), rotation = π/2, tellheight = false)
+Label(fig[irow + 1, 0]; text = rich("10th %ile time (", ℰstr, " = 90 %)"), rotation = π/2, tellheight = false)
 
-label = rich("ensemble mean 2090s timescales (years)")
+label = rich("ensemble mean 2090s characteristic timescales (years)")
 cb = Colorbar(fig[irow + 2, icol], co; label, vertical = false, flipaxis = false, ticks = 0:1000:4000)
 cb.width = Relative(2/3)
 
@@ -429,7 +428,7 @@ colormap = cgrad(colormap[2:end-1], categorical = true)
 colorrange = extrema(levels)
 
 irow, icol = 1, 2
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_diff[:,:,2], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -439,7 +438,7 @@ cb = Colorbar(fig[irow, icol], co; label, vertical = false, flipaxis = true, tic
 cb.width = Relative(2/3)
 
 irow, icol = 2, 2
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 co = plotmap!(ax, 100 * ℰ_diff[:,:,1], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
@@ -454,14 +453,14 @@ colormap = cgrad(colormap[2:end-1], categorical = true)
 colorrange = extrema(levels)
 
 irow, icol = 3, 2
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 2], gridmetrics; colorrange, colormap, highclip)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
+co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 2], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
 
 irow, icol = 4, 2
-axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat)
-co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 1], gridmetrics; colorrange, colormap, highclip)
+axs[irow, icol] = ax = Axis(fig[irow + 1, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
+co = plotmap!(ax, τℰ1050_ensemblemean_diff[:, :, 1], gridmetrics; colorrange, colormap, highclip, lowclip)
 myhidexdecorations!(ax, irow < nrows)
 myhideydecorations!(ax, icol > 1)
 
@@ -494,6 +493,11 @@ rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 rowgap!(fig.layout, 3, 20)
 colgap!(fig.layout, 2, 20)
+
+colsize!(fig.layout, 1, Aspect(2, 2.0))
+colsize!(fig.layout, 2, Aspect(2, 2.0))
+resize_to_layout!(fig)
+
 
 # save plot
 suffix = usecontourf ? "_ctrf" : ""

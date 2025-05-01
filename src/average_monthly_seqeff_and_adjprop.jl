@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -37,18 +37,13 @@ using NaNStatistics
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
-    member = "r1i1p1f1"
-    # experiment = "historical"
-    # time_window = "Jan1850-Dec1859"
-    # time_window = "Jan1990-Dec1999"
     experiment = "ssp370"
+    member = "r1i1p1f1"
     time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
-    WRITEDATA = "true"
 else
-    experiment, member, time_window, finalmonth, WRITEDATA = ARGS
+    experiment, member, time_window = ARGS
 end
-WRITEDATA = parse(Bool, WRITEDATA)
 @show experiment
 @show member
 @show time_window
@@ -70,9 +65,9 @@ volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
 areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
 # members = ["r$(i)i1p1f1" for i in 1:3]
-members = ["r$(i)i1p1f1" for i in 1:4]
+# members = ["r$(i)i1p1f1" for i in 1:1]
 
-for member in members
+# for member in members
 
     # Gadi directory for input files
     lumpby = "month"
@@ -154,7 +149,8 @@ for member in members
     # Save to netCDF file
     outputfile = joinpath(inputdir, "calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
     @info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
-    savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+    ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+    savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
 
 
     # Do the same for 𝒢̃
@@ -190,8 +186,9 @@ for member in members
     # Save to netCDF file
     outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
     @info "Saving mean adjoint propagator as netCDF file:\n  $(outputfile)"
-    savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+    ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+    savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
 
 
-end
+# end
 

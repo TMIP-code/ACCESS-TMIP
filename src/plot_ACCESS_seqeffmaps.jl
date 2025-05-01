@@ -1,4 +1,4 @@
-# qsub -I -P xv83 -l mem=180GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=48
+# qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
 
 using Pkg
 Pkg.activate(".")
@@ -30,12 +30,10 @@ using GeometryBasics
 using GeometryOps
 using LibGEOS
 using Format
-# using LaTeXStrings
 
 model = "ACCESS-ESM1-5"
 
 time_window = "Jan2030-Dec2039"
-# time_window = "Jan2090-Dec2099"
 experiment = parse(Int, time_window[4:7]) ≤ 2010 ? "historical" : "ssp370"
 
 members = ["r$(r)i1p1f1" for r in 1:40]
@@ -48,13 +46,6 @@ outputdir = inputdir
 mkpath(inputdir)
 
 
-
-mlotst_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$time_window/cyclomonth/mlotst.nc" for member in members]
-mlotst_ds = open_mfdataset(DimArray(mlotst_files, Dim{:member}(members)))
-mlotst = readcubedata(mlotst_ds.mlotst)
-
-mlotst_yearmax_ensemblemean = dropdims(maximum(maximum(mlotst, dims=:month), dims=:member), dims=(:month, :member)) .-
-    dropdims(minimum(maximum(mlotst, dims=:month), dims=:member), dims=(:month, :member))
 
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
@@ -81,7 +72,7 @@ lev = zt
 indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
-# Load \Gamma out
+# Preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
@@ -91,14 +82,15 @@ indices = makeindices(gridmetrics.v3D)
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
-yearly = true
+
+# Use yearly time-stepped simulations or monthly ones?
+yearly = false
 yearly_str = yearly ? "_yearly" : ""
 yearly_str2 = yearly ? "(yearly)" : ""
 
 # τ = timescales for which we plot ℰ(τ)
 τs = [100, 300, 1000]
 
-# TODO Adapt idea of just grabbing τs before from diff plot
 if yearly
     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
@@ -107,7 +99,7 @@ if yearly
 else
     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-    ℰ = readcubedata(ℰ_ds.calE)
+    ℰ = readcubedata(ℰ_ds.calE[Ti = At(τs)])
 end
 
 
@@ -144,7 +136,7 @@ for (irow, year) in enumerate([100, 300, 1000])
     # colormap = cgrad(:Hiroshige, 10, categorical = true, rev = true)
     colorrange = extrema(levels)
 
-    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 
     contours[irow, icol] = if usecontourf
         plotcontourfmap!(ax, 100 * ℰ_ensemblemean[:, :, irow], gridmetrics; levels, colormap)
@@ -163,7 +155,7 @@ for (irow, year) in enumerate([100, 300, 1000])
     colormap = cgrad(colormap[1:end-1], categorical = true)
     colorrange = extrema(levels)
 
-    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
+    axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
 
     contours[irow, icol] = if usecontourf
         plotcontourfmap!(ax, 100 * ℰ_ensemblerange[:, :, irow], gridmetrics; levels, colormap)
@@ -183,7 +175,7 @@ end
 # τstr = rich("τ", font = :italic)
 𝒓 = rich("r", font = :bold_italic)
 ℰfun = rich(ℰstr, "(", 𝒓, ", τ)")
-label = rich("ensemble mean ", ℰfun, " (%)")
+label = rich("ensemble mean $(time_window[4:7])s sequestration efficiency, ", ℰfun, " (%)")
 cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:20:100)
 cb.width = Relative(2/3)
 
@@ -208,12 +200,17 @@ for (ax, label) in zip(axs, labels)
     translate!(txt, 0, 0, 100)
 end
 
-Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Sequestration Efficiency ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
+# Label(fig[0, 1:2]; text = "$(time_window[4:7])s Seafloor Sequestration Efficiency ($(length(members)) members)$(yearly_str2)", fontsize = 24, tellwidth = false)
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 
+colsize!(fig.layout, 1, Aspect(1, 2.0))
+colsize!(fig.layout, 2, Aspect(1, 2.0))
+
 # save plot
 suffix = usecontourf ? "_ctrf" : ""
+
+resize_to_layout!(fig)
 
 outputfile = joinpath(outputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).png")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"

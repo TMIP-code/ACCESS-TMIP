@@ -1,5 +1,7 @@
 # qsub -I -P xv83 -l mem=64GB -l storage=scratch/gh0+scratch/xv83 -l walltime=00:20:00 -l ncpus=12
 
+# NOTE: I actually use v2 for the paper. This is for yearly solutions.
+
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
