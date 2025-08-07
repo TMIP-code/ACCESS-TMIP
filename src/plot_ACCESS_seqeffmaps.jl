@@ -1,4 +1,5 @@
 # qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# This is Fig. 1 in Pasquier et al. (GRL, 2025)
 
 using Pkg
 Pkg.activate(".")
@@ -218,4 +219,28 @@ save(outputfile, fig)
 outputfile = joinpath(outputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window)$(suffix).pdf")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
+
+# Save the data to be uploaded with paper
+metadata = Dict(
+    "description" => "Sequestration efficiency as plotted in Fig. 1 in Pasquier et al. (2025)",
+    "model" => model,
+    "experiment" => experiment,
+    "time window" => time_window,
+    "unit" => "",
+    "Ti unit" => "yr",
+)
+cube4D = DimensionalData.rebuild(areacello_ds["areacello"];
+    data = [ℰ_ensemblemean;;;; ℰ_ensemblerange],
+    dims = (dims(ℰ_ensemblemean)..., dims(DimArray(ones(2), Dim{:statistic}(["ensemble mean", "ensemble range"])))[1]),
+    metadata = metadata,
+)
+arrays = Dict(:seqeff => cube4D, :lat => readcubedata(volcello_ds.lat), :lon => readcubedata(volcello_ds.lon))
+ds = Dataset(; properties = metadata, arrays...)
+
+# Save to netCDF file
+outputfile = joinpath(inputdir, "Pasquier_etal_GRL_2025_Fig1_data.nc")
+@info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
+# ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+
 

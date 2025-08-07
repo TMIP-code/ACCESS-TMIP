@@ -1,251 +1,252 @@
-# # qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
-# # qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# This is Fig. 3 in Pasquier et al. (GRL, 2025)
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
-
-
-# ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# using SparseArrays
-# using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr, d, kyr
-# using Statistics
-# using Format
-# using Dates
-# using FileIO
-# using ProgressMeter
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using OceanBasins
-# using NaNStatistics
-# using NaturalEarth
-# using GeometryOps
-# using GeometryBasics
-# using Format
-# using LibGEOS
-
-# include("plotting_functions.jl")
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
 
+ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+using SparseArrays
+using LinearAlgebra
+using Unitful
+using Unitful: s, yr, d, kyr
+using Statistics
+using Format
+using Dates
+using FileIO
+using ProgressMeter
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using OceanBasins
+using NaNStatistics
+using NaturalEarth
+using GeometryOps
+using GeometryBasics
+using Format
+using LibGEOS
+
+include("plotting_functions.jl")
 
 
 
-# # Load matrix and grid metrics
-# # @show model = "ACCESS-ESM1-5"
-# # @show experiment1 = ARGS[1]
-# # @show member = ARGS[2]
-# # @show time_window1 = ARGS[3]
+
+
+# Load matrix and grid metrics
 # @show model = "ACCESS-ESM1-5"
-# # @show experiment1 = "historical"
-# @show experiment1 = "ssp370"
-# @show experiment2 = "ssp370"
-# # @show time_window1 = "Jan1850-Dec1859"
-# # @show time_window1 = "Jan1990-Dec1999"
-# @show time_window1 = "Jan2030-Dec2039"
-# @show time_window2 = "Jan2090-Dec2099"
+# @show experiment1 = ARGS[1]
+# @show member = ARGS[2]
+# @show time_window1 = ARGS[3]
+@show model = "ACCESS-ESM1-5"
+# @show experiment1 = "historical"
+@show experiment1 = "ssp370"
+@show experiment2 = "ssp370"
+# @show time_window1 = "Jan1850-Dec1859"
+# @show time_window1 = "Jan1990-Dec1999"
+@show time_window1 = "Jan2030-Dec2039"
+@show time_window2 = "Jan2090-Dec2099"
 
-# # Load \Gamma out
-# κVdeep = 3.0e-5 # m^2/s
-# κVML = 1.0      # m^2/s
-# κH = 300.0      # m^2/s
-# κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-# κVML_str = "kVML" * format(κVML, conversion="e")
-# κH_str = "kH" * format(κH, conversion="d")
-# upwind = false
-# upwind_str = upwind ? "" : "_centered"
-# upwind_str2 = upwind ? "upwind" : "centered"
-# yearly = false
-# yearly_str = yearly ? "_yearly" : ""
-# yearly_str2 = yearly ? "(yearly)" : ""
+# Load \Gamma out
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
+upwind = false
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
+yearly = false
+yearly_str = yearly ? "_yearly" : ""
+yearly_str2 = yearly ? "(yearly)" : ""
 
-# # Gadi directory for input files
-# fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
-# # Load areacello and volcello for grid geometry
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
-# areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
+# Gadi directory for input files
+fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
+# Load areacello and volcello for grid geometry
+volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
+areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# volcello_keys = propertynames(volcello_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
 
-# # Make indices
-# indices = makeindices(v3D)
-# (; N, wet3D) = indices
-
-
-# # Depth Polygons for map of location
-# depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
-# # maxdepth = 6000
-# maxdepth = 5000
-# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
-# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
-# # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
+# Make indices
+indices = makeindices(v3D)
+(; N, wet3D) = indices
 
 
-
-# function sourcelocation(srcname)
-#     if srcname == "Karratha"
-#         return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
-#     elseif srcname == "Portland"
-#         return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
-#     elseif srcname == "Marlo"
-#         return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
-#     else
-#         error("No source name matchin $srcname")
-#     end
-# end
+# Depth Polygons for map of location
+depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
+# maxdepth = 6000
+maxdepth = 5000
+@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
+# @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
 
-# srcnames = ["Karratha"]
+
+function sourcelocation(srcname)
+    if srcname == "Karratha"
+        return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+    elseif srcname == "Portland"
+        return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+    elseif srcname == "Marlo"
+        return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
+    else
+        error("No source name matchin $srcname")
+    end
+end
 
 
-# # year_start = parse(Int, time_window1[4:7])
-# # # Nyears = 501
-# # # Nyears = 2001
-# # Nyears = 1001
-# # times = range(Date("$year_start-01-01"); step=Year(1), length=Nyears)
-# # axlist = (
-# #     Dim{:time}(times),
-# #     Dim{:source}(srcnames),
-# #     Dim{:member}(members),
-# # )
-# # Nmembers = length(members)
-# # Nsrc = length(srcnames)
-# # data = fill(NaN, (Nyears, Nsrc, Nmembers))
-# # yaxdata = YAXArray(axlist, data)
+srcnames = ["Karratha"]
 
-# # members = map(m -> "r$(m)i1p1f1", 1:40)
 
-# # for member in members
-# #     for srcname in srcnames
-# #         datainputdir = joinpath(fixedvarsinputdir, experiment1, member, time_window1)
-# #         outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
-# #         isfile(outputfile) || continue
-# #         @info "Loading injection time series file:\n  $(outputfile)"
-# #         umass = load(outputfile, "umass")
-# #         src_mass = load(outputfile, "src_mass")
-# #         @show size(umass)
-# #         yaxdata[member=At(member), source=At(srcname)] .= 100 * [0.0; umass] / src_mass
-# #         # TODO: Check that src_P match (since I have changed these along the way)
-# #         src_P = load(outputfile, "src_P")
-# #         src_P == sourcelocation(srcname) || @info "issue $member $srcname $scr_P ≠ $(sourcelocation(srcname))"
-# #     end
-# # end
+# year_start = parse(Int, time_window1[4:7])
+# # Nyears = 501
+# # Nyears = 2001
+# Nyears = 1001
+# times = range(Date("$year_start-01-01"); step=Year(1), length=Nyears)
+# axlist = (
+#     Dim{:time}(times),
+#     Dim{:source}(srcnames),
+#     Dim{:member}(members),
+# )
+# Nmembers = length(members)
+# Nsrc = length(srcnames)
+# data = fill(NaN, (Nyears, Nsrc, Nmembers))
+# yaxdata = YAXArray(axlist, data)
 
 # members = map(m -> "r$(m)i1p1f1", 1:40)
 
-# @info "Grab mean reemergence time at injection locations for all members"
-# Γouts1 = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     src_k = findlast(wet3D[src_i, src_j,:])
-#     map(members) do member
-#         @info "loading $member Γ†"
-#         Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-#         Γoutyr4D_ds = open_dataset(Γout_file)
-#         Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
-#     end
-# end
-# Γouts2 = map(srcnames) do srcname
-#     src_P = sourcelocation(srcname)
-#     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#     src_k = findlast(wet3D[src_i, src_j,:])
-#     map(members) do member
-#         @info "loading $member Γ†"
-#         Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-#         Γoutyr4D_ds = open_dataset(Γout_file)
-#         Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
+# for member in members
+#     for srcname in srcnames
+#         datainputdir = joinpath(fixedvarsinputdir, experiment1, member, time_window1)
+#         outputfile = joinpath(datainputdir, "$(srcname)_timeseries_injected.jld2")
+#         isfile(outputfile) || continue
+#         @info "Loading injection time series file:\n  $(outputfile)"
+#         umass = load(outputfile, "umass")
+#         src_mass = load(outputfile, "src_mass")
+#         @show size(umass)
+#         yaxdata[member=At(member), source=At(srcname)] .= 100 * [0.0; umass] / src_mass
+#         # TODO: Check that src_P match (since I have changed these along the way)
+#         src_P = load(outputfile, "src_P")
+#         src_P == sourcelocation(srcname) || @info "issue $member $srcname $scr_P ≠ $(sourcelocation(srcname))"
 #     end
 # end
 
-# # TODO: This loading is very slow (about 6 minutes × 4 ≈ 25 minutes, many CPUs and mem don't help.
-# # I should just save these time series and then load them separately.)
-# quickload = false
-# # TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
-# fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/TTD_timeseries$(yearly_str).jld2"
-# if isfile(fname) && quickload
-#     @time "Loading pre-computed 2030s TTDs at injection location" 𝒢s1 = load(fname, "𝒢s1")
-# else
-#     𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-#     𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
-#     @time "Grab 2030s TTDs at injection location" 𝒢s1 = map(srcnames) do srcname
-#         src_P = sourcelocation(srcname)
-#         src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#         readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
-#     end
-#     save(fname, "𝒢s1", 𝒢s1)
-# end
+members = map(m -> "r$(m)i1p1f1", 1:40)
 
-# fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/TTD_timeseries.jld2"
-# if isfile(fname) && quickload
-#     @time "Loading pre-computed 2090s TTDs at injection location" 𝒢s2 = load(fname, "𝒢s2")
-# else
-#     𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-#     𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
-#     @time "Grab 2090s TTDs at injection location" 𝒢s2 = map(srcnames) do srcname
-#         src_P = sourcelocation(srcname)
-#         src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#         readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
-#     end
-#     save(fname, "𝒢s2", 𝒢s2)
-# end
+@info "Grab mean reemergence time at injection locations for all members"
+Γouts1 = map(srcnames) do srcname
+    src_P = sourcelocation(srcname)
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    src_k = findlast(wet3D[src_i, src_j,:])
+    map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
+    end
+end
+Γouts2 = map(srcnames) do srcname
+    src_P = sourcelocation(srcname)
+    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+    src_k = findlast(wet3D[src_i, src_j,:])
+    map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr0D = mean(readcubedata(Γoutyr4D_ds.adjointage[src_i, src_j, src_k, :]))
+    end
+end
+
+# TODO: This loading is very slow (about 6 minutes × 4 ≈ 25 minutes, many CPUs and mem don't help.
+# I should just save these time series and then load them separately.)
+quickload = false
+# TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/TTD_timeseries$(yearly_str).jld2"
+if isfile(fname) && quickload
+    @time "Loading pre-computed 2030s TTDs at injection location" 𝒢s1 = load(fname, "𝒢s1")
+else
+    𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
+    @time "Grab 2030s TTDs at injection location" 𝒢s1 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
+    end
+    save(fname, "𝒢s1", 𝒢s1)
+end
+
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/TTD_timeseries.jld2"
+if isfile(fname) && quickload
+    @time "Loading pre-computed 2090s TTDs at injection location" 𝒢s2 = load(fname, "𝒢s2")
+else
+    𝒢_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    𝒢_ds = open_mfdataset(DimArray(𝒢_files, Dim{:member}(members)))
+    @time "Grab 2090s TTDs at injection location" 𝒢s2 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(𝒢_ds.calgtilde[src_i, src_j, :, :]).data
+    end
+    save(fname, "𝒢s2", 𝒢s2)
+end
 
 
-# TTD_time = collect(axes(𝒢s1[1], 1)) # saved every year so index should be same as year
-# varname = yearly ? "seqeff" : "calE"
-# # TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
-# fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/$(varname)_timeseries$(yearly_str).jld2"
-# if isfile(fname) && quickload
-#     @time "Loading pre-computed 2030s seq. eff. at injection location" ℰs1 = load(fname, "ℰs1")
-# else
-#     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-#     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-#     @time "Grab 2030s seq. eff. at injection location" ℰs1 = map(srcnames) do srcname
-#         src_P = sourcelocation(srcname)
-#         src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#         readcubedata(ℰ_ds[varname][src_i, src_j, :, :]).data
-#     end
-#     save(fname, "ℰs1", ℰs1)
-# end
+TTD_time = collect(axes(𝒢s1[1], 1)) # saved every year so index should be same as year
+varname = yearly ? "seqeff" : "calE"
+# TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/$(varname)_timeseries$(yearly_str).jld2"
+if isfile(fname) && quickload
+    @time "Loading pre-computed 2030s seq. eff. at injection location" ℰs1 = load(fname, "ℰs1")
+else
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    @time "Grab 2030s seq. eff. at injection location" ℰs1 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(ℰ_ds[varname][src_i, src_j, :, :]).data
+    end
+    save(fname, "ℰs1", ℰs1)
+end
 
-# # TTDs for 2090s circulation
-# fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/$(varname)_timeseries$(yearly_str).jld2"
-# if isfile(fname) && quickload
-#     @time "Loading pre-computed 2090s seq. eff. at injection location" ℰs2 = load(fname, "ℰs2")
-# else
-#     ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
-#     ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
-#     @time "Grab 2090s seq. eff. at injection location" ℰs2 = map(srcnames) do srcname
-#         src_P = sourcelocation(srcname)
-#         src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-#         readcubedata(ℰ_ds[varname][src_i, src_j, :, :]).data
-#     end
-#     save(fname, "ℰs2", ℰs2)
-# end
+# TTDs for 2090s circulation
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/$(varname)_timeseries$(yearly_str).jld2"
+if isfile(fname) && quickload
+    @time "Loading pre-computed 2090s seq. eff. at injection location" ℰs2 = load(fname, "ℰs2")
+else
+    ℰ_files = ["/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc" for member in members]
+    ℰ_ds = open_mfdataset(DimArray(ℰ_files, Dim{:member}(members)))
+    @time "Grab 2090s seq. eff. at injection location" ℰs2 = map(srcnames) do srcname
+        src_P = sourcelocation(srcname)
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        readcubedata(ℰ_ds[varname][src_i, src_j, :, :]).data
+    end
+    save(fname, "ℰs2", ℰs2)
+end
 
 
 
@@ -686,3 +687,43 @@ save(outputfile, fig)
 outputfile = joinpath(outputdir, "TTD_seqeff_timeseries_1loc.pdf")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)
+
+
+# Save the data to be uploaded with paper
+metadata = Dict(
+    "description" => "Sequestration efficiency and TTD as plotted in Fig. 3 in Pasquier et al. (2025)",
+    "model" => model,
+    "experiment" => experiment1,
+    "Ti unit" => "yr",
+    "injection location" => "(115.49,-16.56), North West of Australia",
+)
+axlist = (
+    dims(DimArray(ones(size(TTD_time)), Ti(TTD_time)))[1],
+    dims(DimArray(ones(size(members)), Dim{:member}(members)))[1],
+    dims(DimArray(ones(2), Dim{:climatology}(["2030s", "2090s"])))[1],
+)
+properties = Dict(
+    "description" => "Transit time distribution as plotted in Fig. 3b in Pasquier et al. (2025)",
+    "unit" => "yr^-1",
+)
+TTDcube = YAXArray(axlist, [𝒢s1[1];;; 𝒢s2[1]], properties)
+properties = Dict(
+    "description" => "Sequestration efficiency as plotted in Fig. 3c,d in Pasquier et al. (2025)",
+    "unit" => "",
+)
+seqeffcube = YAXArray(axlist, [ℰs1[1];;; ℰs2[1]], properties)
+properties = Dict(
+    "description" => "Mean reemergence time as plotted in Fig. 3b,c,d in Pasquier et al. (2025)",
+    "unit" => "years",
+)
+meantimecube = YAXArray(axlist[[2,3]], [Γouts1[1];; Γouts2[1]], properties)
+
+
+arrays = Dict(:TTD => TTDcube, :seqeff => seqeffcube, :meantime => meantimecube)
+ds = Dataset(; properties = metadata, arrays...)
+
+# Save to netCDF file
+outputfile = joinpath(outputdir, "Pasquier_etal_GRL_2025_Fig3_data.nc")
+@info "Saving TTD and sequestration efficiency time series as netCDF file:\n  $(outputfile)"
+# ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)

@@ -1,4 +1,5 @@
 # qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=01:00:00 -l ncpus=12
+# This is Fig. 2 in Pasquier et al. (GRL, 2025)
 
 using Pkg
 Pkg.activate(".")
@@ -150,8 +151,8 @@ fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 yticks = -60:30:60
 xticks = -120:60:120 + 360
 
-datamean = (Γout_ensemblemean, τℰ1050_ensemblemean[:,:,2], τℰ1050_ensemblemean[:,:,1])
-datarange = (Γout_ensemblerange, τℰ1050_ensemblerange[:,:,2], τℰ1050_ensemblerange[:,:,1])
+datamean = (Γout_ensemblemean, τℰ1050_ensemblemean[:,:,2] .|> Float64, τℰ1050_ensemblemean[:,:,1] .|> Float64)
+datarange = (Γout_ensemblerange, τℰ1050_ensemblerange[:,:,2] .|> Float64, τℰ1050_ensemblerange[:,:,1] .|> Float64)
 𝒓 = rich("r", font = :bold_italic)
 Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
 Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
@@ -326,3 +327,33 @@ save(outputfile, fig)
 @show mean(data, weights)
 @show std(data, weights)
 @show quantile(data, weights, 0:0.1:1)
+
+
+
+# Save the data to be uploaded with paper
+metadata = Dict(
+    "description" => "Characteristic timescales as plotted in Fig. 2 in Pasquier et al. (2025)",
+    "model" => model,
+    "experiment" => experiment,
+    "time window" => time_window,
+    "unit" => "years",
+)
+cube4D = DimensionalData.rebuild(areacello_ds["areacello"];
+    data = [cat(datamean..., dims=3);;;; cat(datarange..., dims=3)],
+    dims = (
+        dims(readcubedata(volcello_ds.lat))...,
+        dims(DimArray(ones(3), Dim{:timescale}(["mean", "median", "10th percentile"])))[1],
+        dims(DimArray(ones(2), Dim{:statistic}(["ensemble mean", "ensemble range"])))[1],
+    ),
+    metadata = metadata,
+)
+arrays = Dict(:timescales => cube4D, :lat => readcubedata(volcello_ds.lat), :lon => readcubedata(volcello_ds.lon))
+ds = Dataset(; properties = metadata, arrays...)
+
+# Save to netCDF file
+outputfile = joinpath(inputdir, "Pasquier_etal_GRL_2025_Fig2_data.nc")
+@info "Saving characteristic timescales as netCDF file:\n  $(outputfile)"
+# ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+
+
