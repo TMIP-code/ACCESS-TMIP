@@ -17,6 +17,9 @@ using Interpolations
 using OceanBasins
 using NaNStatistics
 using Format
+using GeometryBasics
+using LibGEOS
+using GeometryOps
 
 include("plotting_functions.jl")
 
@@ -26,10 +29,12 @@ model = "ACCESS-ESM1-5"
 
 CMIP_version = model == "ACCESS1-3" ? "CMIP5" : "CMIP6"
 
-experiment = "historical"
+experiment = "ssp370"
+# experiment = "historical"
 # experiment = "piControl"
 
-time_window = "Jan1990-Dec1999"
+# time_window = "Jan1990-Dec1999"
+time_window = "Jan2030-Dec2090"
 # time_window = "Jan1071-Dec1100" # <- last 30 years of ACCESS-ESM1-5 piControl
 # time_window = "Jan1420-Dec1449" # <- last 30 years of ACCESS-CM2 piControl
 
@@ -48,7 +53,7 @@ requiredvariables = ["umo", "vmo", "mlotst", "volcello", "areacello", "agessc"]
 hasrequireddata(member, variable_name) = isfile(joinpath(inputdirfun(member), "$variable_name.nc"))
 hasrequireddata(member) = all(variable_name -> hasrequireddata(member, variable_name), requiredvariables)
 members = readdir(joinpath(DATADIR, "$model/$experiment"))
-members = [m for m in members if m ≠ ".DS_Store"]
+members = [m for m in members if m ≠ ".DS_Store" && startswith(m, "r")]
 
 # sort members by r, i, p[, f]
 member_regex = CMIP_version == "CMIP6" ? r"r(\d+)i(\d+)p(\d+)f(\d+)" : r"r(\d+)i(\d+)p(\d+)"
@@ -68,8 +73,9 @@ println()
 # for member in members[dataavailability.has_it_all]
 # for member in [last(members)]
 # member = first(members)
-member = "r5i1p1f1" # <- presumably the ACCESS-ESM1-5 member which has GM transport available ("HI-05")
+# member = "r5i1p1f1" # <- presumably the ACCESS-ESM1-5 member which has GM transport available ("HI-05")
 # member = "r1i1p1" # <- presumably the ACCESS1-3 member that Matt Chamberlain used for GM transport
+member = "r1i1p1f1"
 
     inputdir = inputdirfun(member)
 
@@ -113,17 +119,12 @@ member = "r5i1p1f1" # <- presumably the ACCESS-ESM1-5 member which has GM transp
     # Some parameter values
     ρ = 1035.0    # density (kg/m^3)
 
-    # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
-    lev = zt
-    # unpack indices
-    (; wet3D, N) = indices
 
 
 
     # basins
     basin_keys = (:ATL, :INDOPAC, :GBL)
-    basin_strs = ("Atlantic", "IndoPacific", "Global")
+    basin_strs = ("Atlantic", "Indo-Pacific", "Global")
     isatlnoSO(lat, lon, o) = isatlantic(lat, lon, o) .& (lat .≥ -30)
     isindopacific(lat, lon, o) = (isindian(lat, lon, o) .| ispacific(lat, lon, o)) .& (lat .≥ -30)
     isglobal(lat, lon, o) = trues(size(lat))
