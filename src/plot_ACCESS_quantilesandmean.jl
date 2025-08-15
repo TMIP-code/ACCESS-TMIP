@@ -228,10 +228,18 @@ labels = [
     "c" "f"
 ]
 
+labeloptions = (
+    font = :bold,
+    align = (:left, :bottom),
+    offset = (5, 2),
+    space = :relative,
+    fontsize = 24
+)
+
 for (ax, label) in zip(axs, labels)
-    txt = text!(ax, 0, 1; text = "$label", labeloptions..., strokecolor = :white, strokewidth = 3)
+    txt = text!(ax, 0, 0; text = "$label", labeloptions..., strokecolor = :white, strokewidth = 3)
     translate!(txt, 0, 0, 100)
-    txt = text!(ax, 0, 1; text = "$label", labeloptions...)
+    txt = text!(ax, 0, 0; text = "$label", labeloptions...)
     translate!(txt, 0, 0, 100)
 end
 
