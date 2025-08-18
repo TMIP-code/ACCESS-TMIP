@@ -40,6 +40,55 @@ ytickformat(y) = latticklabel.(y)
 
 loninsamewindow(l1, l2) = mod(l1 - l2 + 180, 360) + l2 - 180
 
+"""
+To be used as `colorscale` of Makie's `contourf` and `heatmap`.
+Picewise linear mapping such that
+func.([v1,v2, . . . , vn]) == [0, 1, . . . , n-1].
+Outside the range [v1, vn], it's the simple lienar extrapolation.
+vs = [v1,v2, . . . , vn] must be strictly increasing.
+from https://discourse.julialang.org/t/makie-nonlinear-color-levels-in-colorbar/118056/5
+"""
+function mk_piecewise_linear(vs)
+    @assert length(vs) > 1
+    function is_increasing(ss)
+        prev = ss[1]
+        for s in ss[2:end]
+            (s ≤ prev) && return false
+            prev = s
+        end
+        return true
+    end
+    @assert is_increasing(vs)
+    d1 = vs[2] - vs[1]
+    d2 = vs[end] - vs[end-1]
+    un = size(vs, 1) - 1
+    function piecewise_linear(v)
+        if v <= vs[1]
+            (v - vs[1]) / d1
+        elseif v ≥ vs[end]
+            (v - vs[end]) / d2 + un
+        else
+            i = findfirst(q -> v < q, vs) - 1
+            d = vs[i + 1] - vs[i]
+            (v - vs[i]) / d + i - 1
+        end
+    end
+    function its_inverse(u)
+        if u ≤ 0
+            u * d1 + vs[1]
+        elseif u ≥ un
+            (u - un) * d2 + vs[end]
+        else
+            iu = floor(Int, u)
+            i = iu + 1
+            d = vs[i + 1] - vs[i]
+            (u - iu) * d + vs[i]
+        end
+    end
+    return ReversibleScale(piecewise_linear, its_inverse)
+end
+
+
 land1 = GeoMakie.land()
 mapwindow = GeometryBasics.Polygon([
     Point2f(20, -90),
@@ -54,7 +103,7 @@ land2 = GeometryOps.transform(P -> P + Point2f(360, 0), land1)
 land2cut = [LibGEOS.intersection(p, mapwindow) for p in land2]
 land2cut = [p for p in land2cut if !LibGEOS.isEmpty(p)]
 
-function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing, highclip = automatic, lowclip = automatic)
+function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing, highclip = automatic, lowclip = automatic, colorscale = identity)
 
     # unpack gridmetrics
     lonv = gridmetrics.lon_vertices
@@ -71,7 +120,7 @@ function plotmap!(ax, x2D, gridmetrics; colorrange, colormap, levels=nothing, hi
     colors_per_point = vcat(fill.(vec(x2D), 4)...)
 
     # create plot
-    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2, highclip, lowclip)
+    plt = mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = NoShading, colormap, colorrange, rasterize = 2, highclip, lowclip, colorscale)
     xlims!(ax, (20, 20 + 360))
     ylims!(ax, (-90, 90))
 
