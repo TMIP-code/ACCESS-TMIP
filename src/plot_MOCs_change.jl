@@ -43,8 +43,8 @@ experiments = [
 ]
 experiments2 = [
     "historical",
-    "SSP-3.70",
-    "SSP-3.70",
+    "SSP3-7.0",
+    "SSP3-7.0",
 ]
 
 members = ["r$(r)i1p1f1" for r in 1:40]
