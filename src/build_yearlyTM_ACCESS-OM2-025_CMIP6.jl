@@ -26,10 +26,11 @@ inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/omip2/r1i1p1f1/Jan0200-Dec0209
 # Load areacello and volcello for grid geometry
 umo_ds = open_dataset(joinpath(inputdir, "umo.nc"))
 vmo_ds = open_dataset(joinpath(inputdir, "vmo.nc"))
-ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
-ψⱼGM_ds = open_dataset(joinpath(inputdir, "ty_trans_gm.nc"))
-ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
-ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
+# FIXME No GM or submeso terms for now
+# ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
+# ψⱼGM_ds = open_dataset(joinpath(inputdir, "ty_trans_gm.nc"))
+# ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
+# ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
 mlotst_ds = open_dataset(joinpath(inputdir, "mlotst.nc"))
 areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
 volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
