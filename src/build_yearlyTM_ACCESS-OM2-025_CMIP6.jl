@@ -1,3 +1,6 @@
+# qsub -I -P y99 -N yearlyTM_OM2-1 -l ncpus=28 -l mem=120GB -l jobfs=4GB -l walltime=3:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
+# For debugging no need to request that much resources!
+
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
@@ -17,6 +20,24 @@ using Dates
 using Statistics
 using StatsBase
 using FileIO
+# FIXME adding plotting functions temporarily for debugging
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using Interpolations
+using OceanBasins
+using Statistics
+using NaNStatistics
+using StatsBase
+using FileIO
+using Contour
+using GeometryBasics
+using GeometryOps
+using LibGEOS
+include("plotting_functions.jl")
 
 # Making yearly matrices for ACCESS-OM2-1
 
@@ -43,11 +64,64 @@ lon = readcubedata(volcello_ds.lon)
 lat = readcubedata(volcello_ds.lat)
 lev = volcello_ds.lev
 # Identify the vertices keys (vary across CMIPs / models)
-volcello_keys = propertynames(volcello_ds)
+# FIXME using test CMORized data for vertices. Hopefully they match!
+CMORtestfile = "/scratch/p66/yz9299/OM2_CMORised/umo_Omon_ACCESS-OM2-025_omip1_r1i1p1f1_gn_190001-190112.nc"
+CMORtest_ds = open_dataset(CMORtestfile)
+volcello_keys = propertynames(CMORtest_ds)
 lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
 lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+lon_vertices = readcubedata(getproperty(CMORtest_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(CMORtest_ds, lat_vertices_key))
+
+# FIXME checking vertices
+# FIXME
+
+using CairoMakie
+using Makie.GeometryBasics
+
+
+# volume (3D)
+FillValue = volcello.properties["_FillValue"]
+v3D = volcello |> Array{Union{Missing, Float64}}
+v3D = replace(v3D, missing => NaN, 0 => NaN, FillValue => NaN)
+
+# area (2D)
+FillValue = areacello.properties["_FillValue"]
+area2D = areacello |> Array{Union{Missing, Float64}}
+area2D = replace(area2D, missing => NaN, 0 => NaN, FillValue => NaN)
+
+# depth and cell height (3D)
+thkcello = v3D ./ area2D
+ZBOT3D = cumsum(thkcello, dims = 3)
+Z3D = ZBOT3D - 0.5 * thkcello
+zt = lev |> Array
+
+lat = lat |> Array
+lon = lon |> Array
+
+# same with lon_vertices
+lon_vertices = lon_vertices |> Array{Float64}
+lat_vertices = lat_vertices |> Array{Float64}
+
+i = j = 1
+i, j = 500, 1000
+
+fig = Figure()
+ax = Axis(fig[1, 1]; title = "ACCESS-OM2-025 neighboring grid cell vertices", xlabel = "Longitude", ylabel = "Latitude", aspect = DataAspect())
+plotgridcell!(ax, lon_vertices[:, i, j], lat_vertices[:, i, j]; color = (:blue, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i, j]), mean(lat_vertices[:, i, j]); text = "(i=$i,j=$j)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i+1, j], lat_vertices[:, i+1, j]; color = (:red, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i+1, j]), mean(lat_vertices[:, i+1, j]); text = "(i+1,j)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i, j+1], lat_vertices[:, i, j+1]; color = (:purple, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i, j+1]), mean(lat_vertices[:, i, j+1]); text = "(i,j+1)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i+1, j+1], lat_vertices[:, i+1, j+1]; color = (:orange, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i+1, j+1]), mean(lat_vertices[:, i+1, j+1]); text = "(i+1,j+1)", align = (:center, :center))
+
+save(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j).png"), fig)
+println(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j).png"))
+# FIXME end
+# FIXME end
+
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)

@@ -364,3 +364,6 @@ function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:blac
     translate!(plt, 0, 0, -200)
     return nothing
 end
+
+
+plotgridcell!(ax, lonv, latv; kwargs...) = poly!(ax, GeometryBasics.Polygon([Point2f(lon, lat) for (lon, lat) in zip(lonv, latv)]); kwargs...)
