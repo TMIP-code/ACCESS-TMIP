@@ -39,7 +39,7 @@ using GeometryOps
 using LibGEOS
 include("plotting_functions.jl")
 
-# Making yearly matrices for ACCESS-OM2-1
+# Making yearly matrices for ACCESS-OM2-025
 
 # script options
 inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/omip2/r1i1p1f1/Jan0200-Dec0209/"
@@ -76,49 +76,49 @@ lat_vertices = readcubedata(getproperty(CMORtest_ds, lat_vertices_key))
 # FIXME checking vertices
 # FIXME
 
-using CairoMakie
-using Makie.GeometryBasics
+# using CairoMakie
+# using Makie.GeometryBasics
 
 
-# volume (3D)
-FillValue = volcello.properties["_FillValue"]
-v3D = volcello |> Array{Union{Missing, Float64}}
-v3D = replace(v3D, missing => NaN, 0 => NaN, FillValue => NaN)
+# # volume (3D)
+# FillValue = volcello.properties["_FillValue"]
+# v3D = volcello |> Array{Union{Missing, Float64}}
+# v3D = replace(v3D, missing => NaN, 0 => NaN, FillValue => NaN)
 
-# area (2D)
-FillValue = areacello.properties["_FillValue"]
-area2D = areacello |> Array{Union{Missing, Float64}}
-area2D = replace(area2D, missing => NaN, 0 => NaN, FillValue => NaN)
+# # area (2D)
+# FillValue = areacello.properties["_FillValue"]
+# area2D = areacello |> Array{Union{Missing, Float64}}
+# area2D = replace(area2D, missing => NaN, 0 => NaN, FillValue => NaN)
 
-# depth and cell height (3D)
-thkcello = v3D ./ area2D
-ZBOT3D = cumsum(thkcello, dims = 3)
-Z3D = ZBOT3D - 0.5 * thkcello
-zt = lev |> Array
+# # depth and cell height (3D)
+# thkcello = v3D ./ area2D
+# ZBOT3D = cumsum(thkcello, dims = 3)
+# Z3D = ZBOT3D - 0.5 * thkcello
+# zt = lev |> Array
 
-lat = lat |> Array
-lon = lon |> Array
+# lat = lat |> Array
+# lon = lon |> Array
 
-# same with lon_vertices
-lon_vertices = lon_vertices |> Array{Float64}
-lat_vertices = lat_vertices |> Array{Float64}
+# # same with lon_vertices
+# lon_vertices = lon_vertices |> Array{Float64}
+# lat_vertices = lat_vertices |> Array{Float64}
 
-i = j = 1
-i, j = 500, 1000
+# i = j = 1
+# i, j = 500, 1000
 
-fig = Figure()
-ax = Axis(fig[1, 1]; title = "ACCESS-OM2-025 neighboring grid cell vertices", xlabel = "Longitude", ylabel = "Latitude", aspect = DataAspect())
-plotgridcell!(ax, lon_vertices[:, i, j], lat_vertices[:, i, j]; color = (:blue, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i, j]), mean(lat_vertices[:, i, j]); text = "(i=$i,j=$j)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i+1, j], lat_vertices[:, i+1, j]; color = (:red, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i+1, j]), mean(lat_vertices[:, i+1, j]); text = "(i+1,j)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i, j+1], lat_vertices[:, i, j+1]; color = (:purple, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i, j+1]), mean(lat_vertices[:, i, j+1]); text = "(i,j+1)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i+1, j+1], lat_vertices[:, i+1, j+1]; color = (:orange, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i+1, j+1]), mean(lat_vertices[:, i+1, j+1]); text = "(i+1,j+1)", align = (:center, :center))
+# fig = Figure()
+# ax = Axis(fig[1, 1]; title = "ACCESS-OM2-025 neighboring grid cell vertices (v2)", xlabel = "Longitude", ylabel = "Latitude", aspect = DataAspect())
+# plotgridcell!(ax, lon_vertices[:, i, j], lat_vertices[:, i, j]; color = (:blue, 0.3), strokewidth = 2)
+# text!(ax, mean(lon_vertices[:, i, j]), mean(lat_vertices[:, i, j]); text = "(i=$i,j=$j)", align = (:center, :center))
+# plotgridcell!(ax, lon_vertices[:, i+1, j], lat_vertices[:, i+1, j]; color = (:red, 0.3), strokewidth = 2)
+# text!(ax, mean(lon_vertices[:, i+1, j]), mean(lat_vertices[:, i+1, j]); text = "(i+1,j)", align = (:center, :center))
+# plotgridcell!(ax, lon_vertices[:, i, j+1], lat_vertices[:, i, j+1]; color = (:purple, 0.3), strokewidth = 2)
+# text!(ax, mean(lon_vertices[:, i, j+1]), mean(lat_vertices[:, i, j+1]); text = "(i,j+1)", align = (:center, :center))
+# plotgridcell!(ax, lon_vertices[:, i+1, j+1], lat_vertices[:, i+1, j+1]; color = (:orange, 0.3), strokewidth = 2)
+# text!(ax, mean(lon_vertices[:, i+1, j+1]), mean(lat_vertices[:, i+1, j+1]); text = "(i+1,j+1)", align = (:center, :center))
 
-save(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j).png"), fig)
-println(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j).png"))
+# save(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j)_v2.png"), fig)
+# println(joinpath(inputdir, "gridcell_vertices_check_$(i)_$(j)_v2.png"))
 # FIXME end
 # FIXME end
 
@@ -140,40 +140,47 @@ upwind = false
 κH = 300.0      # m^2/s
 
 
-mean_days_in_month = umo_ds.mean_days_in_month |> Array
-w = Weights(mean_days_in_month)
+# FIXME no need to average over time for now as the input is already averaged
+# FIXME but in future need to try to first build monthly climatologies and then average here
+# mean_days_in_month = umo_ds.mean_days_in_month |> Array
+# w = Weights(mean_days_in_month)
 
-mlotst = dropdims(mean(readcubedata(mlotst_ds.mlotst), w; dims=:month), dims=:month)
-umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims=:month), dims=:month)
-vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims=:month), dims=:month)
+# mlotst = dropdims(mean(readcubedata(mlotst_ds.mlotst), w; dims=:month), dims=:month)
+# umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims=:month), dims=:month)
+# vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims=:month), dims=:month)
+umo = readcubedata(umo_ds.umo)
+vmo = readcubedata(vmo_ds.vmo)
+mlotst = readcubedata(mlotst_ds.mlotst)
 
-ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims=:month), dims=:month)
-ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims=:month), dims=:month)
-ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims=:month), dims=:month)
-ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims=:month), dims=:month)
-
-# Replace missing values and convert to arrays
-# I think latest YAXArrays converts _FillValues to missing
-ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
-ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
-ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
-ψⱼsubmeso = replace(ψⱼsubmeso |> Array, missing => 0) .|> Float64
+# FIXME No GM or submeso terms for now
+# ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims=:month), dims=:month)
+# ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims=:month), dims=:month)
+# ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims=:month), dims=:month)
+# ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims=:month), dims=:month)
+#
+# # Replace missing values and convert to arrays
+# # I think latest YAXArrays converts _FillValues to missing
+# ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
+# ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
+# ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
+# ψⱼsubmeso = replace(ψⱼsubmeso |> Array, missing => 0) .|> Float64
 
 # Also remove missings in umo and vmo
 umo = replace(umo, missing => 0)
 vmo = replace(vmo, missing => 0)
 
-# Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
-(nx, ny, _) = size(ψᵢGM)
-ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
-ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
-ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
-ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+# # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
+# (nx, ny, _) = size(ψᵢGM)
+# ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
+# ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
+# ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
+# ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
 
 # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
-ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
-    facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
-end
+# ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
+#     facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
+# end
+ϕ = facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
 
 
 (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
@@ -182,7 +189,8 @@ end
 κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
 κH_str = "kH" * format(κH, conversion="d")
 κVML_str = "kVML" * format(κVML, conversion="e")
-outputfile = joinpath(inputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
+# outputfile = joinpath(inputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
+outputfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Saving matrix as $outputfile"
 save(outputfile,
     Dict(
