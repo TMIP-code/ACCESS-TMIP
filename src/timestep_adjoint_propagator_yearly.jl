@@ -173,7 +173,7 @@ end
 const Δt = sum(δts)
 const M̃̄ = mean(M̃s, Weights(mean_days_in_months))
 
-matrix_type = Pardiso.REAL_STRUCT_SYM
+matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
 prob = LinearProblem(I + Δt * M̃̄, ones(N))

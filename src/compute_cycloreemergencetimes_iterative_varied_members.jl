@@ -165,7 +165,7 @@ end
 M̃̄ = mean(M̃s) #
 Δt = sum(δts)
 
-matrix_type = Pardiso.REAL_STRUCT_SYM
+matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
 Plprob = LinearProblem(-Δt * M̃̄, ones(N))  # following Bardin et al. (M -> -M though)

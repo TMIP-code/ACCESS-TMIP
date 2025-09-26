@@ -176,7 +176,7 @@ end
 M̄ = mean(Ms) #
 Δt = sum(δts)
 
-matrix_type = Pardiso.REAL_STRUCT_SYM
+matrix_type = Pardiso.REAL_SYM
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
 Plprob = init(Plprob, MKLPardisoIterate(; nprocs, matrix_type), rtol = 1e-10)
 Pl = CycloPreconditioner(Plprob)

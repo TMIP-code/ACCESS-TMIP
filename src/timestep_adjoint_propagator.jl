@@ -172,7 +172,7 @@ end
     ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
 end
 
-matrix_type = Pardiso.REAL_STRUCT_SYM
+matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
 function initstepprob(A)
