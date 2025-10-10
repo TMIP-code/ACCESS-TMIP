@@ -6,7 +6,7 @@
 #PBS -q hugemem
 #PBS -l mem=735GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=48:00:00
+#PBS -l walltime=2:00:00
 #PBS -l storage=scratch/gh0+scratch/y99+scratch/p66
 #PBS -l wd
 #PBS -o output/PBS/

@@ -25,7 +25,8 @@ using NonlinearSolve
 using ProgressMeter
 
 model = "ACCESS-OM2-01"
-
+time_window = "Jan2150-Dec2159"
+experiment = "01deg_jra55v13_ryf9091_qian_wthmp"
 
 
 # preferred diffusivities # FIXME These should be set smaller at high-resolution (made for 1deg)
@@ -46,7 +47,7 @@ upwind_str2 = upwind ? "upwind" : "centered"
 
 # Load areacello and volcello for grid geometry
 # But not available in raw output, so must rebuild from area_t and dzt
-inputdir = "/scratch/y99/TMIP/data/$model/01deg_jra55v13_ryf9091_qian_wthmp/Jan2150-Dec2159"
+inputdir = "/scratch/y99/TMIP/data/$model/$experiment/$time_window"
 area_t_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
 dzt_ds = open_dataset(joinpath(inputdir, "dzt.nc"))
 areacello = readcubedata(area_t_ds.area_t)
@@ -119,7 +120,6 @@ agecube = DimensionalData.rebuild(dzt; # FIXME should be volcello
         "description" => "steady-state mean age",
         "model" => model,
         "experiment" => experiment,
-        "member" => member,
         "time window" => time_window,
         "upwind" => upwind_str2,
         "units" => "yr",

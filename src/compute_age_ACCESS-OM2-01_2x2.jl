@@ -1,9 +1,8 @@
-# qsub -I -P y99 -N age_OM2-01_5x5 -l ncpus=24 -q hugemem -l mem=735GB -l jobfs=4GB -l walltime=2:00:00 -l storage=scratch/gh0+scratch/y99+scratch/p66 -l wd -o output/PBS/ -j oe
 
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-const nprocs = 24
+const nprocs = 48
 
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using OceanTransportMatrixBuilder
@@ -96,9 +95,9 @@ T = load(TMfile, "T")
 M = T + Ω
 b = ones(N)
 
-# Coarsen 5x5 (so effectively 0.1° -> 0.5°)
-@info "coarsening grid 5x5 everywhere"
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v; di=5, dj=5, dk=1)
+# Coarsen 2x2 (so effectively 0.1° -> 0.2°)
+@info "coarsening grid 2x2 everywhere"
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v; di=2, dj=2, dk=1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 
@@ -126,6 +125,6 @@ agecube = DimensionalData.rebuild(dzt; # FIXME should be volcello
 arrays = Dict(:age => agecube, :lat => lat, :lon => lon)
 ds = Dataset(; dzt_ds.properties, arrays...) # FIXME should be volcello
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_5x5.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_2x2.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
