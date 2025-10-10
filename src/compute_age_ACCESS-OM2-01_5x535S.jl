@@ -90,14 +90,15 @@ end
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
+@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
 
 M = T + Ω
 b = ones(N)
 
 # Coarsen 5x5 North of 35°S (so effectively 0.1° -> 0.5°)
 @info "coarsening grid 5x5 north of 35°S"
-SOmask = lat .< -35
-mymask = repeat(.!SOmask, 1, 1, size(wet3D, 3))
+SOmask = lat.data .< -35
+mymask = .!SOmask .& trues(size(wet3D))
 LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, mymask; di=5, dj=5, dk=1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
@@ -111,9 +112,9 @@ sol = SPRAY * sol_c
 
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(dzt; # FIXME should be volcello
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
-    dims = dims(volcello),
+    dims = dims(dzt), # FIXME should be volcello
     metadata = Dict(
         "description" => "steady-state mean age",
         "model" => model,
@@ -124,8 +125,8 @@ agecube = DimensionalData.rebuild(volcello_ds["volcello"];
         "units" => "yr",
     )
 )
-arrays = Dict(:age => agecube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-ds = Dataset(; volcello_ds.properties, arrays...)
+arrays = Dict(:age => agecube, :lat => lat, :lon => lon)
+ds = Dataset(; dzt_ds.properties, arrays...) # FIXME should be volcello
 # Save to netCDF file
 outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_5x535S.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"

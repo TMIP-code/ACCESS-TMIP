@@ -1,4 +1,4 @@
-# qsub -I -P y99 -q megamem -l mem=2990GB -l storage=scratch/gh0+scratch/y99+scratch/p66 -l walltime=48:00:00 -l ncpus=48
+# qsub -I -P y99 -q megamem -l mem=2990GB -l storage=scratch/gh0+scratch/y99+scratch/p66 -l walltime=1:00:00 -l ncpus=48
 
 using Pkg
 Pkg.activate(".")
@@ -89,6 +89,7 @@ end
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
+@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
 
 M = T + Ω
 

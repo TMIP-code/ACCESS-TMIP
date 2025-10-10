@@ -101,6 +101,7 @@ end
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
+@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
 
 M = T + Ω
 

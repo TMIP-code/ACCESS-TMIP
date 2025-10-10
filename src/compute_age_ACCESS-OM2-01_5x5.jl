@@ -89,6 +89,7 @@ end
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
+@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
 
 M = T + Ω
 b = ones(N)
@@ -108,9 +109,9 @@ sol = SPRAY * sol_c
 
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(dzt; # FIXME should be volcello
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
-    dims = dims(volcello),
+    dims = dims(dzt), # FIXME should be volcello
     metadata = Dict(
         "description" => "steady-state mean age",
         "model" => model,
@@ -121,8 +122,8 @@ agecube = DimensionalData.rebuild(volcello_ds["volcello"];
         "units" => "yr",
     )
 )
-arrays = Dict(:age => agecube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-ds = Dataset(; volcello_ds.properties, arrays...)
+arrays = Dict(:age => agecube, :lat => lat, :lon => lon)
+ds = Dataset(; dzt_ds.properties, arrays...) # FIXME should be volcello
 # Save to netCDF file
 outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_5x5.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
