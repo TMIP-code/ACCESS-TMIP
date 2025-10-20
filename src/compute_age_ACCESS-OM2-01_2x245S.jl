@@ -95,9 +95,11 @@ T = load(TMfile, "T")
 M = T + Ω
 b = ones(N)
 
-# Coarsen 2x2 (so effectively 0.1° -> 0.2°)
-@info "coarsening grid 2x2 everywhere"
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v; di=2, dj=2, dk=1)
+# Coarsen 2x2 North of 45°S (so effectively 0.1° -> 0.2°)
+@info "coarsening grid 2x2 north of 45°S"
+SOmask = lat.data .< -45
+mymask = .!SOmask .& trues(size(wet3D))
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, mymask; di=2, dj=2, dk=1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 
@@ -125,6 +127,6 @@ agecube = DimensionalData.rebuild(dzt; # FIXME should be volcello
 arrays = Dict(:age => agecube, :lat => lat, :lon => lon)
 ds = Dataset(; dzt_ds.properties, arrays...) # FIXME should be volcello
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_2x2.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_2x245S.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)

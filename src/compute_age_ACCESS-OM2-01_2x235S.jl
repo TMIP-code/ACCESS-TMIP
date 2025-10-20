@@ -28,10 +28,10 @@ time_window = "Jan2150-Dec2159"
 experiment = "01deg_jra55v13_ryf9091_qian_wthmp"
 
 
-# preferred diffusivities # FIXME These should be set smaller at high-resolution (made for 1deg)
+# preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
-κH = 300.0      # m^2/s
+κH = 300.0 / 10 # m^2/s (grid-scaling by sqrt(area))
 @show κVdeep
 @show κVML
 @show κH
