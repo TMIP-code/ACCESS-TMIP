@@ -107,7 +107,7 @@ b = ones(N)
 
 # Coarsen 4x4 (so effectively 0.25° -> 1°)
 @info "coarsening grid 4x4 everywhere"
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v; di=4, dj=4, dk=1)
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T; di=4, dj=4, dk=1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 

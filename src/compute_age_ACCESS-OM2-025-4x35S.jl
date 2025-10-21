@@ -109,7 +109,7 @@ b = ones(N)
 @info "coarsening grid 4x4 north of 35°S"
 SOmask = lat .< -35
 mymask = repeat(.!SOmask, 1, 1, size(wet3D, 3))
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, mymask; di=2, dj=2, dk=1)
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T, mymask; di=2, dj=2, dk=1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 
