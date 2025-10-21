@@ -47,9 +47,17 @@ end
 @show κVdeep
 @show κVML
 @show κH
+gridscale_κH = true # scale the diffusivity to match coarsened grid?
+parentκH = gridscale_κH ? 2κH : κH
+@show κVdeep
+@show κVML
+@show κH
 κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
 κVML_str = "kVML" * format(κVML, conversion="e")
 κH_str = "kH" * format(κH, conversion="d")
+parentκH_str = "kH" * format(parentκH, conversion="d")
+parentκH_str2 = gridscale_κH ? "_gridscaled" : ""
+
 
 upwind = false
 @show upwind
@@ -97,7 +105,7 @@ issrf = let
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
 
-TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
+TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(parentκH)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
 @info "Matrix size: $(size(T)), nnz = $(nnz(T))"
@@ -135,6 +143,6 @@ agecube = DimensionalData.rebuild(volcello_ds["volcello"];
 arrays = Dict(:age => agecube, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_OM2-025-2x2.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_OM2-025-2x2$(parentκH_str2).nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
