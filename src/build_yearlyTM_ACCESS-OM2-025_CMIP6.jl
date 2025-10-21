@@ -137,7 +137,8 @@ indices = makeindices(gridmetrics.v3D)
 upwind = false
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
-κH = 300.0 / 4  # m^2/s (grid-scaling by sqrt(area))
+# κH = 300.0 / 4  # m^2/s (grid-scaling by sqrt(area))
+κH = 300.0 / 2  # m^2/s (grid-scaling for coarsened 0.5° grid)
 
 
 # FIXME no need to average over time for now as the input is already averaged
