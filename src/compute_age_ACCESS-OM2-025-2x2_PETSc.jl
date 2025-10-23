@@ -105,7 +105,7 @@ issrf = let
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
 
-TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(parentκH)_$(κVML_str).jld2")
+TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(parentκH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
 @info "Matrix size: $(size(T)), nnz = $(nnz(T))"
@@ -121,9 +121,9 @@ b_c = LUMP * b
 
 # Solve the linear system using PETSc + ILU
 # don't print these below
-M_PETSc = PETSc.MatSeqAIJ(A_c);
+M_PETSc = PETSc.MatSeqAIJ(M_c);
 b_PETSc = PETSc.VecSeq(b_c);
-x_PETSc = PETSc.VecSeq(0b_c);
+x_PETSc = PETSc.VecSeq(zeros(size(b_c)));
 
 ksp = PETSc.KSP(
     M_PETSc;

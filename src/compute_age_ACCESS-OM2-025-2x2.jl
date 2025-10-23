@@ -105,7 +105,7 @@ issrf = let
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
 
-TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(parentκH)_$(κVML_str).jld2")
+TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(parentκH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
 @info "Matrix size: $(size(T)), nnz = $(nnz(T))"
