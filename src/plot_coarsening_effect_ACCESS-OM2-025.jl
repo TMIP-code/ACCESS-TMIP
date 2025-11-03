@@ -1,114 +1,113 @@
-# # qsub -I -P y99 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/p66 -l walltime=01:00:00 -l ncpus=12
-# # qsub -I -P y99 -q normal -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/p66 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P y99 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/p66 -l walltime=01:00:00 -l ncpus=12
 
-# using Pkg
-# Pkg.activate(".")
-# Pkg.instantiate()
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
-# using OceanTransportMatrixBuilder
-# using NetCDF
-# using YAXArrays
-# using DataFrames
-# using DimensionalData
-# # using SparseArrays
-# # using LinearAlgebra
-# using Unitful
-# using Unitful: s, yr
-# try
-#     using CairoMakie
-# catch
-#     using CairoMakie
-# end
-# using GeoMakie
-# using Interpolations
-# using OceanBasins
-# using Statistics
-# using NaNStatistics
-# using StatsBase
-# using FileIO
-# using Contour
-# using GeometryBasics
-# using GeometryOps
-# using LibGEOS
-# # using LaTeXStrings
-# using Format
-# using KernelDensity
+using OceanTransportMatrixBuilder
+using NetCDF
+using YAXArrays
+using DataFrames
+using DimensionalData
+# using SparseArrays
+# using LinearAlgebra
+using Unitful
+using Unitful: s, yr
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
+using GeoMakie
+using Interpolations
+using OceanBasins
+using Statistics
+using NaNStatistics
+using StatsBase
+using FileIO
+using Contour
+using GeometryBasics
+using GeometryOps
+using LibGEOS
+# using LaTeXStrings
+using Format
+using KernelDensity
 
-# include("plotting_functions.jl")
+include("plotting_functions.jl")
 
-# #############
-# # Load data #
-# #############
-
-
-# # script options
-# @show model = "ACCESS-OM2-025"
-# if isempty(ARGS)
-#     experiment = "omip2"
-#     member = "r1i1p1f1"
-#     time_window = "Jan0200-Dec0209"
-# else
-#     experiment, member, time_window = ARGS
-# end
-
-# @show experiment
-# @show member
-# @show time_window
-
-# # preferred diffusivities
-# κVdeep = 3.0e-5 # m^2/s
-# κVML = 1.0      # m^2/s
-# κH = 300.0 / 4  # m^2/s (grid-scaling by sqrt(area))
-# @show κVdeep
-# @show κVML
-# @show κH
-# κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-# κVML_str = "kVML" * format(κVML, conversion="e")
-# κH_str = "kH" * format(κH, conversion="d")
-
-# upwind = false
-# @show upwind
-# upwind_str = upwind ? "" : "_centered"
-# upwind_str2 = upwind ? "upwind" : "centered"
-
-# # Load areacello and volcello for grid geometry
-# inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/omip2/r1i1p1f1/Jan0200-Dec0209/"
-# areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
-# volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
-
-# # Load fixed variables in memory
-# areacello = readcubedata(areacello_ds.areacello)
-# volcello = readcubedata(volcello_ds.volcello)
-# lon = readcubedata(volcello_ds.lon)
-# lat = readcubedata(volcello_ds.lat)
-# lev = volcello_ds.lev
-# # Identify the vertices keys (vary across CMIPs / models)
-# # FIXME using test CMORized data for vertices. Hopefully they match!
-# CMORtestfile = "/scratch/p66/yz9299/OM2_CMORised/umo_Omon_ACCESS-OM2-025_omip1_r1i1p1f1_gn_190001-190112.nc"
-# CMORtest_ds = open_dataset(CMORtestfile)
-# volcello_keys = propertynames(CMORtest_ds)
-# lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-# lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-# lon_vertices = readcubedata(getproperty(CMORtest_ds, lon_vertices_key))
-# lat_vertices = readcubedata(getproperty(CMORtest_ds, lat_vertices_key))
+#############
+# Load data #
+#############
 
 
-# # Make makegridmetrics
-# gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-# (; lon_vertices, lat_vertices, v3D) = gridmetrics
+# script options
+@show model = "ACCESS-OM2-025"
+if isempty(ARGS)
+    experiment = "omip2"
+    member = "r1i1p1f1"
+    time_window = "Jan0200-Dec0209"
+else
+    experiment, member, time_window = ARGS
+end
 
-# # Make indices
-# indices = makeindices(v3D)
-# (; N, wet3D) = indices
+@show experiment
+@show member
+@show time_window
 
-# commonfilename = "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)"
+# preferred diffusivities
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0 / 4  # m^2/s (grid-scaling by sqrt(area))
+@show κVdeep
+@show κVML
+@show κH
+κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
+κVML_str = "kVML" * format(κVML, conversion="e")
+κH_str = "kH" * format(κH, conversion="d")
 
-# agefile1 = joinpath(inputdir, "$commonfilename.nc")
-# age1 = readcubedata(open_dataset(joinpath(inputdir, agefile1)).age)
+upwind = false
+@show upwind
+upwind_str = upwind ? "" : "_centered"
+upwind_str2 = upwind ? "upwind" : "centered"
 
-# OCEANS = OceanBasins.oceanpolygons()
+# Load areacello and volcello for grid geometry
+inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/omip2/r1i1p1f1/Jan0200-Dec0209/"
+areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
+volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 
-# zt = lev |> Array
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+# FIXME using test CMORized data for vertices. Hopefully they match!
+CMORtestfile = "/scratch/p66/yz9299/OM2_CMORised/umo_Omon_ACCESS-OM2-025_omip1_r1i1p1f1_gn_190001-190112.nc"
+CMORtest_ds = open_dataset(CMORtestfile)
+volcello_keys = propertynames(CMORtest_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(CMORtest_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(CMORtest_ds, lat_vertices_key))
+
+
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
+
+# Make indices
+indices = makeindices(v3D)
+(; N, wet3D) = indices
+
+commonfilename = "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)"
+
+agefile1 = joinpath(inputdir, "$commonfilename.nc")
+age1 = readcubedata(open_dataset(joinpath(inputdir, agefile1)).age)
+
+OCEANS = OceanBasins.oceanpolygons()
+
+zt = lev |> Array
 
 # Redo same plot with different files
 suffixes = [
