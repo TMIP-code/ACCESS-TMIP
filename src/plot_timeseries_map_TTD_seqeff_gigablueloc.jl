@@ -169,6 +169,12 @@ Nmembers = length(members)
     src_P = sourcelocation(srcname)
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
     src_k = findlast(wet3D[src_i, src_j,:])
+    @info "src_i, src_j, src_k = $src_i, $src_j, $src_k"
+    bottomcelldepth = (sum(volcello[src_i, src_j, 1:src_k]) - volcello[src_i, src_j, src_k] / 2) / areacello[src_i, src_j]
+    @info "lon, lat, depth = $(lon[src_i, src_j]), $(lat[src_i, src_j]), $(round(Int, bottomcelldepth))"
+    bottomcellthickness = volcello[src_i, src_j, src_k] / areacello[src_i, src_j]
+    bottomcelltopandbottom = bottomcelldepth .+ [-bottomcellthickness / 2, bottomcellthickness / 2]
+    @info "bottom cell top and bottom depth = $(round.(Int, bottomcelltopandbottom))"
     map(members) do member
         @info "loading $member Γ†"
         Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
@@ -637,6 +643,7 @@ mediantimestd = std([findfirst(100 * ℰi .< 50) for ℰi in eachcol(ℰs1[1])])
 mediantimetxtpos = mediantimemean
 mediantimetxt = "$(round(Int, mediantimemean)) ± $(round(Int, mediantimestd)) years"
 
+
 tenthpercentilemean = mean([findfirst(100 * ℰi .< 90) for ℰi in eachcol(ℰs1[1])])
 tenthpercentilestd = std([findfirst(100 * ℰi .< 90) for ℰi in eachcol(ℰs1[1])])
 tenthpercentiletxtpos = tenthpercentilemean
@@ -644,6 +651,21 @@ tenthpercentiletxt = "$(round(Int, tenthpercentilemean)) ± $(round(Int, tenthpe
 
 ℰ300txtpos = 100 * mean([ℰs1[1] ℰs2[1]][300,:])
 ℰ1000txtpos = 100 * mean([ℰs1[1] ℰs2[1]][1000,:])
+
+ℰ100mean = mean([100 * ℰi[100] for ℰi in eachcol(ℰs1[1])])
+ℰ100std = std([100 * ℰi[100] for ℰi in eachcol(ℰs1[1])])
+ℰ100txt = "$(round(Int, ℰ100mean)) ± $(round(Int, ℰ100std)) %"
+println("ℰ(100yr) = ", ℰ100txt)
+
+ℰ300mean = mean([100 * ℰi[300] for ℰi in eachcol(ℰs1[1])])
+ℰ300std = std([100 * ℰi[300] for ℰi in eachcol(ℰs1[1])])
+ℰ300txt = "$(round(Int, ℰ300mean)) ± $(round(Int, ℰ300std)) %"
+println("ℰ(300yr) = ", ℰ300txt)
+
+ℰ1000mean = mean([100 * ℰi[1000] for ℰi in eachcol(ℰs1[1])])
+ℰ1000std = std([100 * ℰi[1000] for ℰi in eachcol(ℰs1[1])])
+ℰ1000txt = "$(round(Int, ℰ1000mean)) ± $(round(Int, ℰ1000std)) %"
+println("ℰ(1000yr) = ", ℰ1000txt)
 
 # for (ℰsdecade, colors) in zip((ℰs1,), (colors1,))
 let
