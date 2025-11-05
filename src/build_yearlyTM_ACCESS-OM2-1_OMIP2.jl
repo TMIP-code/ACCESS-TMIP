@@ -1,4 +1,4 @@
-# qsub -P y99 -N yearlyTM_OM2-1 -l ncpus=24 -l mem=95GB -l jobfs=4GB -l walltime=1:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
+# qsub -I -P y99 -N yearlyTM_OM2-1 -l ncpus=24 -l mem=95GB -l jobfs=4GB -l walltime=1:00:00 -l storage=scratch/gh0+gdata/xp65+scratch/xv83+scratch/y99 -l wd -o output/PBS/ -j oe
 
 using Pkg
 Pkg.activate(".")
@@ -26,11 +26,11 @@ using FileIO
 inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/Jan1960-Dec1979"
 
 # Load areacello and volcello for grid geometry
-areacello_ds = open_dataset(joinpath(inputdir, "area_t_grid.nc"))
-dzt_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
-# TODO: caputre correlations between transport and dzt
+areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
+dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
+# TODO: caputre correlations between transport and dht
 # z* coordinate varies with time in ACCESS-OM2
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dzt * area
+# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dht * area
 umo_ds = open_dataset(joinpath(inputdir, "tx_trans.nc"))
 vmo_ds = open_dataset(joinpath(inputdir, "ty_trans.nc"))
 ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
@@ -40,18 +40,57 @@ vmo_ds = open_dataset(joinpath(inputdir, "ty_trans.nc"))
 mlotst_ds = open_dataset(joinpath(inputdir, "mld.nc"))
 
 # Load fixed variables in memory
-areacello = readcubedata(areacello_ds.area_t)
-dzt = readcubedata(dzt_ds.dzt)
-volcello = dzt .* areacello
-lon = readcubedata(areacello_ds.lon)
-lat = readcubedata(areacello_ds.lat)
-lev = areacello_ds.lev
-# Identify the vertices keys (vary across CMIPs / models)
-volcello_keys = propertynames(areacello_ds)
-lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-lon_vertices = readcubedata(getproperty(areacello_ds, lon_vertices_key))
-lat_vertices = readcubedata(getproperty(areacello_ds, lat_vertices_key))
+areacello_OM2 = replace(readcubedata(areacello_ds.area_t), missing => NaN) # This is required for later multiplication
+dht = readcubedata(dht_ds.dht)
+lon_OM2 = readcubedata(areacello_ds.geolon_t)
+lat_OM2 = readcubedata(areacello_ds.geolat_t)
+lev = dht_ds.st_ocean
+
+# Unfortunately ACCESS-OM2 raw data does not have coordinates of cell vertices
+# So instead I go back to the source: the supergrids
+gadi_supergrid_dir = "/g/data/xp65/public/apps/access_moppy_data/grids"
+gridfile = "mom1deg.nc"
+# CHECK that supergrid matches
+supergrid_ds = open_dataset(joinpath(gadi_supergrid_dir, gridfile))
+superarea = readcubedata(supergrid_ds.area)
+lon = readcubedata(supergrid_ds.x)[2:2:end, 2:2:end]
+ilon = .!ismissing.(lon_OM2.data) # Can't check full globe as area_t has missing values over some land
+@assert lon_OM2[ilon] ≈ lon[ilon]
+lat = readcubedata(supergrid_ds.y)[2:2:end, 2:2:end]
+ilat = .!ismissing.(lat_OM2.data)
+@assert lat_OM2[ilat] ≈ lat[ilat]
+# I am using the supergrid area because I assume it is the ground truth here.
+# I am not sure why the areas in the OM2 outputs and the supergrid files are different, by up to 6%!
+# See outputs/plots/area_error.png
+# TODO send email to ask around?
+areacello = YAXArray(
+    dims(dht)[1:2],
+    [sum(superarea[i:(i + 1), j:(j + 1)]) for i in 1:2:size(superarea, 1) , j in 1:2:size(superarea, 2)],
+    Dict("name" => "areacello", "units" => "m^2"),
+)
+iarea = .!isnan.(areacello_OM2.data) # isnan because I replaced missings with NaNs earlier
+@show areacello_OM2[iarea] ≈ areacello[iarea]
+
+# Build vertices from supergrid
+# Dimensions of vertices ar (vertex, x, y)
+# Note to self: NCO shows it as (y, x, vertex)
+SW(x) = x[1:2:(end - 2), 1:2:(end - 2)]
+SE(x) = x[3:2:end, 1:2:(end - 2)]
+NE(x) = x[3:2:end, 3:2:end]
+NW(x) = x[1:2:(end - 2), 3:2:end]
+(nx, ny) = size(lon)
+vertices(x) = [
+    reshape(SW(x), (1, nx, ny))
+    reshape(SE(x), (1, nx, ny))
+    reshape(NE(x), (1, nx, ny))
+    reshape(NW(x), (1, nx, ny))
+]
+lon_vertices = vertices(supergrid_ds.x)
+lat_vertices = vertices(supergrid_ds.y)
+
+@show size(lon_vertices)
+
+volcello = readcubedata(dht .* areacello)
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
@@ -62,23 +101,13 @@ indices = makeindices(gridmetrics.v3D)
 
 # Some parameter values
 ρ = 1035.0    # kg/m^3
-# κVML = 0.1    # m^2/s
-# κVMLs = [0.001, 0.01, 0.1, 1] # m^2/s
-# κVMLs = [1e-7, 1e-6, 1e-5, 1e-4] # m^2/s
-# κVdeep = 1e-5 # m^2/s
-# κH = 500.0    # m^2/s
-κVML = 1.0e-7    # m^2/s
-κVdeep = 1.0e-7 # m^2/s
-κH = 5    # m^2/s
-# κVdeeps = [1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
-# κHs = [50, 150, 500, 1500, 5000] # m^2/s
-# κVdeeps = [1e-7, 3e-7] # m^2/s
-# κHs = [50, 150, 500, 1500, 5000] # m^2/s
-# κVdeeps = [1e-7, 3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4] # m^2/s
-# κHs = [5, 15] # m^2/s
+# ACCESS-ESM1.5 preferred values
+upwind = false
+κVdeep = 3.0e-5 # m^2/s
+κVML = 1.0      # m^2/s
+κH = 300.0      # m^2/s
 
-mean_days_in_month = umo_ds.mean_days_in_month |> Array
-w = Weights(mean_days_in_month)
+WIP
 
 mlotst = dropdims(mean(readcubedata(mlotst_ds.mlotst), w; dims = :month), dims = :month)
 umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims = :month), dims = :month)
