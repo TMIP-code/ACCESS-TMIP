@@ -23,11 +23,11 @@ using FileIO
 # Making yearly matrices for ACCESS-OM2-1
 
 # script options
-inputdir = "/scratch/y99/bp3051/hiresTM/access-om2-1/1deg_jra55_ryf9091_gadi"
+inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/Jan1960-Dec1979"
 
 # Load areacello and volcello for grid geometry
 areacello_ds = open_dataset(joinpath(inputdir, "area_t_grid.nc"))
-dzt_ds = open_dataset(joinpath(inputdir, "dzt.nc")) # <- (new) cell thickness?
+dzt_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
 # TODO: caputre correlations between transport and dzt
 # z* coordinate varies with time in ACCESS-OM2
 # volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dzt * area
@@ -35,11 +35,9 @@ umo_ds = open_dataset(joinpath(inputdir, "tx_trans.nc"))
 vmo_ds = open_dataset(joinpath(inputdir, "ty_trans.nc"))
 ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
 ψⱼGM_ds = open_dataset(joinpath(inputdir, "ty_trans_gm.nc"))
-ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
-ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
-mlotst_ds = open_dataset(joinpath(inputdir, "mld_month.nc"))
-
-ds = open_dataset("/g/data/ik11/outputs/access-om2/1deg_jra55_ryf9091_gadi/output031/ocean/ocean_grid.nc")
+# ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
+# ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
+mlotst_ds = open_dataset(joinpath(inputdir, "mld.nc"))
 
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.area_t)
