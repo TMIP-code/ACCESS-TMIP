@@ -69,10 +69,6 @@
 # (; wet3D, N) = indices
 
 
-
-
-
-
 # # Matrix cyclo ages for varied members
 # @info "Loading age computed from matrices of different members"
 # κVML = 1e-7   # m^2/s
@@ -168,17 +164,13 @@
 # TDvalsobs = [taylordiagramvalues(data, obs_data, w) for data in obs_data2]
 
 
-
-
-
-
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
-fig = Figure(size=(400, 400))
+fig = Figure(size = (400, 400))
 
-κVdeep_str = rich("κVdeep = ", format(κVdeep, conversion="e"), " m", superscript("−2"), " s")
-κH_str = rich("κH = ", format(κH, conversion="d"), " m", superscript("−2"), " s")
-κVML_str = rich("κVML = ", format(κVML, conversion="e"), " m", superscript("−2"), " s")
+κVdeep_str = rich("κVdeep = ", format(κVdeep, conversion = "e"), " m", superscript("−2"), " s")
+κH_str = rich("κH = ", format(κH, conversion = "d"), " m", superscript("−2"), " s")
+κVML_str = rich("κVML = ", format(κVML, conversion = "e"), " m", superscript("−2"), " s")
 title = rich(κH_str, ", ", κVdeep_str, ", ", κVML_str)
 
 # Corrticks for Taylor diagram
@@ -189,9 +181,10 @@ function myformat(corrtick)
     str = string(corrtick)
     return replace(str, "-" => "−")
 end
-rtickformat(rs) = map(r -> "$(format(round(10r/σr)/10, stripzeros = true))σᵣ", rs)
-ax = PolarAxis(fig[1, 1];
-    thetalimits = (0, π/2), # first quadrant only
+rtickformat(rs) = map(r -> "$(format(round(10r / σr) / 10, stripzeros = true))σᵣ", rs)
+ax = PolarAxis(
+    fig[1, 1];
+    thetalimits = (0, π / 2), # first quadrant only
     thetagridcolor = (:black, 0.5),
     thetagridstyle = :dot,
     thetaticks = (acos.(corrticks), myformat.(corrticks)),
@@ -200,7 +193,7 @@ ax = PolarAxis(fig[1, 1];
     rgridcolor = cgrad(:Archambault, categorical = true)[1],
     rticklabelcolor = cgrad(:Archambault, categorical = true)[1],
     rgridstyle = :dash,
-    rticks = (0:σr/2:σmax),
+    rticks = (0:(σr / 2):σmax),
     rtickformat,
 )
 
@@ -212,8 +205,9 @@ E′fun(σf, σr, R) = sqrt(σf^2 + σr^2 - 2 * σf * σr * R)
 # E′grid = [sqrt(r^2 + σr^2 - 2 * σr * r * cos(θ)) for θ in θgrid, r in rgrid]
 E′grid = [E′fun(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
 # labelformatter(E′s) = map(E′ -> rich("$(E′/σr)", rich(" σ", subscript("ref"))), E′s)
-labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σr)/10, stripzeros = true))σᵣ", E′s)
-contour!(ax, θgrid, rgrid, E′grid;
+labelformatter(E′s) = map(E′ -> "$(format(round(10E′ / σr) / 10, stripzeros = true))σᵣ", E′s)
+contour!(
+    ax, θgrid, rgrid, E′grid;
     levels,
     labels = true,
     labelformatter,
@@ -249,13 +243,13 @@ transformation = Transformation(ax.scene.transformation; transform_func = identi
 x, y = collect.(zip(xy_from_R_and_σ.(Rs, σfs)...) |> collect)
 scatter!(ax, x, y; color = :red, markersize = 3, transformation)
 offset = 100
-txtline = [offset, offset/5]
+txtline = [offset, offset / 5]
 fontsize = 10
 lines!(ax, mean(x) .- txtline, mean(y) .+ txtline / 2; linewidth = 1, color = :black, transformation)
 text!(ax, mean(x) - offset, mean(y) + offset / 2; text = "cyclostationary\nage", transformation, align = (:right, :bottom), offset = (0, 0), fontsize)
 
 offset = 100
-txtline = [offset, offset/5]
+txtline = [offset, offset / 5]
 x2, y2 = collect.(zip(xy_from_R_and_σ.(Rs2, σfs2)...) |> collect)
 scatter!(ax, x2, y2; color = :blue, markersize = 3, transformation)
 lines!(ax, mean(x2) .+ txtline / 2, mean(y2) .+ txtline; linewidth = 1, color = :black, transformation)
@@ -263,7 +257,7 @@ text!(ax, mean(x2) + offset / 2, mean(y2) + offset; text = "steady age\n(mean ma
 
 
 offset = 50
-txtline = [offset, offset/2.5]
+txtline = [offset, offset / 2.5]
 x3, y3 = collect.(zip(xy_from_R_and_σ.(Rs3, σfs3)...) |> collect)
 scatter!(ax, x3, y3; color = :purple, markersize = 3, transformation)
 lines!(ax, mean(x3) .+ txtline, mean(y3) .- txtline; linewidth = 1, color = :black, transformation)
@@ -276,9 +270,9 @@ text!(ax, mean(x3) + offset, mean(y3) - offset; text = "steady age\n(mean flow)"
 # )
 
 # single scatter to identify r20i1p1f1 member
-scatter!(ax, x2[20], y2[20]; color = :black, markersize = 5, marker=:cross, transformation)
-scatter!(ax, x[20], y[20]; color = :black, markersize = 5, marker=:cross, transformation)
-scatter!(ax, x3[20], y3[20]; color = :black, markersize = 5, marker=:cross, transformation)
+scatter!(ax, x2[20], y2[20]; color = :black, markersize = 5, marker = :cross, transformation)
+scatter!(ax, x[20], y[20]; color = :black, markersize = 5, marker = :cross, transformation)
+scatter!(ax, x3[20], y3[20]; color = :black, markersize = 5, marker = :cross, transformation)
 
 # Add lines for AA Interation
 σfsobs = [vals.σf for vals in TDvalsobs]

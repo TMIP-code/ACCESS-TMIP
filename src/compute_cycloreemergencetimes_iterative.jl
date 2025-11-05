@@ -45,7 +45,6 @@ using NonlinearSolve
 # So the δt that multiplies Mₘ is δ(m..m+1).
 
 
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -104,7 +103,7 @@ V⁻¹ = sparse(Diagonal(1 ./ v3D[wet3D]))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -151,23 +150,23 @@ M̃̄ = mean(M̃s) #
 Δt = sum(δts)
 
 Plprob = LinearProblem(-Δt * M̃̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1.0e-10)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̃̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+@time "initial state solve" u0 = solve(LinearProblem(M̃̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1.0e-10).u
 @show norm(M̃̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1.0e-10)
 end
 
 p = (;
     months,
     δts,
-    stepprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)]
+    stepprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)],
 )
 function stepbackonemonth!(du, u, p, m)
     prob = p.stepprob[m]
@@ -210,7 +209,7 @@ nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve cyclo-stationary state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol = 1.0e-12)); show_trace = Val(true), reltol = Inf, abstol = 1.0e-10norm(u0, Inf));
 
 
 @info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
@@ -220,7 +219,8 @@ du = deepcopy(u0)
 
 # Save cyclo-stationary reemergence time
 du = sol!.u # The last month solved for is January (m = 1, implicit in backward time)
-data4D = reduce((a, b) -> cat(b, a, dims=4), # <- note how the order is reversed here
+data4D = reduce(
+    (a, b) -> cat(b, a, dims = 4), # <- note how the order is reversed here
     map(reverse(months)) do m
         stepbackonemonth!(du, du, p, m) # Starting from du = January
         Γinyr = ustrip.(yr, du .* s)
@@ -229,7 +229,8 @@ data4D = reduce((a, b) -> cat(b, a, dims=4), # <- note how the order is reversed
     end
 )
 axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(months)))[1])
-cube4D = rebuild(volcello_ds["volcello"];
+cube4D = rebuild(
+    volcello_ds["volcello"];
     data = data4D,
     dims = axlist,
     metadata = Dict(
@@ -245,4 +246,3 @@ ds = Dataset(; volcello_ds.properties, arrays...)
 outputfile = joinpath(cycloinputdir, "reemergence_time.nc")
 @info "Saving reemergence time as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-

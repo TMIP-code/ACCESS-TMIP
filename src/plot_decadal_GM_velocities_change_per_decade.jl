@@ -67,7 +67,7 @@ for (experiment, exp_prefix) in zip(experiments, exp_prefix)
 
         println("  $member")
 
-        CSIRO_member = "$exp_prefix-$(format(member + 4, width=2, zeropadding=true))"
+        CSIRO_member = "$exp_prefix-$(format(member + 4, width = 2, zeropadding = true))"
         inputdir = joinpath(expdir, CSIRO_member)
 
         fig = Figure(size = (200Nvars, 200(Ndecades - 1)))
@@ -78,13 +78,13 @@ for (experiment, exp_prefix) in zip(experiments, exp_prefix)
             fname = joinpath(inputdir, "month_$(var)_$(decade_str).nc")
             !isfile(fname) && continue
             println("    $fname")
-            previous_x = nanmean(replace(ncread(fname, var) |> Array, -1f20 => NaN), dims = 4) |> vec
+            previous_x = nanmean(replace(ncread(fname, var) |> Array, -1.0f20 => NaN), dims = 4) |> vec
 
             for (irow, decade) in enumerate(decades[2:end])
 
                 decade_str = "$(decade)s"
                 fname = joinpath(inputdir, "month_$(var)_$(decade_str).nc")
-                x = nanmean(replace(ncread(fname, var) |> Array, -1f20 => NaN), dims = 4) |> vec
+                x = nanmean(replace(ncread(fname, var) |> Array, -1.0f20 => NaN), dims = 4) |> vec
 
                 ax = Axis(fig[irow, icol], aspect = 1)
                 # scatter!(aprevious_x, x, x)
@@ -115,8 +115,3 @@ for (experiment, exp_prefix) in zip(experiments, exp_prefix)
     end
 
 end
-
-
-
-
-

@@ -37,9 +37,6 @@ using GeometryOps
 include("plotting_functions.jl")
 
 
-
-
-
 # Load matrix and grid metrics
 # @show model = "ACCESS-ESM1-5"
 # @show experiment = ARGS[1]
@@ -79,7 +76,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
 # Make indices
 indices = makeindices(v3D)
@@ -87,9 +84,9 @@ indices = makeindices(v3D)
 
 function sourcelocation(srcname)
     if srcname == "Karratha"
-        return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+        return (115.45849390000001, -16.56466979999999) # Carnarvon Basin?" North West of Australia
     elseif srcname == "Portland"
-        return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+        return (141.73529860000008, -38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
     elseif srcname == "Marlo"
         return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
     else
@@ -103,7 +100,7 @@ year_start = parse(Int, time_window[4:7])
 # Nyears = 501
 # Nyears = 2001
 Nyears = 1001
-times = range(Date("$year_start-01-01"); step=Year(1), length=Nyears)
+times = range(Date("$year_start-01-01"); step = Year(1), length = Nyears)
 axlist = (
     Dim{:time}(times),
     Dim{:source}(srcnames),
@@ -123,7 +120,7 @@ for member in members
         umass = load(outputfile, "umass")
         src_mass = load(outputfile, "src_mass")
         @show size(umass)
-        yaxdata[member=At(member), source=At(srcname)] .= 100 * [0.0; umass] / src_mass
+        yaxdata[member = At(member), source = At(srcname)] .= 100 * [0.0; umass] / src_mass
         # TODO: Check that src_P match (since I have changed these along the way)
         src_P = load(outputfile, "src_P")
         src_P == sourcelocation(srcname) || @info "issue $member $srcname $scr_P ≠ $(sourcelocation(srcname))"
@@ -136,23 +133,18 @@ all_members_inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/all_members/$
 Γouts = map(srcnames) do srcname
     src_P = sourcelocation(srcname)
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
+    src_k = findlast(wet3D[src_i, src_j, :])
     readcubedata(Γoutyr3D_timemean_ds[src_i, src_j, src_k, :]).data
 end
 
 depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
 maxdepth = 6000
-@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol = 0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
 
-
-
-
-
-
-fig = Figure(size=(900, 400))
+fig = Figure(size = (900, 400))
 
 # # Add location as first axis
 # ax = Axis(fig[1, 1];
@@ -166,7 +158,8 @@ yticks = -90:10:90
 xticks = (xticks, lonticklabel.(xticks))
 yticks = (yticks, latticklabel.(yticks))
 # axmap = GeoAxis(fig[1, 1];
-axmap = Axis(fig[1, 1];
+axmap = Axis(
+    fig[1, 1];
     backgroundcolor = :black,
     limits,
     # dest = "+proj=longlat +datum=WGS84",
@@ -183,7 +176,7 @@ hideydecorations!(axmap2)
 # xlims!(axmap2, limits[1])
 # ylims!(axmap2, limits[2])
 # image!(axmap2, -180..180, -90..90, GeoMakie.earth() |> rotr90; interpolate = false)
-colors = cgrad(:jblue, length(depths), categorical=true)
+colors = cgrad(:jblue, length(depths), categorical = true)
 # colors = cgrad(:blues, length(depths), categorical=true)
 # colors = cgrad(:grays, length(depths), categorical=true, rev=true)
 
@@ -200,9 +193,9 @@ poly!(axmap2, GeoMakie.land(); color = :lightyellow, strokecolor = :black, strok
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 # hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 # TODO: read src_P somehow (file name or variable inside file)
-colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+colors = cgrad(:Egypt, categorical = true)[[3, 4, 1]]
 # colors = Makie.wong_colors()[[1, 3, 6]]
-offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
+offsets = map(x -> x .* 2, [(-2, 1), (-2, -1), (2, -1)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
 aligns = [(:right, :center), (:right, :center), (:left, :center)]
 texts = ["A", "B", "C"]
@@ -211,13 +204,13 @@ for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, off
     src_P = sourcelocation(srcname)
     # sc = scatter!(axmap2, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
     # sc1 = scatter!(axmap2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=3)
-    sc2 = scatter!(axmap2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
-    sc2 = scatter!(axmap2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
+    sc2 = scatter!(axmap2, src_P; marker = :circle, markersize = 10, color = (:black, 0), strokecolor = :black, strokewidth = 4)
+    sc2 = scatter!(axmap2, src_P; marker = :circle, markersize = 10, color = (:black, 0), strokecolor = color, strokewidth = 2)
     # lines!(axmap2, [src_P, src_P .+ offset]; color=:white)
-    lines!(axmap2, kinkline(src_P .+ offset, src_P); color=:black, linewidth = 1)
+    lines!(axmap2, kinkline(src_P .+ offset, src_P); color = :black, linewidth = 1)
     # lines!(axmap2, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
     # lines!(axmap2, kinkline(src_P .+ offset, src_P); color)
-    text!(axmap2, src_P .+ offset; text, align, color=:black, strokecolor=:black)
+    text!(axmap2, src_P .+ offset; text, align, color = :black, strokecolor = :black)
     # text!(axmap2, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
     # text!(axmap2, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
     # translate!(sc1, 0, 0, 99)
@@ -263,16 +256,16 @@ x = -10:(length(times) - 11)
 #     hspan!(axts, ylev, ylev+20; color = (:black, 0.025))
 # end
 for ylev in 10:20:90
-    hspan!(axts, ylev, ylev+10; color = (:black, 0.025))
+    hspan!(axts, ylev, ylev + 10; color = (:black, 0.025))
 end
 # Band for injection time window
 # ibnd = vspan!(axts, -10, 0; color = (:black, 0.1))
 # text!(axts, 10, 50; text = "10-year injection", rotation = π/2, align = (:center, :center))
-for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
+for (ksrc, (srcname, text)) in enumerate(zip(srcnames, texts))
     Cseqksrc = 100 .- yaxdata[source = At(srcname)]
-    Cseqmean = dropdims(mean(Cseqksrc, dims=:member), dims=:member).data
-    Cseqmin = dropdims(minimum(Cseqksrc, dims=:member), dims=:member).data
-    Cseqmax = dropdims(maximum(Cseqksrc, dims=:member), dims=:member).data
+    Cseqmean = dropdims(mean(Cseqksrc, dims = :member), dims = :member).data
+    Cseqmin = dropdims(minimum(Cseqksrc, dims = :member), dims = :member).data
+    Cseqmax = dropdims(maximum(Cseqksrc, dims = :member), dims = :member).data
     color = colors[ksrc]
     # Cseqmin = dropdims(minimum(Cseqksrc, dims = 2), dims = 2)
     # Cseqmax = dropdims(maximum(Cseqksrc, dims = 2), dims = 2)
@@ -283,7 +276,7 @@ for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
     Cseqmin[inan] .= NaN
     Cseqmax[inan] .= NaN
     # bd = band!(axts, x, Cseqmin, Cseqmax; color=(:black, 0.3))
-    bd = band!(axts, x, clamp.(Cseqmin, 0, 100), clamp.(Cseqmax, 0, 100); color=(color, 0.3))
+    bd = band!(axts, x, clamp.(Cseqmin, 0, 100), clamp.(Cseqmax, 0, 100); color = (color, 0.3))
     # for Cseqksrc_m in eachslice(Cseqksrc, dims = 2)
     #     # cannot work if saved umass have different time span
     #     # y = 100 * [0; data[m]["umass"][:, ksrc]] / data[m]["src_mass"][ksrc]
@@ -291,11 +284,11 @@ for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
     #     lines!(axts, x, Cseqksrc_m; color = :black, linewidth=0.1)
     # end
     # ln = lines!(axts, x, Cseqmean; color=:black, linewidth=2, linecap=:round, joinstyle=:round)
-    ln = lines!(axts, x, clamp.(Cseqmean, 0, 100); color, linewidth=2, linecap=:round, joinstyle=:round)
+    ln = lines!(axts, x, clamp.(Cseqmean, 0, 100); color, linewidth = 2, linecap = :round, joinstyle = :round)
     i = 250 - 10ksrc
     # (ksrc == 1) && (text = "tracer injected at $text")
     # text!(axts, x[i], Cseqmean[i]; text, offset = (1.5, 1.5), align = (:left, :bottom), color=:black)
-    text!(axts, x[i], Cseqmean[i]; text, offset = (-1.5, 1.5), align = (:right, :bottom), color=:black)
+    text!(axts, x[i], Cseqmean[i]; text, offset = (-1.5, 1.5), align = (:right, :bottom), color = :black)
     # text!(axts, x[i], Cseqmean[i]; text, offset = (3, 3), align = (:left, :bottom), color, fontsize=18)
     # Add a bar chart in the middle?
     # for xbar in 2100:100:2500
@@ -350,10 +343,10 @@ values = reduce(vcat, Γouts)
 categories = reduce(vcat, fill(label, 40) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 40) for color in colors)
-boxplot!(axbox, categorypositions, values; color=color, orientation = :horizontal)
+boxplot!(axbox, categorypositions, values; color = color, orientation = :horizontal)
 for (ksrc, text) in enumerate(texts)
     # (ksrc == 1) && (text = "mean reemergence time at $text")
-    text!(axbox, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3,0), align = (:right, :center))
+    text!(axbox, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3, 0), align = (:right, :center))
 end
 # raincloudoptions = (
 #     boxplot_nudge = -0.5,
@@ -367,10 +360,8 @@ end
 # rainclouds!(axbox, categorypositions, values; raincloudoptions..., color=color, orientation = :horizontal)
 
 
-
 linkxaxes!(axbox, axts)
 xlims!(axbox, (xmin, xmax))
-
 
 
 # # Add insert of injection location
@@ -391,9 +382,9 @@ xlims!(axbox, (xmin, xmax))
 # sc = scatter!(inset_ax, src_P; marker=:star5, markersize=15, color, strokecolor=:black, strokewidth=1)
 # translate!(sc, 0, 0, 100)
 
-rowsize!(gb, 1, Relative(2/3))
+rowsize!(gb, 1, Relative(2 / 3))
 rowgap!(gb, 1, 10)
-colsize!(fig.layout, 1, Relative(5/12))
+colsize!(fig.layout, 1, Relative(5 / 12))
 colgap!(fig.layout, 1, 10)
 
 # colgap!(fig.layout, 1, -50)
@@ -403,7 +394,7 @@ labeloptions = (
     align = (:left, :top),
     offset = (5, -2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 for (ax, label) in zip([axmap2, axts, axbox], ["a", "b", "c"])
     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)

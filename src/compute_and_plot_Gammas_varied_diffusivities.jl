@@ -59,7 +59,7 @@ show(dataavailability; allrows = true)
 # κVdeeps = 3e-5 .* [1/2, 1, 2] # m^2/s
 κHs = 500.0 .* [1, 2, 4, 10] # m^2/s
 # κVdeeps = 3e-5 .* [1, 2, 4, 10] # m^2/s
-κVdeeps = 3e-5 .* [10] # m^2/s
+κVdeeps = 3.0e-5 .* [10] # m^2/s
 
 # for member in members[dataavailability.has_it_all]
 # for member in members[dataavailability.has_it_all], κH in κHs, κVdeep in κVdeeps
@@ -67,8 +67,8 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # member = last(members)
 
     inputdir = inputdirfun(member)
-    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-    κH_str = "kH" * format(κH, conversion="e")
+    κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+    κH_str = "kH" * format(κH, conversion = "e")
     outputdir = joinpath(inputdir, κH_str, κVdeep_str)
     mkpath(outputdir)
 
@@ -92,7 +92,8 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     # Make transport matrix
     @warn "using κVdeep = $κVdeep_str, κH = $κH_str"
-    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices,
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(;
+        ϕ, mlotst, gridmetrics, indices,
         ρ = 1025.0,
         κH, # m^2/s
         κVML = 0.1, # m^2/s
@@ -100,7 +101,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     )
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
+    (; lon, lat, zt, v3D) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -109,7 +110,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     # surface mask
     issrf3D = copy(wet3D)
-    issrf3D[:,:,2:end] .= false
+    issrf3D[:, :, 2:end] .= false
     issrf = issrf3D[wet3D]
     # Ideal mean age Γ↓ is governed by
     # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
@@ -142,7 +143,8 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     (v' * Γout) / sum(v)
 
     # Turn Γin into a YAXArray by rebuilding from volcello
-    Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γinyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γinyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -156,7 +158,8 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     Γin_ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Turn Γout into a YAXArray by rebuilding from volcello
-    Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γoutyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γoutyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -183,7 +186,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     depth = 1000
     # Interpolate `Γinyr3D` to the given `depth`
-    itp = interpolate((lev, ), [Γinyr3D[:,:,i] for i in axes(Γinyr3D, 3)], Gridded(Linear()))
+    itp = interpolate((lev,), [Γinyr3D[:, :, i] for i in axes(Γinyr3D, 3)], Gridded(Linear()))
     Γinyr2D = itp(depth)
     title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ideal mean age (yr) at $depth m"
     # plot options
@@ -191,9 +194,9 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     colormap = :viridis
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γinyr2D, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label="Ideal mean age (yr)")
+    Colorbar(fig[1, 2], plt, label = "Ideal mean age (yr)")
     # save plot
     outputfile = joinpath(outputdir, "ideal_mean_age_v2.png")
     @info "Saving ideal mean age as image file:\n  $(outputfile)"
@@ -202,7 +205,7 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     # Plot comparison with agessc
     agessc_ds = open_dataset(joinpath(inputdir, "agessc.nc"))
     agessc3D = agessc_ds["agessc"] |> Array{Float64}
-    itp = interpolate((lev, ), [agessc3D[:,:,i] for i in axes(agessc3D, 3)], Gridded(Linear()))
+    itp = interpolate((lev,), [agessc3D[:, :, i] for i in axes(agessc3D, 3)], Gridded(Linear()))
     agessc2D = itp(depth)
     fig = Figure(size = (1200, 1800), fontsize = 18)
     Γdown = rich("Γ", superscript("↓"))
@@ -210,36 +213,34 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     title = rich("$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ", Γdown, " (yr) at $depth m")
     colorrange = (0, 1500)
     colormap = :viridis
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt1 = plotmap!(ax, Γinyr2D, gridmetrics; colorrange, colormap)
     title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) agessc (yr) at $depth m"
-    ax = Axis(fig[2,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[2, 1]; title, xtickformat, ytickformat)
     plt2 = plotmap!(ax, agessc2D, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1:2,2], plt1, label="Ideal mean age (yr)")
-    ax = Axis(fig[3,1]; title, xtickformat, ytickformat)
+    Colorbar(fig[1:2, 2], plt1, label = "Ideal mean age (yr)")
+    ax = Axis(fig[3, 1]; title, xtickformat, ytickformat)
     colorrange = (-500, 500)
     colormap = :RdBu
     plt3 = plotmap!(ax, Γinyr2D - agessc2D, gridmetrics; colorrange, colormap)
-    Colorbar(fig[3,2], plt3, label=rich("Δ", Γdown, " (yr)"))
+    Colorbar(fig[3, 2], plt3, label = rich("Δ", Γdown, " (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "ideal_mean_age_maps_vs_agessc_$(depth)m.png")
     @info "Saving ideal mean age as image file:\n  $(outputfile)"
     save(outputfile, fig)
 
 
-
-
     modulo_cmap = [
-        0.   30.    0.   30.
-        15.  100.    0.  100.
-        25.   30.    0.  100.
-        26.    0.    0.  100.
-        34.    0.    0.   60.
-        50.    0.  100.  100.
-        60.    0.   50.    0.
-        75.  100.  100.    0.
-        90.  100.    0.    0.
-       100.   40.    0.    0.
+        0.0   30.0    0.0   30.0
+        15.0  100.0    0.0  100.0
+        25.0   30.0    0.0  100.0
+        26.0    0.0    0.0  100.0
+        34.0    0.0    0.0   60.0
+        50.0    0.0  100.0  100.0
+        60.0    0.0   50.0    0.0
+        75.0  100.0  100.0    0.0
+        90.0  100.0    0.0    0.0
+        100.0   40.0    0.0    0.0
     ]
 
 
@@ -247,44 +248,47 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
     basin_keys = (:ATL, :PAC, :IND, :GBL)
     basin_strs = ("Atlantic", "Pacific", "Indian", "Global")
-    basin_functions = (isatlantic, ispacific, isindian, (x,y,z) -> trues(size(x)))
+    basin_functions = (isatlantic, ispacific, isindian, (x, y, z) -> trues(size(x)))
     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
     basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
     levels = 0:100:1500
-    colormap = cgrad(:viridis, length(levels); categorical=true)
+    colormap = cgrad(:viridis, length(levels); categorical = true)
     extendlow = nothing
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[1:end-1]; categorical=true)
+    colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
 
     Δlevels = -500:100:500
-    Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical=true)
+    Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical = true)
     Δextendlow = Δcolormap[1]
     Δextendhigh = Δcolormap[end]
-    Δcolormap = cgrad(Δcolormap[2:end-1]; categorical=true)
+    Δcolormap = cgrad(Δcolormap[2:(end - 1)]; categorical = true)
 
     # Plot Γ↓ zonal averages
 
     fig = Figure(size = (1200, 800), fontsize = 18)
-    axs = Array{Any,2}(undef, (3, 3))
-    contours = Array{Any,2}(undef, (3, 3))
+    axs = Array{Any, 2}(undef, (3, 3))
+    contours = Array{Any, 2}(undef, (3, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         for (irow, x3D) in enumerate((Γinyr3D, agessc3D))
 
             x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-            ax = Axis(fig[irow, icol],
-                backgroundcolor=:lightgray,
-                xgridvisible=false, ygridvisible=false,
-                ylabel = "depth (m)")
+            ax = Axis(
+                fig[irow, icol],
+                backgroundcolor = :lightgray,
+                xgridvisible = false, ygridvisible = false,
+                ylabel = "depth (m)"
+            )
 
-            X = dropdims(maximum(lat, dims=1), dims=1)
+            X = dropdims(maximum(lat, dims = 1), dims = 1)
             Y = zt
             Z = x2D
-            co = contourf!(ax, X, Y, Z;
+            co = contourf!(
+                ax, X, Y, Z;
                 levels,
                 colormap,
                 nan_color = :lightgray,
@@ -305,23 +309,28 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
             xlims!(ax, xlim)
 
 
-            hidexdecorations!(ax,
+            hidexdecorations!(
+                ax,
                 label = irow < 3, ticklabels = irow < 3,
-                ticks = irow < 3, grid = false)
-            hideydecorations!(ax,
+                ticks = irow < 3, grid = false
+            )
+            hideydecorations!(
+                ax,
                 label = icol > 1, ticklabels = icol > 1,
-                ticks = icol > 1, grid = false)
+                ticks = icol > 1, grid = false
+            )
 
 
             axs[irow, icol] = ax
         end
     end
 
-    cb = Colorbar(fig[1:2, 4], contours[1, 1];
+    cb = Colorbar(
+        fig[1:2, 4], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich(Γdown, " (yr)"),
-        )
+    )
     cb.height = Relative(0.666)
 
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
@@ -329,15 +338,18 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
         irow = 3
         x2D = zonalaverage(Γinyr3D - agessc3D, gridmetrics; mask = basin)
 
-        ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=false, ygridvisible=false,
-            ylabel = "depth (m)")
+        ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels = Δlevels,
             colormap = Δcolormap,
             nan_color = :lightgray,
@@ -360,33 +372,38 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 3, ticklabels = irow < 3,
-            ticks = irow < 3, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 3, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
         axs[irow, icol] = ax
     end
 
-    cb = Colorbar(fig[3, 4], contours[3, 1];
+    cb = Colorbar(
+        fig[3, 4], contours[3, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich("Δ", Γdown, " (yr)"),
-        )
+    )
     cb.height = Relative(1)
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
-    Label(fig[1, 0], text = "Transport matrix", fontsize=20, tellheight=false, rotation=π/2)
-    Label(fig[2, 0], text = "agessc", fontsize=20, tellheight=false, rotation=π/2)
-    Label(fig[3, 0], text = "Difference", fontsize=20, tellheight=false, rotation=π/2)
+    Label(fig[1, 0], text = "Transport matrix", fontsize = 20, tellheight = false, rotation = π / 2)
+    Label(fig[2, 0], text = "agessc", fontsize = 20, tellheight = false, rotation = π / 2)
+    Label(fig[3, 0], text = "Difference", fontsize = 20, tellheight = false, rotation = π / 2)
 
     title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) ideal age"
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
     # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
     # Label(f[-1, :]; text, fontsize=20)
@@ -415,30 +432,28 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     save(outputfile, fig)
 
 
-
-
-
-
-
     # Plot Γ↑ zonal averages
 
     fig = Figure(size = (1200, 300), fontsize = 18)
-    axs = Array{Any,2}(undef, (1, 3))
-    contours = Array{Any,2}(undef, (1, 3))
+    axs = Array{Any, 2}(undef, (1, 3))
+    contours = Array{Any, 2}(undef, (1, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(Γoutyr3D, gridmetrics; mask = basin)
         irow = 1
 
-        ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=false, ygridvisible=false,
-            ylabel = "depth (m)")
+        ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -458,32 +473,37 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 1, ticklabels = irow < 1,
-            ticks = irow < 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
         axs[irow, icol] = ax
     end
 
-    cb = Colorbar(fig[1, 4], contours[1, 1];
+    cb = Colorbar(
+        fig[1, 4], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich(Γup, " (yr)"),
-        )
+    )
     cb.height = Relative(1)
 
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
-    Label(fig[1, 0], text = "Transport matrix", fontsize=20, tellheight=false, rotation=π/2)
+    Label(fig[1, 0], text = "Transport matrix", fontsize = 20, tellheight = false, rotation = π / 2)
 
     title = "$model $experiment $member $(time_window) (κH=$κH_str, κVdeep=$κVdeep_str) reemergence time"
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
     rowgap!(fig.layout, 10)
     colgap!(fig.layout, 10)
@@ -502,14 +522,13 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     colormap = :viridis
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
+    Colorbar(fig[1, 2], plt, label = rich(Γup, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "mean_age_at_seafloor.png")
     @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
     save(outputfile, fig)
-
 
 
     # Plot reemergence time at the seafloor level
@@ -520,9 +539,9 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
     colormap = :viridis
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γoutyrseafloor, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
+    Colorbar(fig[1, 2], plt, label = rich(Γup, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(outputdir, "reemergence_time_at_seafloor.png")
     @info "Saving mean reemergence time at seafloor as image file:\n  $(outputfile)"
@@ -530,5 +549,3 @@ for member in members[dataavailability.has_it_all][1:3], κH in κHs, κVdeep in
 
 
 end
-
-

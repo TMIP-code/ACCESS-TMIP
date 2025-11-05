@@ -111,14 +111,14 @@ include("plotting_functions.jl")
 
 usecontourf = false
 
-axs = Array{Any,2}(undef, (3, 2))
-contours = Array{Any,2}(undef, (3, 2))
+axs = Array{Any, 2}(undef, (3, 2))
+contours = Array{Any, 2}(undef, (3, 2))
 nrows, ncols = size(axs)
 
 fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
 yticks = -60:30:60
-xticks = -120:60:120 + 360
+xticks = -120:60:(120 + 360)
 
 # myscale = ReversibleScale(
 #     x -> sign(x) * log10(abs(x / 5) + 1),
@@ -135,10 +135,10 @@ colorscale = mk_piecewise_linear(levels)
 
 colorrange = extrema(levels)
 # pseudocolorrange = myscale.(colorrange)
-colormap = cgrad(:thermal, length(levels); categorical=true)
+colormap = cgrad(:thermal, length(levels); categorical = true)
 extendlow = lowclip = nothing
 extendhigh = highclip = colormap[end]
-colormap = cgrad(colormap[1:end-1], categorical=true)
+colormap = cgrad(colormap[1:(end - 1)], categorical = true)
 
 # colormap = cgrad(:tol_ylorbr, length(levels); categorical=true)
 # lowclip = nothing
@@ -169,7 +169,7 @@ for (irow, (MLD_ensemble_mean, MLD_ensemble_range)) in enumerate(zip(MLD_ensembl
     myhidexdecorations!(ax, irow < nrows)
     myhideydecorations!(ax, icol > 1)
 
-    Label(fig[irow, 0]; text = "$(experiments2[irow]) $(time_windows[irow])", rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text = "$(experiments2[irow]) $(time_windows[irow])", rotation = π / 2, tellheight = false)
 end
 
 
@@ -177,7 +177,8 @@ label = "ensemble mean MLD (m)"
 # cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = levels)
 # cb.width = Relative(2/3)
 
-cb = Colorbar(fig[nrows + 1, 1];
+cb = Colorbar(
+    fig[nrows + 1, 1];
     limits = (1, length(levels)),
     label,
     vertical = false,
@@ -186,10 +187,11 @@ cb = Colorbar(fig[nrows + 1, 1];
     highclip,
     ticks = (1:length(levels), string.(levels)),
 )
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 label = "ensemble range MLD (m)"
-cb = Colorbar(fig[nrows + 1, 2];
+cb = Colorbar(
+    fig[nrows + 1, 2];
     limits = (1, length(levels)),
     label,
     vertical = false,
@@ -198,7 +200,7 @@ cb = Colorbar(fig[nrows + 1, 2];
     highclip,
     ticks = (1:length(levels), string.(levels)),
 )
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 # cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = levels, scale = colorscale)
 # cb.width = Relative(2/3)
 
@@ -217,7 +219,7 @@ labeloptions = (
     align = (:left, :bottom),
     offset = (5, 2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 
 for (ax, label) in zip(axs, labels)

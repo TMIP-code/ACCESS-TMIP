@@ -79,7 +79,7 @@ for member in members
     ρ = 1035.0    # kg/m^3
     κH = 500.0    # m^2/s
     κVML = 0.1    # m^2/s
-    κVdeep = 1e-5 # m^2/s
+    κVdeep = 1.0e-5 # m^2/s
 
     @info "Making grid metrics"
     gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
@@ -102,7 +102,8 @@ for member in members
     @info "Save matrices"
     outputfile = joinpath(inputdir, "transportmatrix_$str.jld2")
     @info "Saving matrices + metrics as $outputfile"
-    save(outputfile,
+    save(
+        outputfile,
         Dict(
             "T" => T,
             "Tadv" => Tadv,
@@ -128,7 +129,7 @@ for member in members
     @info "Computing timescales (ideal mean age + reemergence time)"
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
+    (; lon, lat, zt, v3D) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -137,7 +138,7 @@ for member in members
 
     # surface mask
     issrf3D = copy(wet3D)
-    issrf3D[:,:,2:end] .= false
+    issrf3D[:, :, 2:end] .= false
     issrf = issrf3D[wet3D]
     # Ideal mean age Γ↓ is governed by
     # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
@@ -172,7 +173,8 @@ for member in members
     (v' * Γout) / sum(v)
 
     # Turn Γin into a YAXArray by rebuilding from volcello
-    Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γinyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γinyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -181,7 +183,8 @@ for member in members
         )
     )
     # Turn Γout into a YAXArray by rebuilding from volcello
-    Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γoutyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γoutyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(

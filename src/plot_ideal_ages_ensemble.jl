@@ -67,9 +67,8 @@ for (model, CMIP_version) in zip(models, CMIP_versions)
     println()
 
 
-
     for member in members[dataavailability.has_it_all]
-    # member = last(members)
+        # member = last(members)
 
         @info "  member $member"
 
@@ -93,7 +92,7 @@ for (model, CMIP_version) in zip(models, CMIP_versions)
         indices = makeindices(gridmetrics.v3D)
 
         # unpack model grid
-        (; lon, lat, zt, v3D,) = gridmetrics
+        (; lon, lat, zt, v3D) = gridmetrics
 
         zts[model][member] = zt
 
@@ -123,8 +122,8 @@ end
 # basin_strs = ("Atlantic", "Pacific", "Indian")
 
 fig = Figure(size = (1000, 1000), fontsize = 18)
-axs = Array{Any,2}(undef, (2, 3))
-plts = Array{Any,2}(undef, (2, 3))
+axs = Array{Any, 2}(undef, (2, 3))
+plts = Array{Any, 2}(undef, (2, 3))
 
 zlim = (6000, 0)
 
@@ -132,7 +131,8 @@ for (icol, (basin_key, basin_str)) in enumerate(zip(basin_keys, basin_strs))
 
     for (irow, x3Ds) in enumerate((Γinyr1Ds, agessc1Ds))
 
-        ax = Axis(fig[irow, icol],
+        ax = Axis(
+            fig[irow, icol],
             xgridvisible = true, ygridvisible = true,
             ylabel = "depth (m)",
             xlabel = "ideal mean age (yr)",
@@ -153,12 +153,16 @@ for (icol, (basin_key, basin_str)) in enumerate(zip(basin_keys, basin_strs))
 
         ylims!(ax, zlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2, ticklabels = irow < 2,
-            ticks = irow < 2, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
@@ -173,7 +177,7 @@ for (icol, (basin_key, basin_str)) in enumerate(zip(basin_keys, basin_strs))
             else
                 text = "Mean 1990s agessc variable"
             end
-            Label(fig[irow, 0]; text, tellheight = false, rotation = π/2)
+            Label(fig[irow, 0]; text, tellheight = false, rotation = π / 2)
         end
 
     end
@@ -192,6 +196,3 @@ mkpath(inputdir)
 outputfile = joinpath(inputdir, "ideal_age_all_basin_profiles.png")
 @info "Saving ideal mean age profiles as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-

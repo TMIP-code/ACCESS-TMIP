@@ -64,11 +64,8 @@
 # (; wet3D, N) = indices
 
 
-
 # Γdown = rich("Γ", superscript("↓"))
 # Γup = rich("Γ", superscript("↑"))
-
-
 
 
 # # # Plot zonal averages
@@ -107,29 +104,27 @@ raincloudioptions = (
 )
 
 fig = Figure()
-ax = Axis(fig[1, 1];
+ax = Axis(
+    fig[1, 1];
     # ylabel="basin",
-    xticks=(1:length(basins), collect(basin_strs)),
-    ylabel="Ideal mean age (yr)",
+    xticks = (1:length(basins), collect(basin_strs)),
+    ylabel = "Ideal mean age (yr)",
 )
 rainclouds!(ax, category_Γin, data_Γin; raincloudioptions...)
-ylims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout])/100)))
-ax = Axis(fig[1, 2];
+ylims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout]) / 100)))
+ax = Axis(
+    fig[1, 2];
     # ylabel="basin",
-    xticks=(1:length(basins), collect(basin_strs)),
-    ylabel="Reemergence time (yr)",
+    xticks = (1:length(basins), collect(basin_strs)),
+    ylabel = "Reemergence time (yr)",
 )
 rainclouds!(ax, category_Γout, data_Γout; raincloudioptions...)
-ylims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout])/100)))
+ylims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout]) / 100)))
 fig
 # save plot
 outputfile = joinpath(outputdir, "Gammas_rainclouds.png")
 @info "Saving ideal age rainclouds as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-
-
 
 
 raincloudioptions = (
@@ -146,30 +141,27 @@ raincloudioptions = (
     orientation = :horizontal,
 )
 
-fig = Figure(size=(900, 600))
-ax = Axis(fig[1, 1];
+fig = Figure(size = (900, 600))
+ax = Axis(
+    fig[1, 1];
     # ylabel="basin",
-    yticks=(1:length(basins), collect(basin_strs)),
+    yticks = (1:length(basins), collect(basin_strs)),
     # ylabel="Ideal mean age/reemergence time (yr)",
-    xlabel="years",
+    xlabel = "years",
 )
 rainclouds!(ax, category_Γin, data_Γin; raincloudioptions...)
-rainclouds!(ax, category_Γout, data_Γout; raincloudioptions..., side=:right)
-xlims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout])/100)))
+rainclouds!(ax, category_Γout, data_Γout; raincloudioptions..., side = :right)
+xlims!(ax, (0, 100ceil(maximum([data_Γin; data_Γout]) / 100)))
 
 text = rich("ideal age")
-text!(ax, 20 + maximum(data_Γin[category_Γin .== "GBL"]), 1.15; text, align=(:left,:center), color=Makie.wong_colors()[1])
+text!(ax, 20 + maximum(data_Γin[category_Γin .== "GBL"]), 1.15; text, align = (:left, :center), color = Makie.wong_colors()[1])
 text = rich("reemergence time")
-text!(ax, 20 + maximum(data_Γout[category_Γout .== "GBL"]), 0.85; text, align=(:left,:center), color=Makie.wong_colors()[2])
+text!(ax, 20 + maximum(data_Γout[category_Γout .== "GBL"]), 0.85; text, align = (:left, :center), color = Makie.wong_colors()[2])
 fig
 # save plot
 outputfile = joinpath(outputdir, "Gammas_rainclouds_v2.png")
 @info "Saving ideal age rainclouds as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-
-
 
 
 # same but with only seafloor values
@@ -179,21 +171,22 @@ save(outputfile, fig)
 # data_Γout_seafloor = reduce(vcat, average(Γoutyr3D, gridmetrics; mask = mask .* SEAFLOORMASK, dims=(1,2,3)) for (basin, mask) in pairs(basins))
 
 
-fig = Figure(size=(900, 600))
-ax = Axis(fig[1, 1];
+fig = Figure(size = (900, 600))
+ax = Axis(
+    fig[1, 1];
     # ylabel="basin",
-    yticks=(1:length(basins), collect(basin_strs)),
+    yticks = (1:length(basins), collect(basin_strs)),
     # ylabel="Ideal mean age/reemergence time (yr)",
-    xlabel="years",
+    xlabel = "years",
 )
 rainclouds!(ax, category_Γin, data_Γin_seafloor; raincloudioptions...)
-rainclouds!(ax, category_Γout, data_Γout_seafloor; raincloudioptions..., side=:right)
-xlims!(ax, (0, 100ceil(maximum([data_Γin_seafloor; data_Γout_seafloor])/100)))
+rainclouds!(ax, category_Γout, data_Γout_seafloor; raincloudioptions..., side = :right)
+xlims!(ax, (0, 100ceil(maximum([data_Γin_seafloor; data_Γout_seafloor]) / 100)))
 
 text = rich("ideal age at seafloor")
-text!(ax, -20 + minimum(data_Γin_seafloor[category_Γin .== "GBL"]), 1.15; text, align=(:right,:center), color=Makie.wong_colors()[1])
+text!(ax, -20 + minimum(data_Γin_seafloor[category_Γin .== "GBL"]), 1.15; text, align = (:right, :center), color = Makie.wong_colors()[1])
 text = rich("reemergence time at seafloor")
-text!(ax, -20 + minimum(data_Γout_seafloor[category_Γout .== "GBL"]), 0.85; text, align=(:right,:center), color=Makie.wong_colors()[2])
+text!(ax, -20 + minimum(data_Γout_seafloor[category_Γout .== "GBL"]), 0.85; text, align = (:right, :center), color = Makie.wong_colors()[2])
 fig
 # save plot
 outputfile = joinpath(outputdir, "Gammas_rainclouds_v2_seafloor.png")
@@ -201,19 +194,9 @@ outputfile = joinpath(outputdir, "Gammas_rainclouds_v2_seafloor.png")
 save(outputfile, fig)
 
 
-
-
-
-
-
-
-
 # data_Γin_seafloor = reduce(vcat, seafloorvalue1D(x3D, wet3D) for x3D in eachslice(Γinyr3D, dims=:member))
 # data_Γout_seafloor = reduce(vcat, seafloorvalue1D(x3D, wet3D) for x3D in eachslice(Γoutyr3D, dims=:member))
 #
-
-
-
 
 
 # begin
@@ -308,26 +291,3 @@ save(outputfile, fig)
 # outputfile = joinpath(TMIPDIR, "extra", "ideal_age_rainclouds.png")
 # @info "Saving ideal age rainclouds as image file:\n  $(outputfile)"
 # save(outputfile, fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

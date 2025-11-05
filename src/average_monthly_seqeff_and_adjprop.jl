@@ -30,7 +30,6 @@ using OceanBasins
 using NaNStatistics
 
 
-
 # include("plotting_functions.jl")
 
 
@@ -52,9 +51,9 @@ end
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
@@ -69,55 +68,55 @@ areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
 
 # for member in members
 
-    # Gadi directory for input files
-    lumpby = "month"
-    inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
-    cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
+# Gadi directory for input files
+lumpby = "month"
+inputdir = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)"
+cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 
 
+# Load fixed variables in memory
+areacello = readcubedata(areacello_ds.areacello)
+volcello = readcubedata(volcello_ds.volcello)
+lon = readcubedata(volcello_ds.lon)
+lat = readcubedata(volcello_ds.lat)
+lev = volcello_ds.lev
+# Identify the vertices keys (vary across CMIPs / models)
+volcello_keys = propertynames(volcello_ds)
+lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
+lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
+lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
+lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
-    # Load fixed variables in memory
-    areacello = readcubedata(areacello_ds.areacello)
-    volcello = readcubedata(volcello_ds.volcello)
-    lon = readcubedata(volcello_ds.lon)
-    lat = readcubedata(volcello_ds.lat)
-    lev = volcello_ds.lev
-    # Identify the vertices keys (vary across CMIPs / models)
-    volcello_keys = propertynames(volcello_ds)
-    lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-    lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-    lon_vertices = readcubedata(getproperty(volcello_ds, lon_vertices_key))
-    lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
+# Make makegridmetrics
+gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
-    # Make makegridmetrics
-    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-    (; lon_vertices, lat_vertices, v3D) = gridmetrics
+# Make indices
+indices = makeindices(v3D)
+(; N, wet3D) = indices
 
-    # Make indices
-    indices = makeindices(v3D)
-    (; N, wet3D) = indices
-
-    finalmonths = 1:12
+finalmonths = 1:12
 
 
-    @time "building mean_days_in_months" mean_days_in_months = map(finalmonths) do m
-        inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
-        load(inputfile, "mean_days_in_month")
-    end
-    # So the δt that multiplies M̃ₜ is δ(t..t+1)
-    # which is 0.5 of the mean days in finalmonths k and k+1
-    δts = map(finalmonths) do m
-        ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
-    end
-    # Weights to be used to combine the ℊ̃ from each final month
-    ωs = δts / sum(δts)
+@time "building mean_days_in_months" mean_days_in_months = map(finalmonths) do m
+    inputfile = joinpath(cycloinputdir, "cyclo_matrix_$m.jld2")
+    load(inputfile, "mean_days_in_month")
+end
+# So the δt that multiplies M̃ₜ is δ(t..t+1)
+# which is 0.5 of the mean days in finalmonths k and k+1
+δts = map(finalmonths) do m
+    ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
+end
+# Weights to be used to combine the ℊ̃ from each final month
+ωs = δts / sum(δts)
 
-    # # quick check that it makes sense
-    Δt = sum(δts)
+# # quick check that it makes sense
+Δt = sum(δts)
 
-    # Take the average of ℰ over the 12 possible final finalmonths
-    # (weighted by the duration of that month)
-    ℰ = sum(map(finalmonths) do finalmonth
+# Take the average of ℰ over the 12 possible final finalmonths
+# (weighted by the duration of that month)
+ℰ = sum(
+    map(finalmonths) do finalmonth
         # Load from NetCDF file
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
@@ -126,35 +125,38 @@ areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
         @info "Loading adjoint propagrator as netCDF file:\n  $(inputfile)"
         ds = open_dataset(inputfile)
         ωs[finalmonth] * readcubedata(ds.seqeff)
-    end)
+    end
+)
 
-    # save data
-    cube3D = rebuild(volcello_ds["volcello"];
-        data = ℰ.data,
-        dims = dims(ℰ),
-        metadata = Dict(
-            "origin" => "cyclo-stationary sequestration efficiency, calE, averaged over all final months",
-            "model" => model,
-            "experiment" => experiment,
-            "member" => member,
-            "time window" => time_window,
-            "units" => "",
-            "Ti unit" => "yr",
-        )
+# save data
+cube3D = rebuild(
+    volcello_ds["volcello"];
+    data = ℰ.data,
+    dims = dims(ℰ),
+    metadata = Dict(
+        "origin" => "cyclo-stationary sequestration efficiency, calE, averaged over all final months",
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time window" => time_window,
+        "units" => "",
+        "Ti unit" => "yr",
     )
+)
 
-    arrays = Dict(:calE => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-    ds = Dataset(; volcello_ds.properties, arrays...)
+arrays = Dict(:calE => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+ds = Dataset(; volcello_ds.properties, arrays...)
 
-    # Save to netCDF file
-    outputfile = joinpath(inputdir, "calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
-    @info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
-    ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
-    savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
+# Save to netCDF file
+outputfile = joinpath(inputdir, "calE$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+@info "Saving mean sequestration efficiency as netCDF file:\n  $(outputfile)"
+ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
 
 
-    # Do the same for 𝒢̃
-    𝒢̃ = sum(map(finalmonths) do finalmonth
+# Do the same for 𝒢̃
+𝒢̃ = sum(
+    map(finalmonths) do finalmonth
         # Load from NetCDF file
         finalmonthstr = format(finalmonth, width = 2, zeropadding = true)
         # FIXME this below will need to be uncommented and the line below removed
@@ -163,32 +165,33 @@ areacello_ds = open_dataset(joinpath(fixedvarsinputdir, "areacello.nc"))
         @info "Loading adjoint propagrator as netCDF file:\n  $(inputfile)"
         ds = open_dataset(inputfile)
         ωs[finalmonth] * readcubedata(ds.calgtilde)
-    end)
+    end
+)
 
-    # save data
-    cube3D = rebuild(volcello_ds["volcello"];
-        data = 𝒢̃.data,
-        dims = dims(𝒢̃),
-        metadata = Dict(
-            "origin" => "cyclo-stationary adjoint propagator, calgtilde, averaged over all final months",
-            "model" => model,
-            "experiment" => experiment,
-            "member" => member,
-            "time window" => time_window,
-            "units" => "",
-            "Ti unit" => "yr",
-        )
+# save data
+cube3D = rebuild(
+    volcello_ds["volcello"];
+    data = 𝒢̃.data,
+    dims = dims(𝒢̃),
+    metadata = Dict(
+        "origin" => "cyclo-stationary adjoint propagator, calgtilde, averaged over all final months",
+        "model" => model,
+        "experiment" => experiment,
+        "member" => member,
+        "time window" => time_window,
+        "units" => "",
+        "Ti unit" => "yr",
     )
+)
 
-    arrays = Dict(:calgtilde => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
-    ds = Dataset(; volcello_ds.properties, arrays...)
+arrays = Dict(:calgtilde => cube3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
+ds = Dataset(; volcello_ds.properties, arrays...)
 
-    # Save to netCDF file
-    outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
-    @info "Saving mean adjoint propagator as netCDF file:\n  $(outputfile)"
-    ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
-    savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
+# Save to netCDF file
+outputfile = joinpath(inputdir, "calgtilde$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
+@info "Saving mean adjoint propagator as netCDF file:\n  $(outputfile)"
+ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds_chunked, path = outputfile, driver = :netcdf, overwrite = true)
 
 
 # end
-

@@ -61,9 +61,9 @@ end
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 upwind = false
 @show upwind
@@ -134,31 +134,30 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     ##################
 
 
-
     basin_keys = (:ATL, :PAC, :IND)
     basin_strs = ("Atlantic", "Pacific", "Indian")
     basin_functions = (isatlantic, ispacific, isindian)
     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
     basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
     basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
 
     contouroptions1 = let
         levels = 0:100:1600
-        colormap = cgrad(:viridis, length(levels); categorical=true)
+        colormap = cgrad(:viridis, length(levels); categorical = true)
         extendlow = nothing
         extendhigh = colormap[end]
-        colormap = cgrad(colormap[1:end-1]; categorical=true)
+        colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
         nan_color = :lightgray
         (; levels, colormap, extendlow, extendhigh, nan_color)
     end
     contouroptionsdiff = let
         levels = -100:10:100
-        colormap = cgrad(:balance, length(levels); categorical=true)[[1:end÷2+1; end÷2+1:end]]
+        colormap = cgrad(:balance, length(levels); categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]]
         extendlow = colormap[1]
         extendhigh = colormap[end]
-        colormap = cgrad(colormap[2:end-1]; categorical=true)
+        colormap = cgrad(colormap[2:(end - 1)]; categorical = true)
         nan_color = :lightgray
         (; levels, colormap, extendlow, extendhigh, nan_color)
     end
@@ -173,18 +172,15 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     )
 
 
-
-
-
     data = (age1, age2, age2 - age1)
     strs = [model, "$model\n$note", "Difference"]
     Nrows = length(strs)
     Ncols = length(basins)
     fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-    axs = Array{Any,2}(undef, (Nrows, Ncols))
-    contours = Array{Any,2}(undef, (Nrows, Ncols))
+    axs = Array{Any, 2}(undef, (Nrows, Ncols))
+    contours = Array{Any, 2}(undef, (Nrows, Ncols))
 
-    lat2 = dropdims(maximum(lat, dims=1), dims=1) |> Array # <- for plotting ZAVG (inexact)
+    lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
 
     for (irow, (x3D, str)) in enumerate(zip(data, strs))
 
@@ -216,18 +212,20 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
             axs[irow, icol] = ax
         end
 
-        Label(fig[irow, 0], text = str, fontsize=20, tellheight=false, rotation=π/2)
+        Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
 
     end
 
-    cb1 = Colorbar(fig[1:Nrows - 1, Ncols + 1], contours[1, 1];
+    cb1 = Colorbar(
+        fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich("age (years)"),
     )
     cb1.height = Relative(0.6)
 
-    cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
+    cbdiff = Colorbar(
+        fig[Nrows, Ncols + 1], contours[Nrows, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich("Δage (years)"),
@@ -236,27 +234,25 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     cbdiff.height = Relative(0.8)
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
 
     title = "$model Pardiso (0.25°) solve vs $note"
 
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
-    labels = permutedims(reshape(string.('a':'a' + length(axs) - 1), size(axs')))
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
+    labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
     labeloptions = (
         font = :bold,
         align = (:left, :bottom),
         offset = (5, 2),
         space = :relative,
-        fontsize = 24
+        fontsize = 24,
     )
     for (ax, label) in zip(axs, labels)
         text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
         text!(ax, 0, 0; text = label, labeloptions...)
     end
-
-
 
 
     rowgap!(fig.layout, 20)
@@ -268,8 +264,6 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     outputfile = joinpath(inputdir, "Pardiso_$(model)_vs_$(suffix)_ZAVGs.png")
     @info "Saving as image file:\n  $(outputfile)"
     save(outputfile, fig)
-
-
 
 
     #####################
@@ -284,7 +278,7 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     basin_functions = (isatlanticband, ispacificband)
     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
     basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
     basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
 
@@ -301,10 +295,10 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     Nrows = length(strs)
     Ncols = length(basins)
     fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-    axs = Array{Any,2}(undef, (Nrows, Ncols))
-    contours = Array{Any,2}(undef, (Nrows, Ncols))
+    axs = Array{Any, 2}(undef, (Nrows, Ncols))
+    contours = Array{Any, 2}(undef, (Nrows, Ncols))
 
-    lat2 = dropdims(maximum(lat, dims=1), dims=1) |> Array # <- for plotting ZAVG (inexact)
+    lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
 
     for (irow, (x3D, str)) in enumerate(zip(data, strs))
 
@@ -336,18 +330,20 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
             axs[irow, icol] = ax
         end
 
-        Label(fig[irow, 0], text = str, fontsize=20, tellheight=false, rotation=π/2)
+        Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
 
     end
 
-    cb1 = Colorbar(fig[1:Nrows - 1, Ncols + 1], contours[1, 1];
+    cb1 = Colorbar(
+        fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich("age (years)"),
     )
     cb1.height = Relative(0.6)
 
-    cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
+    cbdiff = Colorbar(
+        fig[Nrows, Ncols + 1], contours[Nrows, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich("Δage (years)"),
@@ -356,20 +352,20 @@ for (file2, note, suffix) in zip(files2, notes, suffixes)
     cbdiff.height = Relative(0.8)
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
 
     title = "$model Pardiso (0.25°) solve vs $note"
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
-    labels = permutedims(reshape(string.('a':'a' + length(axs) - 1), size(axs')))
+    labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
     labeloptions = (
         font = :bold,
         align = (:left, :bottom),
         offset = (5, 2),
         space = :relative,
-        fontsize = 24
+        fontsize = 24,
     )
     for (ax, label) in zip(axs, labels)
         text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)

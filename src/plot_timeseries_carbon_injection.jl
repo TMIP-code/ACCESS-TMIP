@@ -35,9 +35,6 @@ using NaNStatistics
 include("plotting_functions.jl")
 
 
-
-
-
 # Load matrix and grid metrics
 # @show model = "ACCESS-ESM1-5"
 # @show experiment = ARGS[1]
@@ -76,7 +73,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
 # Make indices
 indices = makeindices(v3D)
@@ -95,9 +92,10 @@ end
 # ymean = mean([data[m]["umass"] for m in keys(data)], dim) # cannot work if saved umass have different time span
 ymean = mean(100 * [0; data[m]["umass"][1:500]] / data[m]["src_mass"] for m in keys(data))
 
-fig = Figure(size=(500, 300))
-ax = Axis(fig[1, 1];
-    title="Seafloor injected carbon sequestration",
+fig = Figure(size = (500, 300))
+ax = Axis(
+    fig[1, 1];
+    title = "Seafloor injected carbon sequestration",
     ytrimspine = true,
     xtrimspine = false,
     xgridvisible = false,
@@ -109,7 +107,7 @@ ax = Axis(fig[1, 1];
     ylabel = "Fraction sequestered (%)",
     xlabel = rich("year (repeating 1990s climatology)"),
 )
-x = 1990 .+ (0:length(ymean) - 1)
+x = 1990 .+ (0:(length(ymean) - 1))
 ylevs = 0:10:100
 
 color = Makie.wong_colors()[6]
@@ -119,17 +117,16 @@ for ylev in ylevs
     (isnothing(ix) || (ix == length(ymean)) || x[ix] > xmax) && continue
     hspan!(ax, 0, ylev; color = (:black, 0.05))
     lines!(ax, [x[ix], x[ix], NaN, x[ix], x[ix]], [0, 10, NaN, 30, ylev]; color = (:black, 0.2), linestyle = :dash)
-    text!(ax, x[ix], 20; text = "$ylev%", color = (:black, 0.2), rotation = π/2, align = (:center, :center))
+    text!(ax, x[ix], 20; text = "$ylev%", color = (:black, 0.2), rotation = π / 2, align = (:center, :center))
 end
 ibnd = vspan!(ax, 1990, 2000; color = (color, 0.1))
-text!(ax, 1980, 50; text = "injection during 1990s", rotation = π/2, align = (:center, :center), color)
+text!(ax, 1980, 50; text = "injection during 1990s", rotation = π / 2, align = (:center, :center), color)
 for m in keys(data)
     # cannot work if saved umass have different time span
     y = 100 * [0; data[m]["umass"][1:500]] / data[m]["src_mass"]
-    lines!(ax, x, y; color = :gray, linewidth=1)
+    lines!(ax, x, y; color = :gray, linewidth = 1)
 end
-ln = lines!(ax, x, ymean; color, linewidth=2)
-
+ln = lines!(ax, x, ymean; color, linewidth = 2)
 
 
 xlims!(ax, (xmin, xmax))

@@ -58,16 +58,16 @@ strs = ("resolved_GM_submeso", "frommonthlymatrices")
 # Load ideal mean age and reemergence time
 Ts = [load(joinpath(inputdir, "transportmatrix_$k.jld2")) for k in strs]
 
-fig = Figure(size=(1000, 2000))
+fig = Figure(size = (1000, 2000))
 
 ga = fig[1, 1] = GridLayout()
 gb = fig[2, 1] = GridLayout()
 
 function makesparseentriescomparable(Tx, Ty, nskip)
     ix, jx, vx = findnz(Tx)
-    Tx0 = sparse(ix, jx, 1e-30, size(Tx)...)
+    Tx0 = sparse(ix, jx, 1.0e-30, size(Tx)...)
     iy, jy, vy = findnz(Ty)
-    Ty0 = sparse(iy, jy, 1e-30, size(Ty)...)
+    Ty0 = sparse(iy, jy, 1.0e-30, size(Ty)...)
     Tx = Tx + Ty0
     Ty = Ty + Tx0
     ix, jx, vx = findnz(Tx)
@@ -78,14 +78,14 @@ function makesparseentriescomparable(Tx, Ty, nskip)
 end
 nskip = 1
 
-myscale(x) = Makie.pseudolog10(1e7x)
+myscale(x) = Makie.pseudolog10(1.0e7x)
 powersoften = -6:-2
 ticks = [-reverse(exp10.(powersoften)); 0; exp10.(powersoften)]
 signedstr(x) = x > 0 ? "+$x" : "−$(-x)"
 ticklabels = [rich("10", superscript(signedstr(i))) for i in powersoften]
 ticklabels = [[rich("−", x) for x in reverse(ticklabels)]; rich("0"); [rich("+", x) for x in ticklabels]]
 xticks = yticks = (myscale.(ticks), ticklabels)
-ax = Axis(ga[1,1]; title = "T", xlabel = strs[1], ylabel = strs[2], xticks, yticks, aspect = 1)
+ax = Axis(ga[1, 1]; title = "T", xlabel = strs[1], ylabel = strs[2], xticks, yticks, aspect = 1)
 vx, vy = makesparseentriescomparable(Ts[1]["T"], Ts[2]["T"], nskip)
 # scatter!(ax, myscale.(vx), myscale.(vy), color = :black, markersize = 3)
 points = StructArray{Point2f}((myscale.(vx), myscale.(vy)))
@@ -101,7 +101,7 @@ subplots = [
 ]
 
 for I in eachindex(IndexCartesian(), subplots)
-    irow, icol  = Tuple(I)
+    irow, icol = Tuple(I)
     Tstr = subplots[irow, icol]
     subax = Axis(gb[irow, icol]; title = Tstr, xlabel = strs[1], ylabel = strs[2], xticks, yticks, aspect = 1)
     local vx, vy = makesparseentriescomparable(Ts[1][Tstr], Ts[2][Tstr], nskip)
@@ -113,19 +113,22 @@ for I in eachindex(IndexCartesian(), subplots)
     vlines!(subax, 0, color = (:black, 0.1), linewidth = 10)
     hlines!(subax, 0, color = (:black, 0.1), linewidth = 10)
     linkaxes!(subax, ax)
-    hidexdecorations!(subax,
+    hidexdecorations!(
+        subax,
         label = irow < 2, ticklabels = irow < 2,
-        ticks = irow < 2, grid = false)
-    hideydecorations!(subax,
+        ticks = irow < 2, grid = false
+    )
+    hideydecorations!(
+        subax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 end
 
-cb = Colorbar(fig[end+1, :], ds, label="Density of transport matrix coefficients", vertical = false, flipaxis = false)
-cb.width = Relative(2/3)
+cb = Colorbar(fig[end + 1, :], ds, label = "Density of transport matrix coefficients", vertical = false, flipaxis = false)
+cb.width = Relative(2 / 3)
 
 # save plot
 outputfile = joinpath(inputdir, "matrices_$(strs[1])_vs_$(strs[2]).png")
 @info "Saving matrices comparsion as image file:\n  $(outputfile)"
 save(outputfile, fig)
-

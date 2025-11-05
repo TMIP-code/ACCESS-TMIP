@@ -23,15 +23,15 @@ hasrequiredvariable(dirpath, var) = isfile(joinpath(dirpath, "$var.nc"))
 hasallrequiredvariables(dirpath, vars) = all(hasrequiredvariable(dirpath, v) for v in vars)
 
 df = DataFrame(
-    model=String[],
-    experiment=String[],
-    member=String[],
-    time_window=String[],
-    ϕ=Union{String, Missing}[],
-    u=Union{String, Missing}[],
-    mld=Union{String, Missing}[],
-    grid=Union{String, Missing}[],
-    TS=Union{String, Missing}[]
+    model = String[],
+    experiment = String[],
+    member = String[],
+    time_window = String[],
+    ϕ = Union{String, Missing}[],
+    u = Union{String, Missing}[],
+    mld = Union{String, Missing}[],
+    grid = Union{String, Missing}[],
+    TS = Union{String, Missing}[]
 )
 
 # files to ignore
@@ -71,25 +71,23 @@ end
 
 hnotOK = Highlighter(
     (data, i, j) -> true,
-    bold       = false,
+    bold = false,
     foreground = :light_gray
 )
 hOK = Highlighter(
     (data, i, j) -> !(ismissing(data[i, 8]) || ismissing(data[i, 7]) || (ismissing(data[i, 5]) && ismissing(data[i, 6]))),
-    bold       = true,
+    bold = true,
     foreground = :green
 )
 hOK2 = Highlighter(
     (data, i, j) -> !(ismissing(data[i, 8]) || ismissing(data[i, 7]) || ismissing(data[i, 5]) || ismissing(data[i, 6])),
-    bold       = true,
+    bold = true,
     foreground = :blue
 )
 hOK3 = Highlighter(
     (data, i, j) -> !(ismissing(data[i, 8]) || ismissing(data[i, 7]) || ismissing(data[i, 5]) || ismissing(data[i, 6]) || ismissing(data[i, 9])),
-    bold       = true,
+    bold = true,
     foreground = :magenta
 )
 
 pretty_table(df, highlighters = (hOK3, hOK2, hOK, hnotOK), formatters = ft_nomissing, crop = :none)
-
-

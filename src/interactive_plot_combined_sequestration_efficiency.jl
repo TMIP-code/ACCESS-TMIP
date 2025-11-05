@@ -1,4 +1,3 @@
-
 # using Pkg
 # Pkg.activate(".")
 # Pkg.instantiate()
@@ -23,7 +22,6 @@
 # using GeoMakie
 # using OceanBasins
 # using NaNStatistics
-
 
 
 # include("plotting_functions.jl")
@@ -60,7 +58,6 @@
 # cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 
 
-
 # # Load fixed variables in memory
 # areacello = readcubedata(areacello_ds.areacello)
 # volcello = readcubedata(volcello_ds.volcello)
@@ -92,7 +89,6 @@
 # years = ds.Ti |> Array
 
 
-
 # Figure
 fig = Figure(size = (1200, 800))
 
@@ -101,10 +97,11 @@ sg = SliderGrid(
     fig[1, 1],
     (label = "Year", range = years, format = "{:1d}", startvalue = 100),
     (label = "Efficiency", range = 0:0.1:1, format = "{:.1f}", startvalue = 0.5),
-    (label = "Longitude", range = 80:80+360, format = "{:.1f}°E", startvalue = 360),
+    (label = "Longitude", range = 80:(80 + 360), format = "{:.1f}°E", startvalue = 360),
     (label = "Latitude", range = -90:90, format = "{:.1f}°N", startvalue = 0),
     tellwidth = false,
-    tellheight = false)
+    tellheight = false
+)
 
 sliderobservables = [s.value for s in sg.sliders]
 sliderP = lift(sliderobservables[3:4]...) do lon, lat
@@ -120,8 +117,10 @@ end
 
 
 # time series
-ax = Axis(fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
-    limits = (0, years[end], 0, 1))
+ax = Axis(
+    fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
+    limits = (0, years[end], 0, 1)
+)
 Makie.deactivate_interaction!(ax, :rectanglezoom)
 lines!(ax, years, ℰij; color = :blue)
 yearℰpoint = select_point(ax; marker = :circle, markersize = 10, color = :red)
@@ -135,8 +134,10 @@ scatter!(ax, yearℰpoint)
 
 # map of sequestration efficiency gievn a year
 gb = fig[2, 1] = GridLayout()
-axb = Axis(gb[1, 1], xlabel = "lon", ylabel = "lat",
-    limits = (80, 80 + 360, -90, 90))
+axb = Axis(
+    gb[1, 1], xlabel = "lon", ylabel = "lat",
+    limits = (80, 80 + 360, -90, 90)
+)
 Makie.deactivate_interaction!(axb, :rectanglezoom)
 viewatyear(ℰ, year) = view(ℰ, :, :, year)
 gbdata = lift(sliderobservables[1]) do year
@@ -149,18 +150,20 @@ translate!(scb, 0, 0, 100)
 
 # map of duration given sequestration quantile
 gc = fig[1, 2] = GridLayout()
-axc = Axis(gc[1, 1], xlabel = "lon", ylabel = "lat",
-    limits = (80, 80 + 360, -90, 90))
+axc = Axis(
+    gc[1, 1], xlabel = "lon", ylabel = "lat",
+    limits = (80, 80 + 360, -90, 90)
+)
 Makie.deactivate_interaction!(axc, :rectanglezoom)
 function yearatquantile(ℰ, ℰlevel)
     isnan(ℰ[1]) && return NaN
     out = findfirst(ℰ .< ℰlevel)
-    isnothing(out) ? maximum(years) : Float64(out)
+    return isnothing(out) ? maximum(years) : Float64(out)
 end
 gcdata = lift(sliderobservables[2]) do ℰlevel
     map(
         ts -> yearatquantile(ts, ℰlevel),
-		view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+        view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
     )
 end
 imgc = surface!(axc, lon2, lat.data, gcdata, colormap = :magma, colorrange = (0, 1000), shading = NoShading)
@@ -169,8 +172,3 @@ translate!(scc, 0, 0, 100)
 cc = Colorbar(gc[1, 2], imgc, label = "years of sequestration")
 
 fig
-
-
-
-
-

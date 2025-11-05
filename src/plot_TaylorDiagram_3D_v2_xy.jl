@@ -72,8 +72,6 @@
 # (; wet3D, N) = indices
 
 
-
-
 # # # Matrix ages for varied diffusivities
 # # @info "Loading age computed from matrices with different diffusivities"
 # # κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
@@ -268,27 +266,6 @@
 # end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # Do the actual plotting now
 # # First, construct the figure and a polar axis on the first quadrant
 # fig = Figure(size=(900, 600))
@@ -340,9 +317,6 @@
 #     xticks = (rticks, ["0", rich("0.25", σref), rich("0.5", σref), rich("0.75", σref), rich("1", σref), rich("1.25", σref), rich("1.5", σref)]),
 #     yticks = round.(rticks),
 # )
-
-
-
 
 
 # # Plot polar axis grid
@@ -431,8 +405,6 @@
 # # Now, plot the actual data
 
 
-
-
 # Ps = xy_from_Rσ.(Rs, σfs)
 
 
@@ -452,10 +424,6 @@
 #     color = :black,
 # )
 # text!(axa, xAA + offset, yAA + offset; text = "AA age", align = (:left, :bottom), offset = (0, 0), fontsize)
-
-
-
-
 
 
 # # Plot Age with Matt's constants
@@ -549,8 +517,6 @@
 # )
 
 
-
-
 # labeloptions = (
 #     font = :bold,
 #     align = (:left, :top),
@@ -599,7 +565,6 @@
 # for r in rticks
 #     lines!(axb, r * cos.(θs), r * sin.(θs); color = (:black, 0.2), linewidth = 1)
 # end
-
 
 
 # xgrid = range(xlow, xhigh, length = 200)
@@ -758,8 +723,6 @@
 # save(outputfile, fig)
 
 
-
-
 # fig = Figure(size = (1200, 1200))
 
 # options = (
@@ -770,7 +733,6 @@
 # )
 
 # colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
-
 
 
 # for irow in 1:5
@@ -845,7 +807,6 @@
 # end
 
 
-
 # Label(fig[0,1]; text = "correlation", tellwidth = false)
 # Label(fig[0,2]; text = "STD - STDref", tellwidth = false)
 # Label(fig[0,3]; text = "RMS", tellwidth = false)
@@ -860,19 +821,8 @@
 # save(outputfile, fig)
 
 
-
-
-
-
 # @show sort(df, :skillscore, rev = true)
 # @show sort(df, :RMSD)
-
-
-
-
-
-
-
 
 
 # #############
@@ -897,7 +847,6 @@
 # Q_sorted = Q[idx]
 # Dcum = similar(D.density)
 # Dcum[idx] .= 100cumsum(Q_sorted)
-
 
 
 # ax = fig[1, 1] = Axis(fig;
@@ -957,14 +906,10 @@
 # # ds = datashader!(ax, points; colormap = :binary, async = false)
 
 
-
 # fig, plt, ax = hist(x, bins = 1850:0.1:1870)
 # outputfile = joinpath(outputdir, "AA_age_hist_noclamp.png")
 # @info "Saving image file:\n  $(outputfile)"
 # save(outputfile, fig)
-
-
-
 
 
 ##################
@@ -977,25 +922,25 @@ basin_functions = (isatlantic, ispacific, isindian)
 OCEANS = OceanBasins.oceanpolygons()
 basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
 basins = (; (basin_keys .=> basin_values)...)
-basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
 basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
 
 contouroptions1 = let
     levels = 0:200:2800
-    colormap = cgrad(:viridis, length(levels); categorical=true)
+    colormap = cgrad(:viridis, length(levels); categorical = true)
     extendlow = nothing
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[1:end-1]; categorical=true)
+    colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
     nan_color = :lightgray
     (; levels, colormap, extendlow, extendhigh, nan_color)
 end
 contouroptionsdiff = let
     levels = -500:100:500
-    colormap = cgrad(:balance, length(levels); categorical=true)[[1:end÷2+1; end÷2+1:end]]
+    colormap = cgrad(:balance, length(levels); categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]]
     extendlow = colormap[1]
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[2:end-1]; categorical=true)
+    colormap = cgrad(colormap[2:(end - 1)]; categorical = true)
     nan_color = :lightgray
     (; levels, colormap, extendlow, extendhigh, nan_color)
 end
@@ -1014,10 +959,10 @@ strs = ["AA age", "TM age", "TM age − AA age"]
 Nrows = length(strs)
 Ncols = length(basins)
 fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-axs = Array{Any,2}(undef, (Nrows, Ncols))
-contours = Array{Any,2}(undef, (Nrows, Ncols))
+axs = Array{Any, 2}(undef, (Nrows, Ncols))
+contours = Array{Any, 2}(undef, (Nrows, Ncols))
 
-lat2 = dropdims(maximum(lat, dims=1), dims=1) |> Array # <- for plotting ZAVG (inexact)
+lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
 
 for (irow, (x1D, str)) in enumerate(zip(data, strs))
 
@@ -1052,18 +997,20 @@ for (irow, (x1D, str)) in enumerate(zip(data, strs))
         axs[irow, icol] = ax
     end
 
-    Label(fig[irow, 0], text = str, fontsize=20, tellheight=false, rotation=π/2)
+    Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
 
 end
 
-cb1 = Colorbar(fig[1:Nrows - 1, Ncols + 1], contours[1, 1];
+cb1 = Colorbar(
+    fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Γ (years)"),
 )
 cb1.height = Relative(0.6)
 
-cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
+cbdiff = Colorbar(
+    fig[Nrows, Ncols + 1], contours[Nrows, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("ΔΓ (years)"),
@@ -1072,26 +1019,24 @@ cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
 cbdiff.height = Relative(0.8)
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
 
 # title = "$model $experiment $member $(time_window) ideal age"
 # Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
-labels = permutedims(reshape(string.('a':'a' + length(axs) - 1), size(axs')))
+labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
 labeloptions = (
     font = :bold,
     align = (:left, :bottom),
     offset = (5, 2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 for (ax, label) in zip(axs, labels)
     text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
     text!(ax, 0, 0; text = label, labeloptions...)
 end
-
-
 
 
 rowgap!(fig.layout, 20)
@@ -1108,7 +1053,6 @@ outputfile = joinpath(inputdir, "AA_vs_TM_age_ZAVGs.pdf")
 save(outputfile, fig)
 
 
-
 #####################
 # Meridional slices #
 #####################
@@ -1122,26 +1066,26 @@ OCEANS = OceanBasins.oceanpolygons()
 basin_functions = (isatlanticband, ispacificband)
 basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
 basins = (; (basin_keys .=> basin_values)...)
-basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
 basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
 
 
 contouroptions1 = let
     levels = 0:200:2800
-    colormap = cgrad(:viridis, length(levels); categorical=true)
+    colormap = cgrad(:viridis, length(levels); categorical = true)
     extendlow = nothing
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[1:end-1]; categorical=true)
+    colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
     nan_color = :lightgray
     (; levels, colormap, extendlow, extendhigh, nan_color)
 end
 contouroptionsdiff = let
     levels = -500:100:500
-    colormap = cgrad(:balance, length(levels); categorical=true)[[1:end÷2+1; end÷2+1:end]]
+    colormap = cgrad(:balance, length(levels); categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]]
     extendlow = colormap[1]
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[2:end-1]; categorical=true)
+    colormap = cgrad(colormap[2:(end - 1)]; categorical = true)
     nan_color = :lightgray
     (; levels, colormap, extendlow, extendhigh, nan_color)
 end
@@ -1158,10 +1102,10 @@ strs = ["AA age", "TM age", "TM age − AA age"]
 Nrows = length(strs)
 Ncols = length(basins)
 fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-axs = Array{Any,2}(undef, (Nrows, Ncols))
-contours = Array{Any,2}(undef, (Nrows, Ncols))
+axs = Array{Any, 2}(undef, (Nrows, Ncols))
+contours = Array{Any, 2}(undef, (Nrows, Ncols))
 
-lat2 = dropdims(maximum(lat, dims=1), dims=1) |> Array # <- for plotting ZAVG (inexact)
+lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
 
 for (irow, (x1D, str)) in enumerate(zip(data, strs))
 
@@ -1196,19 +1140,21 @@ for (irow, (x1D, str)) in enumerate(zip(data, strs))
         axs[irow, icol] = ax
     end
 
-    Label(fig[irow, 0], text = str, fontsize=20, tellheight=false, rotation=π/2)
+    Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
 
 end
 
 Γdown = rich("Γ", superscript("↓"))
-cb1 = Colorbar(fig[1:Nrows - 1, Ncols + 1], contours[1, 1];
+cb1 = Colorbar(
+    fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γdown, " (yr)"),
 )
 cb1.height = Relative(0.6)
 
-cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
+cbdiff = Colorbar(
+    fig[Nrows, Ncols + 1], contours[Nrows, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γdown, " (yr)"),
@@ -1217,20 +1163,20 @@ cbdiff = Colorbar(fig[Nrows, Ncols + 1], contours[Nrows, 1];
 cbdiff.height = Relative(0.8)
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
 
 # title = "$model $experiment $member $(time_window) ideal age"
 # Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
 
-labels = permutedims(reshape(string.('a':'a' + length(axs) - 1), size(axs')))
+labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
 labeloptions = (
     font = :bold,
     align = (:left, :bottom),
     offset = (5, 2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 for (ax, label) in zip(axs, labels)
     text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
@@ -1250,4 +1196,3 @@ save(outputfile, fig)
 outputfile = joinpath(inputdir, "AA_vs_TM_age_meridional_slices.pdf")
 @info "Saving ideal age ZAVGs as image file:\n  $(outputfile)"
 save(outputfile, fig)
-

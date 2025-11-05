@@ -88,16 +88,16 @@ upwind = false
 
 for month in months
 
-    mlotst = readcubedata(mlotst_ds.mlotst[month=At(month)])
-    umo = readcubedata(umo_ds.umo[month=At(month)])
-    vmo = readcubedata(vmo_ds.vmo[month=At(month)])
+    mlotst = readcubedata(mlotst_ds.mlotst[month = At(month)])
+    umo = readcubedata(umo_ds.umo[month = At(month)])
+    vmo = readcubedata(vmo_ds.vmo[month = At(month)])
 
-    mean_days_in_month = umo_ds.mean_days_in_month[month=At(month)] |> Array |> only
+    mean_days_in_month = umo_ds.mean_days_in_month[month = At(month)] |> Array |> only
 
-    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[month=At(month)])
-    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[month=At(month)])
-    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[month=At(month)])
-    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[month=At(month)])
+    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[month = At(month)])
+    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[month = At(month)])
+    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[month = At(month)])
+    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[month = At(month)])
 
     # Replace missing values and convert to arrays
     # I think latest YAXArrays converts _FillValues to missing
@@ -112,10 +112,10 @@ for month in months
 
     # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
     (nx, ny, _) = size(ψᵢGM)
-    ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
-    ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
-    ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
-    ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+    ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims = 3)
+    ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims = 3)
+    ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims = 3)
+    ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims = 3)
 
     # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
     ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
@@ -125,13 +125,14 @@ for month in months
     (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-    κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-    κVML_str = "kVML" * format(κVML, conversion="e")
-    κH_str = "kH" * format(κH, conversion="d")
+    κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+    κVML_str = "kVML" * format(κVML, conversion = "e")
+    κH_str = "kH" * format(κH, conversion = "d")
     upwind_str = upwind ? "" : "_centered"
     outputfile = joinpath(cycloinputdir, "cyclo_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
     @info "Saving matrix as $outputfile"
-    save(outputfile,
+    save(
+        outputfile,
         Dict(
             "T" => T,
             "mean_days_in_month" => mean_days_in_month,
@@ -139,6 +140,3 @@ for month in months
     )
 
 end
-
-
-

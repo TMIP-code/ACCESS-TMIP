@@ -35,9 +35,6 @@
 # include("plotting_functions.jl")
 
 
-
-
-
 # Load matrix and grid metrics
 @show model = "ACCESS-ESM1-5"
 @show experiment = ARGS[1]
@@ -52,11 +49,11 @@
 # Injection locations
 # I Identify location with nearest towns to use the name for saving files
 if nearesttown == "Karratha" # North West of Australia
-    src_P = (115.45849390000001,-16.56466979999999) # Carnarvon Basin?
+    src_P = (115.45849390000001, -16.56466979999999) # Carnarvon Basin?
 elseif nearesttown == "Portland" # South West of Melbourne (West of Tas)
-    src_P = (141.73529860000008,-38.93477809999996) # Otway Basin
+    src_P = (141.73529860000008, -38.93477809999996) # Otway Basin
 elseif nearesttown == "Marlo" # South East (East of Tas)
-    src_P = (148.74669400000005,-38.6952) # Gippsland Basin
+    src_P = (148.74669400000005, -38.6952) # Gippsland Basin
 else
     error("No predefined location for this nearest town")
 end
@@ -89,7 +86,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
 # Make indices
 indices = makeindices(v3D)
@@ -104,7 +101,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -113,27 +110,27 @@ end
 # Build matrices
 @time "building Ms" Ms = [
     begin
-        inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
-        @info "Loading matrices + metrics as $inputfile"
-        T = load(inputfile)["T"]
-        T + Ω
-    end
-    for step in steps
+            inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
+            @info "Loading matrices + metrics as $inputfile"
+            T = load(inputfile)["T"]
+            T + Ω
+        end
+        for step in steps
 ]
 
 function initstepprob(A)
     prob = LinearProblem(A, δt * ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1.0e-10)
 end
 
 p = (;
     δt,
-    stepprob = [initstepprob(I + δt * M) for M in Ms]
+    stepprob = [initstepprob(I + δt * M) for M in Ms],
 )
 
 # Point source for carbon injection
 src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-src_k = findlast(wet3D[src_i, src_j,:])
+src_k = findlast(wet3D[src_i, src_j, :])
 isnothing(src_k) && error("No seafloor at (lon,lat)=$src_P")
 src3D = fill(NaN, size(wet3D))
 src3D[wet3D] .= 0
@@ -145,19 +142,19 @@ v = v3D[wet3D]
 src_mass = v' * sum(src(y) * 12δt for y in 1:src_years)
 
 # Plot
-function plotandprint!(x3D, state, year, text="")
+function plotandprint!(x3D, state, year, text = "")
     x3D[wet3D] = state
-    fig = Figure(size=(600, 300))
-    ax = Axis(fig[1, 1], title="Injected tracer (year $year: $text sequestered)")
+    fig = Figure(size = (600, 300))
+    ax = Axis(fig[1, 1], title = "Injected tracer (year $year: $text sequestered)")
     x2D = volumeintegral(x3D, gridmetrics; dim = 3)
     plt = plotmap!(ax, x2D, gridmetrics; colormap = :viridis)
-    scatter!(ax, src_P, marker=:star5, markersize=15, color=:red, strokecolor=:black, strokewidth=1)
+    scatter!(ax, src_P, marker = :star5, markersize = 15, color = :red, strokecolor = :black, strokewidth = 1)
     Colorbar(fig[1, 2], plt)
 
     # save plot
     outputfile = joinpath(inputdir, "$(nearesttown)_injected_tracer_year$year.png")
     @info "Saving injection location as image file:\n  $(outputfile)"
-    save(outputfile, fig)
+    return save(outputfile, fig)
 end
 
 x3D = fill(NaN, size(wet3D))
@@ -200,7 +197,8 @@ end
 
 outputfile = joinpath(inputdir, "timeseries_injected_near_$(nearesttown).jld2")
 @info "Saving injection time series file:\n  $(outputfile)"
-save(outputfile,
+save(
+    outputfile,
     Dict(
         "umass" => umass,
         "uprofile" => uprofile,
@@ -210,8 +208,8 @@ save(outputfile,
 )
 
 
-fig = Figure(size=(600, 300))
-ax = Axis(fig[1, 1], title="Injected tracer")
+fig = Figure(size = (600, 300))
+ax = Axis(fig[1, 1], title = "Injected tracer")
 co = contourf!(ax, 1:size(uprofile, 2), Array(lev), uprofile'; colormap = :viridis)
 ylims!(ax, (6000, 0))
 Colorbar(fig[1, 2], co)

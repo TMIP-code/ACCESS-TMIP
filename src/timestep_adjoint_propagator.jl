@@ -69,8 +69,6 @@ include("plotting_functions.jl")
 #
 
 
-
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -100,9 +98,9 @@ WRITEDATA = parse(Bool, WRITEDATA)
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 upwind = false
 @show upwind
@@ -148,7 +146,7 @@ V⁻¹ = sparse(Diagonal(1 ./ v3D[wet3D]))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -177,12 +175,12 @@ matrix_type = Pardiso.REAL_SYM
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, solver, rtol = 1e-10)
+    return init(prob, solver, rtol = 1.0e-10)
 end
 
 p = (;
     δts,
-    monthprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)]
+    monthprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)],
 )
 
 
@@ -209,17 +207,19 @@ p = (;
 
 
 src_Ps = (
-    Karratha = (115.45849390000001,-16.56466979999999), # Carnarvon Basin?" North West of Australia
-    Portland = (141.73529860000008,-38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
+    Karratha = (115.45849390000001, -16.56466979999999), # Carnarvon Basin?" North West of Australia
+    Portland = (141.73529860000008, -38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
     Marlo = (149.05333500000006, -38.25798499999996), # "Shark 1" Gippsland Basin" South East (East of Tas)
 )
 Nsrc = length(src_Ps)
 
-src_ijks = NamedTuple(map(keys(src_Ps), values(src_Ps)) do srcname, src_P
-    src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
-    srcname => CartesianIndex(src_i, src_j, src_k)
-end)
+src_ijks = NamedTuple(
+    map(keys(src_Ps), values(src_Ps)) do srcname, src_P
+        src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
+        src_k = findlast(wet3D[src_i, src_j, :])
+        srcname => CartesianIndex(src_i, src_j, src_k)
+    end
+)
 
 
 # Get index for M̃ given number of months elapsed t
@@ -238,9 +238,9 @@ function stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
         # Save yearly data at seafloor
         if mod(t, 12) == 0
             x3D[wet3D] .= ℊ̃
-            ℊ̃_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
+            ℊ̃_seafloor[:, :, Int(t / 12)] .= seafloorvalue(x3D, wet3D)
             x3D[wet3D] .= 1 .- ∫ℊ̃dt # sequestration efficiency, ℰ
-            ℰ_seafloor[:,:,Int(t/12)] .= seafloorvalue(x3D, wet3D)
+            ℰ_seafloor[:, :, Int(t / 12)] .= seafloorvalue(x3D, wet3D)
         end
         # # Save monthly data at source locations for check
         # for (src_idx, ijk) in enumerate(src_ijks)
@@ -250,7 +250,6 @@ function stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
     end
     return ℊ̃
 end
-
 
 
 Nyears = 3000
@@ -269,11 +268,9 @@ nx, ny, nz = size(wet3D)
 data_srcPs = fill(NaN, Nsrc, Nmonths)
 x3D = fill(NaN, nx, ny, nz)
 
-@showprogress dt=600 "Time-stepping loop" for t in 1:Nmonths
+@showprogress dt = 600 "Time-stepping loop" for t in 1:Nmonths
     stepbackonemonth!(ℊ̃, ∫ℊ̃dt, p, t)
 end
-
-
 
 
 # # save monthly values
@@ -285,7 +282,8 @@ end
 
 # save yearly values of ℊ̃
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℊ̃cube = DimensionalData.rebuild(volcello_ds["volcello"];
+ℊ̃cube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ℊ̃_seafloor,
     dims = axlist,
     metadata = Dict(
@@ -311,7 +309,8 @@ savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 # save yearly values of ℰ
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℰcube = DimensionalData.rebuild(volcello_ds["volcello"];
+ℰcube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ℰ_seafloor,
     dims = axlist,
     metadata = Dict(

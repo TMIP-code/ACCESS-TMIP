@@ -1,4 +1,3 @@
-
 # using Pkg
 # Pkg.activate(".")
 # Pkg.instantiate()
@@ -62,7 +61,6 @@
 # cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 
 
-
 # # Load fixed variables in memory
 # areacello = readcubedata(areacello_ds.areacello)
 # volcello = readcubedata(volcello_ds.volcello)
@@ -99,7 +97,6 @@
 # years_yearly = ds_yearly.Ti |> Array
 
 
-
 # Figure
 fig = Figure(size = (1200, 800))
 
@@ -110,10 +107,11 @@ sg = SliderGrid(
     ga[1, 1],
     (label = "Year", range = [y for y in years_monthly if mod(y, 10) == 0], format = "{:1d}", startvalue = 100),
     (label = "Efficiency", range = ℰlevels, format = "{:.1f}", startvalue = 0.5),
-    (label = "Longitude", range = 80:80+360, format = "{:.1f}°E", startvalue = 80 + 180),
+    (label = "Longitude", range = 80:(80 + 360), format = "{:.1f}°E", startvalue = 80 + 180),
     (label = "Latitude", range = -90:90, format = "{:.1f}°N", startvalue = 0),
     tellwidth = false,
-    tellheight = false)
+    tellheight = false
+)
 
 check_injection_timeseries = Observable(false)
 
@@ -121,7 +119,6 @@ subga = ga[2, 1] = GridLayout(tellheight = false, tellwidth = false)
 btn = Checkbox(subga[1, 1], checked = false, tellheight = false)
 Label(subga[1, 2], "Toggle injection time series check", halign = :left)
 alpha = @lift($(btn.checked) ? 1.0 : 0)
-
 
 
 sliderobservables = [s.value for s in sg.sliders]
@@ -148,10 +145,12 @@ end
 
 # time series
 titled = @lift("$($(sliderP)): $($(sliderij)) level $($(ℰk))")
-ax = Axis(fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
+ax = Axis(
+    fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
     limits = (0, years_yearly[end], 0, 1),
     yticks = 0:0.2:1,
-    title = titled)
+    title = titled
+)
 Makie.deactivate_interaction!(ax, :rectanglezoom)
 yearℰpoint = select_point(ax; marker = :circle, markersize = 10, color = :red)
 on(yearℰpoint) do yearℰpoint
@@ -192,9 +191,11 @@ lines!(ax, years_yearly, ℰij_yearly; color = :red)
 # map of sequestration efficiency gievn a year
 gb = fig[2, 1] = GridLayout()
 titleb = @lift("Fraction of C sequestered after $($(sliderobservables[1])) years (monthly simu)")
-axb = Axis(gb[1, 1], xlabel = "lon", ylabel = "lat",
+axb = Axis(
+    gb[1, 1], xlabel = "lon", ylabel = "lat",
     limits = (80, 80 + 360, -90, 90),
-    title = titleb)
+    title = titleb
+)
 Makie.deactivate_interaction!(axb, :rectanglezoom)
 lonlatPb = select_point(axb; marker = :circle, markersize = 10, color = :red)
 on(lonlatPb) do lonlatPb
@@ -214,9 +215,11 @@ translate!(scb, 0, 0, 10)
 
 gc = fig[1, 2] = GridLayout()
 titleb = @lift("Fraction of C sequestered after $($(sliderobservables[1])) years (yearly simu)")
-axc = Axis(gc[1, 1], xlabel = "lon", ylabel = "lat",
+axc = Axis(
+    gc[1, 1], xlabel = "lon", ylabel = "lat",
     limits = (80, 80 + 360, -90, 90),
-    title = titleb)
+    title = titleb
+)
 Makie.deactivate_interaction!(axc, :rectanglezoom)
 lonlatPc = select_point(axc; marker = :circle, markersize = 10, color = :red)
 on(lonlatPc) do lonlatPc
@@ -234,9 +237,4 @@ scc = scatter!(axc, sliderP, color = :red, markersize = 10, strokecolor = :black
 translate!(scc, 0, 0, 10)
 
 
-
 fig
-
-
-
-

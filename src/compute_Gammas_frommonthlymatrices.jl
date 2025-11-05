@@ -51,7 +51,7 @@ volcello = readcubedata(volcello_ds.volcello)
 # solve for ideal age / reemergence time
 
 # unpack model grid
-(; lon, lat, zt, v3D,) = gridmetrics
+(; lon, lat, zt, v3D) = gridmetrics
 lev = zt
 # unpack indices
 (; wet3D, N) = indices
@@ -60,7 +60,7 @@ v = v3D[wet3D]
 
 # surface mask
 issrf3D = copy(wet3D)
-issrf3D[:,:,2:end] .= false
+issrf3D[:, :, 2:end] .= false
 issrf = issrf3D[wet3D]
 # Ideal mean age Γ↓ is governed by
 # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
@@ -93,7 +93,8 @@ V⁻¹ = sparse(Diagonal(1 ./ v))
 (v' * Γout) / sum(v)
 
 # Turn Γin into a YAXArray by rebuilding from volcello
-Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+Γinyr_YAXArray = rebuild(
+    volcello_ds["volcello"];
     data = Γinyr3D,
     dims = dims(volcello_ds["volcello"]),
     metadata = Dict(
@@ -105,7 +106,8 @@ arrays = Dict(:age => Γinyr_YAXArray, :lat => volcello_ds.latitude, :lon => vol
 Γin_ds = Dataset(; volcello_ds.properties, arrays...)
 
 # Turn Γout into a YAXArray by rebuilding from volcello
-Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+Γoutyr_YAXArray = rebuild(
+    volcello_ds["volcello"];
     data = Γoutyr3D,
     dims = dims(volcello_ds["volcello"]),
     metadata = Dict(
@@ -127,6 +129,3 @@ savedataset(Γin_ds, path = outputfile, driver = :netcdf, overwrite = true)
 outputfile = joinpath(CMIP6outputdir, "mean_reemergence_time_frommonthlymatrices.nc")
 @info "Saving mean reemergence time as netCDF file:\n  $(outputfile)"
 savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-
-

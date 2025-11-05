@@ -47,7 +47,6 @@ outputdir = inputdir
 mkpath(inputdir)
 
 
-
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
@@ -77,9 +76,9 @@ indices = makeindices(gridmetrics.v3D)
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
@@ -93,7 +92,7 @@ yearly_str2 = yearly ? "(yearly)" : ""
 function yearatquantile(ℰ, ℰlevel)
     isnan(ℰ[1]) && return NaN
     out = findfirst(ℰ .< ℰlevel)
-    isnothing(out) ? maximum(years) : Float64(out)
+    return isnothing(out) ? maximum(years) : Float64(out)
 end
 
 # To avoid loading and carrying 100s of GB of data around,
@@ -102,21 +101,23 @@ varname = yearly ? "seqeff" : "calE"
 ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment/$(first(members))/$(time_window)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
 ℰ_ds0 = open_dataset(ℰ_file0)
 years = ℰ_ds0.Ti |> Array
-τℰ1050_ensemble = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-    @info "loading $member ℰ"
-    ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-    ℰ_ds = open_dataset(ℰ_file)
-    ℰ = readcubedata(ℰ_ds[varname])
-    τℰ10 = map(
-        ts -> yearatquantile(ts, 0.9),
-        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-    )
-    τℰ50 = map(
-        ts -> yearatquantile(ts, 0.5),
-        view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-    )
-    [τℰ10;;; τℰ50]
-end)
+τℰ1050_ensemble = reduce(
+    (x, y) -> cat(x, y, dims = 4), map(members) do member
+        @info "loading $member ℰ"
+        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/$(varname)$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+        ℰ_ds = open_dataset(ℰ_file)
+        ℰ = readcubedata(ℰ_ds[varname])
+        τℰ10 = map(
+            ts -> yearatquantile(ts, 0.9),
+            view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+        )
+        τℰ50 = map(
+            ts -> yearatquantile(ts, 0.5),
+            view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+        )
+        [τℰ10;;; τℰ50]
+    end
+)
 τℰ1050_ensemblemean = dropdims(mean(τℰ1050_ensemble, dims = 4), dims = 4)
 τℰ1050_ensemblemax = dropdims(maximum(τℰ1050_ensemble, dims = 4), dims = 4)
 τℰ1050_ensemblemin = dropdims(minimum(τℰ1050_ensemble, dims = 4), dims = 4)
@@ -124,13 +125,15 @@ end)
 
 include("plotting_functions.jl") # load seafloorvalue function
 
-Γout_ensemble = reduce((x, y) -> cat(x, y, dims = 3), map(members) do member
-    @info "loading $member Γ†"
-    Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-    Γoutyr4D_ds = open_dataset(Γout_file)
-    Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
-    seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
-end)
+Γout_ensemble = reduce(
+    (x, y) -> cat(x, y, dims = 3), map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment/$member/$(time_window)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
+        seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
+    end
+)
 
 Γout_ensemblemean = dropdims(mean(Γout_ensemble, dims = 3), dims = 3)
 Γout_ensemblemax = dropdims(maximum(Γout_ensemble, dims = 3), dims = 3)
@@ -138,21 +141,19 @@ end)
 Γout_ensemblerange = Γout_ensemblemax - Γout_ensemblemin
 
 
-
-
 usecontourf = false
 
-axs = Array{Any,2}(undef, (3, 2))
-contours = Array{Any,2}(undef, (3, 2))
+axs = Array{Any, 2}(undef, (3, 2))
+contours = Array{Any, 2}(undef, (3, 2))
 nrows, ncols = size(axs)
 
 fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
 yticks = -60:30:60
-xticks = -120:60:120 + 360
+xticks = -120:60:(120 + 360)
 
-datamean = (Γout_ensemblemean, τℰ1050_ensemblemean[:,:,2] .|> Float64, τℰ1050_ensemblemean[:,:,1] .|> Float64)
-datarange = (Γout_ensemblerange, τℰ1050_ensemblerange[:,:,2] .|> Float64, τℰ1050_ensemblerange[:,:,1] .|> Float64)
+datamean = (Γout_ensemblemean, τℰ1050_ensemblemean[:, :, 2] .|> Float64, τℰ1050_ensemblemean[:, :, 1] .|> Float64)
+datarange = (Γout_ensemblerange, τℰ1050_ensemblerange[:, :, 2] .|> Float64, τℰ1050_ensemblerange[:, :, 1] .|> Float64)
 𝒓 = rich("r", font = :bold_italic)
 Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
 Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
@@ -172,7 +173,7 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
     levels = 0:200:3000
     colormap = cgrad(:viridis, length(levels), categorical = true)
     highclip = colormap[end]
-    colormap = cgrad(colormap[1:end-1], categorical = true)
+    colormap = cgrad(colormap[1:(end - 1)], categorical = true)
     colorrange = extrema(levels)
 
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
@@ -191,7 +192,7 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
     levels = 0:100:1000
     colormap = cgrad(:amp, length(levels), categorical = true)
     highclip = colormap[end]
-    colormap = cgrad(colormap[1:end-1], categorical = true)
+    colormap = cgrad(colormap[1:(end - 1)], categorical = true)
     colorrange = extrema(levels)
 
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat, aspect = DataAspect())
@@ -205,18 +206,18 @@ for (irow, (x2Dmean, x2Drange, text)) in enumerate(zip(datamean, datarange, rowl
     myhidexdecorations!(ax, irow < nrows)
     myhideydecorations!(ax, icol > 1)
 
-    Label(fig[irow, 0]; text, rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text, rotation = π / 2, tellheight = false)
 
 end
 
 
 label = rich("ensemble mean $(time_window[4:7])s characteristic timescales (years)")
 cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:1000:3000)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 label = rich("ensemble range, max − min (years)")
 cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = 0:200:1000)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 # column labels
 # Label(fig[0, 1]; text = "ensemble mean", tellwidth = false)
@@ -233,7 +234,7 @@ labeloptions = (
     align = (:left, :bottom),
     offset = (5, 2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 
 for (ax, label) in zip(axs, labels)
@@ -264,7 +265,6 @@ outputfile = joinpath(outputdir, "reemergencetime$(upwind_str)_$(κVdeep_str)_$(
 save(outputfile, fig)
 
 
-
 # datamean = (Γout_ensemblemean, τℰ50_ensemblemean, τℰ10_ensemblemean)
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
 data = datamean[2][ikeep] ./ datamean[1][ikeep] .- 1
@@ -287,7 +287,6 @@ outputfile = joinpath(outputdir, "tenthpercentile_over_median_histogram_$(time_w
 @show save(outputfile, fig)
 @show mean(data, weights)
 @show quantile(data, weights, 0:0.1:1)
-
 
 
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
@@ -323,8 +322,6 @@ save(outputfile, fig)
 @show quantile(data, weights, 0:0.1:1)
 
 
-
-
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
 data = datarange[1][ikeep] ./ datamean[1][ikeep]
 weights = Weights(gridmetrics.area2D[ikeep])
@@ -337,7 +334,6 @@ save(outputfile, fig)
 @show quantile(data, weights, 0:0.1:1)
 
 
-
 # Save the data to be uploaded with paper
 metadata = Dict(
     "description" => "Characteristic timescales as plotted in Fig. 2 in Pasquier et al. (2025)",
@@ -346,8 +342,9 @@ metadata = Dict(
     "time window" => time_window,
     "unit" => "years",
 )
-cube4D = DimensionalData.rebuild(areacello_ds["areacello"];
-    data = [cat(datamean..., dims=3);;;; cat(datarange..., dims=3)],
+cube4D = DimensionalData.rebuild(
+    areacello_ds["areacello"];
+    data = [cat(datamean..., dims = 3);;;; cat(datarange..., dims = 3)],
     dims = (
         dims(readcubedata(volcello_ds.lat))...,
         dims(DimArray(ones(3), Dim{:timescale}(["mean", "median", "10th percentile"])))[1],
@@ -363,5 +360,3 @@ outputfile = joinpath(inputdir, "Pasquier_etal_GRL_2025_Fig2_data.nc")
 @info "Saving characteristic timescales as netCDF file:\n  $(outputfile)"
 # ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-

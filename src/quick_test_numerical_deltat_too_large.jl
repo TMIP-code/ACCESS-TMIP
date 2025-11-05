@@ -8,8 +8,8 @@ using Unitful: m, km, s, minute, hr, d, yr
 using Statistics
 using Format
 
-κVML = 0.1m^2/s
-κVdeep = 1e-5m^2/s # TODO rerun with this value (1e-5)
+κVML = 0.1m^2 / s
+κVdeep = 1.0e-5m^2 / s # TODO rerun with this value (1e-5)
 a = (100km)^2
 h = 10m
 vol = a * h
@@ -17,10 +17,10 @@ vol = a * h
 TVML = ustrip(s^-1, κVML * a / (h * vol))
 TVdeep = ustrip(s^-1, κVdeep * a / (h * vol))
 N = 50
-z = range(start = h/2, length = N, step = h)
-MLD(t) = 100.1m - 33.3m * cos(π/4 + 2π * t / ustrip(s, 1yr))
+z = range(start = h / 2, length = N, step = h)
+MLD(t) = 100.1m - 33.3m * cos(π / 4 + 2π * t / ustrip(s, 1yr))
 iMLD(t) = searchsortedfirst(z, MLD(t))
-offdiag(iMLD) = [TVML * (i < iMLD) + TVdeep * (iMLD ≤ i) for i in 1:N-1]
+offdiag(iMLD) = [TVML * (i < iMLD) + TVdeep * (iMLD ≤ i) for i in 1:(N - 1)]
 ondiag(iMLD) = [0; offdiag(iMLD)] + [offdiag(iMLD); 0]
 # ΩMLD(iMLD) = [i ≤ iMLD for i in 1:N]
 T(iMLD) = Tridiagonal(
@@ -43,15 +43,13 @@ M(iMLD) = T(iMLD) + Diagonal(Ω) / τ₀
 M̃(iMLD) = V⁻¹ * M(iMLD)' * V
 
 
-
 function Ã₊(iMLD, δt)
     # println("memoizing")
-    lu(I + δt * M̃(iMLD))
+    return lu(I + δt * M̃(iMLD))
 end
 # Ã₋(iMLD, δt) = I - δt * M̃(iMLD)
 # Ã₊2(iMLD, δt) = I + δt/2 * M̃(iMLD)
 # Ã₋2(iMLD, δt) = I - δt/2 * M̃(iMLD)
-
 
 
 g0 = Ω / τ₀
@@ -70,22 +68,22 @@ resolutions = [12, 4]
 # resolutions = [4, 2, 1]
 resolutions = [48, 12, 4, 2, 1]
 resolutions = [12]
-uδts = Any[1yr/res for res in resolutions]
+uδts = Any[1yr / res for res in resolutions]
 
-fig = Figure(size=(1000, 400 * length(uδts)))
+fig = Figure(size = (1000, 400 * length(uδts)))
 
 for (iresolution, resolution) in enumerate(resolutions)
     uδt = uδts[iresolution]
     δt = ustrip(s, uδt)
 
-    ts = 0yr:uδt:Tsim + 1yr
+    ts = 0yr:uδt:(Tsim + 1yr)
     tsav = ts[1:resolution:end]
 
 
     maxisim = length(ts) - 1
     @show maxisim, maxisim ÷ resolution
     ℊ̃HF = Array{Float64}(undef, length(g0), length(ts), resolution)
-    ℊ̃ = Array{Float64}(undef, length(g0),  maxisim ÷ resolution + 1, resolution)
+    ℊ̃ = Array{Float64}(undef, length(g0), maxisim ÷ resolution + 1, resolution)
     ℊ̃tmp = Vector{Float64}(undef, length(g0))
     # CNg = Array{Float64}(undef, length(g0), length(ts))
     # CNtmp = Vector{Float64}(undef, length(g0))
@@ -99,7 +97,7 @@ for (iresolution, resolution) in enumerate(resolutions)
 
         isav = 1
 
-        for (i, tu) in enumerate(ts[1:end-1])
+        for (i, tu) in enumerate(ts[1:(end - 1)])
             t = ustrip(s, tu)
             ldiv!(Ã₊(iMLD(tf - t), δt), ℊ̃tmp)
             if mod(i, resolution) == 0
@@ -155,7 +153,7 @@ for (iresolution, resolution) in enumerate(resolutions)
     # lines!(ax, ustrip.(yr, 0yr:uδt:Tsim), cumsum(CNg[end, :] * δt |> Vector); color = Cycled(2), label = "CN", alpha = 0.5)
     # lines!(ax, ustrip.(yr, 0yr:uδt:Tsim), cumsum(EFg[end, :] * δt |> Vector); color = Cycled(3), label = "EF", linewidth = 2)
     # ylims!(ax, -0.02, 1.02)
-    Label(fig[iresolution, 0], δtstr; tellheight = false, fontsize = 14, rotation = π/2)
+    Label(fig[iresolution, 0], δtstr; tellheight = false, fontsize = 14, rotation = π / 2)
 end
 tfstr = rich(rich("t", font = :italic), subscript("f"))
 Label(fig[0, 1], rich("ℊ̃ (averaged over the ", tfstr, ")"); tellwidth = false, fontsize = 14)
@@ -171,10 +169,8 @@ TVML
 T(4)
 Ã₊(4, ustrip(s, uδts[1]))
 Ã₊⁻¹ = inv(Tridiagonal(I + ustrip(s, uδts[1]) * M̃(4)))
-Ã₊⁻¹[abs.(Ã₊⁻¹) .< 1e-4] .= 0
+Ã₊⁻¹[abs.(Ã₊⁻¹) .< 1.0e-4] .= 0
 sparse(Ã₊⁻¹)
 Ã₊⁻¹ * ones(N)
 M(4)
 fig
-
-

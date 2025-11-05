@@ -47,9 +47,9 @@ end
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 
 upwind = false
@@ -93,7 +93,7 @@ V = sparse(Diagonal(v))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -118,14 +118,15 @@ ksp = PETSc.KSP(
     ksp_monitor_true_residual = false,
     ksp_view = false,
     ksp_type = "gmres",
-    ksp_atol = 1e-10,
+    ksp_atol = 1.0e-10,
     pc_type = "ilu",
 );
 PETSc.solve!(x_PETSc, ksp, b_PETSc);
 sol = x_PETSc.array
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
     dims = dims(volcello),
     metadata = Dict(

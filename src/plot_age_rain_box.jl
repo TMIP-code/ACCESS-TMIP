@@ -44,15 +44,14 @@ DATADIR = joinpath(TMIPDIR, "data")
 requiredvariables = ["ideal_mean_age", "volcello"]
 
 
-
 basin_keys = (:PAC, :IND, :ATL)
 basin_strs = ("Pacific", "Indian", "Atlantic")
 basin_functions = (ispacific, isindian, isatlantic)
 
-dataGBL = DataFrame(model=String[], member=String[], mean_age=Float64[])
-dataATL = DataFrame(model=String[], member=String[], mean_age=Float64[])
-dataPAC = DataFrame(model=String[], member=String[], mean_age=Float64[])
-dataIND = DataFrame(model=String[], member=String[], mean_age=Float64[])
+dataGBL = DataFrame(model = String[], member = String[], mean_age = Float64[])
+dataATL = DataFrame(model = String[], member = String[], mean_age = Float64[])
+dataPAC = DataFrame(model = String[], member = String[], mean_age = Float64[])
+dataIND = DataFrame(model = String[], member = String[], mean_age = Float64[])
 # Fetch the ideal mean age + volume and compute the global mean of the ideal mean age
 for model in models
 
@@ -62,7 +61,7 @@ for model in models
     # sort members by r, i, p[, f]
     member_regex = model ∈ CMIP5_models ? r"r(\d+)i(\d+)p(\d+)" : r"r(\d+)i(\d+)p(\d+)f(\d+)"
     parse_member(member) = parse.(Int, match(member_regex, member).captures)
-    members = sort(members, by=x -> parse_member(x))
+    members = sort(members, by = x -> parse_member(x))
 
     println("$model")
 
@@ -119,18 +118,20 @@ for model in models
 end
 
 fig = Figure()
-ax = Axis(fig[1, 1];
-    xlabel="Model",
-    xticks=(1:length(models), models),
-    ylabel="Global mean ideal mean age (yr)",
+ax = Axis(
+    fig[1, 1];
+    xlabel = "Model",
+    xticks = (1:length(models), models),
+    ylabel = "Global mean ideal mean age (yr)",
 )
 model_index(model) = findfirst(isequal(model), models)
 # boxplot!(ax, model_index.(dataGBL.model), dataGBL.mean_age)
-rainclouds!(ax, model_index.(dataGBL.model), dataGBL.mean_age;
+rainclouds!(
+    ax, model_index.(dataGBL.model), dataGBL.mean_age;
     # boxplot_width = 0.1,
     # boxplot_nudge = 0.1,
-    clouds=hist,
-    center_boxplot=true,
+    clouds = hist,
+    center_boxplot = true,
     # cloud_width = 0.1,
     # gap = 0.5,
 )
@@ -140,7 +141,6 @@ fig
 outputfile = joinpath(TMIPDIR, "extra", "ideal_age_rainclouds.png")
 @info "Saving ideal age rainclouds as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
 
 
 begin
@@ -156,13 +156,14 @@ begin
     # Remove ACCESS1-0 r2i1p1 from the data because age = 0???
     delete!(data, findall((data.model .== "ACCESS1-0") .& (data.member .== "r2i1p1")))
 
-    fig = Figure(size=(800, 300))
-    emptyax = Axis(fig[1, 1];
+    fig = Figure(size = (800, 300))
+    emptyax = Axis(
+        fig[1, 1];
         # ylabel="Basin",
         # yticks = (1:length(basin_strs) + 1, ["Global", basin_strs...]),
-        yticks=(1:length(basin_strs), collect(basin_strs)),
-        xticksvisible=false, yticksvisible=false,
-        xticklabelsvisible=false,
+        yticks = (1:length(basin_strs), collect(basin_strs)),
+        xticksvisible = false, yticksvisible = false,
+        xticklabelsvisible = false,
         # xticksize = 0, yticksize = 0,
         xgridvisible = false, ygridvisible = false,
         leftspinevisible = false, rightspinevisible = false,
@@ -170,34 +171,36 @@ begin
         # yticks=(0.5:1:3.5, fill("", 4)),
         # xlabel="Basin mean of ideal mean age (yr)",
     )
-    ax = Axis(fig[1, 1];
+    ax = Axis(
+        fig[1, 1];
         # ylabel="Basin",
         # yticks = (1:length(basin_strs) + 1, ["Global", basin_strs...]),
         # yticks=(1:length(basin_strs), collect(basin_strs)),
-        yticks=(0.5:1:3.5, fill("", 4)),
-        yticksvisible=false,
-        xticks=0:100:1500, xtrimspine=true,
-        xlabel="Basin mean of ideal mean age (yr)",
+        yticks = (0.5:1:3.5, fill("", 4)),
+        yticksvisible = false,
+        xticks = 0:100:1500, xtrimspine = true,
+        xlabel = "Basin mean of ideal mean age (yr)",
         xgridvisible = true, ygridvisible = false,
         leftspinevisible = false, rightspinevisible = false,
         topspinevisible = false, bottomspinevisible = true,
     )
     linkaxes!(emptyax, ax)
     model_index(model) = findfirst(isequal(model), models)
-    cmap = cgrad(:seaborn_colorblind, alpha=1, categorical=true)
+    cmap = cgrad(:seaborn_colorblind, alpha = 1, categorical = true)
     dodge_gap = 0.1
     gap = 0.2
     # think white layer to spearate basins
-    [hspan!(ax, y - gap/2, y + gap/2, color=:white) for y in 0.5:1:3.5]
-    boxplot!(ax, data.basin, data.mean_age;
+    [hspan!(ax, y - gap / 2, y + gap / 2, color = :white) for y in 0.5:1:3.5]
+    boxplot!(
+        ax, data.basin, data.mean_age;
         dodge = model_index.(data.model),
         orientation = :horizontal,
-        label=data.model,
-        markersize=4,
+        label = data.model,
+        markersize = 4,
         dodge_gap,
         gap,
         # color = (:blue, 0.2),
-        color=cmap[model_index.(data.model)],
+        color = cmap[model_index.(data.model)],
         # colormap = cgrad(:Archambault, alpha = 0.3),
     )
     # rainclouds!(ax, model_index.(dataGBL.model), dataGBL.mean_age;
@@ -226,7 +229,7 @@ begin
         @show shift = Makie.shift_dodge(model_index.(model), dodge_width, dodge_gap)
         y = 1 + width * shift
         # y = 3 + Makie.shift_dodge(model_index.(model), dodge_width, 0.0\)
-        text!(ax, x, y; text=model, align=(:right, :center), color=cmap[model_index.(model)])
+        text!(ax, x, y; text = model, align = (:right, :center), color = cmap[model_index.(model)])
     end
 
     fig
@@ -235,26 +238,3 @@ end
 outputfile = joinpath(TMIPDIR, "extra", "ideal_age_rainclouds.png")
 @info "Saving ideal age rainclouds as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

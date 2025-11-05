@@ -49,7 +49,6 @@ outputdir = inputdir2
 mkpath(inputdir2)
 
 
-
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
@@ -76,14 +75,13 @@ indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
 
-
 # Preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
@@ -97,7 +95,7 @@ yearly_str2 = yearly ? "(yearly)" : ""
 function yearatquantile(ℰ, ℰlevel)
     isnan(ℰ[1]) && return NaN
     out = findfirst(ℰ .< ℰlevel)
-    isnothing(out) ? maximum(years) : Float64(out)
+    return isnothing(out) ? maximum(years) : Float64(out)
 end
 
 # To avoid loading and carrying 100s of GB of data around,
@@ -106,36 +104,40 @@ if yearly
     ℰ_file0 = "/scratch/xv83/TMIP/data/$model/$experiment1/$(first(members))/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
     ℰ_ds0 = open_dataset(ℰ_file0)
     years = ℰ_ds0.Ti |> Array
-    ℰ1050_ensemble1 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-        @info "loading $member ℰ"
-        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-        ℰ_ds = open_dataset(ℰ_file)
-        ℰ = readcubedata(ℰ_ds.seqeff)
-        ℰ10 = map(
-            ts -> yearatquantile(ts, 0.9),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        ℰ50 = map(
-            ts -> yearatquantile(ts, 0.5),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        [ℰ10;;; ℰ50]
-    end)
-    ℰ1050_ensemble2 = reduce((x,y) -> cat(x, y, dims = 4), map(members) do member
-        @info "loading $member ℰ"
-        ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
-        ℰ_ds = open_dataset(ℰ_file)
-        ℰ = readcubedata(ℰ_ds.seqeff)
-        ℰ10 = map(
-            ts -> yearatquantile(ts, 0.9),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        ℰ50 = map(
-            ts -> yearatquantile(ts, 0.5),
-            view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
-        )
-        [ℰ10;;; ℰ50]
-    end)
+    ℰ1050_ensemble1 = reduce(
+        (x, y) -> cat(x, y, dims = 4), map(members) do member
+            @info "loading $member ℰ"
+            ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+            ℰ_ds = open_dataset(ℰ_file)
+            ℰ = readcubedata(ℰ_ds.seqeff)
+            ℰ10 = map(
+                ts -> yearatquantile(ts, 0.9),
+                view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+            )
+            ℰ50 = map(
+                ts -> yearatquantile(ts, 0.5),
+                view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+            )
+            [ℰ10;;; ℰ50]
+        end
+    )
+    ℰ1050_ensemble2 = reduce(
+        (x, y) -> cat(x, y, dims = 4), map(members) do member
+            @info "loading $member ℰ"
+            ℰ_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str).nc"
+            ℰ_ds = open_dataset(ℰ_file)
+            ℰ = readcubedata(ℰ_ds.seqeff)
+            ℰ10 = map(
+                ts -> yearatquantile(ts, 0.9),
+                view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+            )
+            ℰ50 = map(
+                ts -> yearatquantile(ts, 0.5),
+                view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
+            )
+            [ℰ10;;; ℰ50]
+        end
+    )
     ℰ1050_ensemblemean1 = dropdims(mean(ℰ1050_ensemble1, dims = 4), dims = 4)
     ℰ1050_ensemblemean2 = dropdims(mean(ℰ1050_ensemble2, dims = 4), dims = 4)
     ℰ1050_ensemblemean_diff = ℰ1050_ensemblemean2 - ℰ1050_ensemblemean1
@@ -147,41 +149,43 @@ end
 
 include("plotting_functions.jl") # load seafloorvalue function
 
-Γout_ensemble1 = reduce((x, y) -> cat(x, y, dims = 3), map(members) do member
-    @info "loading $member Γ†"
-    Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-    Γoutyr4D_ds = open_dataset(Γout_file)
-    Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
-    seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
-end)
-Γout_ensemble2 = reduce((x, y) -> cat(x, y, dims = 3), map(members) do member
-    @info "loading $member Γ†"
-    Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
-    Γoutyr4D_ds = open_dataset(Γout_file)
-    Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
-    seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
-end)
+Γout_ensemble1 = reduce(
+    (x, y) -> cat(x, y, dims = 3), map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
+        seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
+    end
+)
+Γout_ensemble2 = reduce(
+    (x, y) -> cat(x, y, dims = 3), map(members) do member
+        @info "loading $member Γ†"
+        Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
+        Γoutyr4D_ds = open_dataset(Γout_file)
+        Γoutyr3D = dropdims(mean(readcubedata(Γoutyr4D_ds.adjointage), dims = Ti), dims = Ti)
+        seafloorvalue(Γoutyr3D, wet3D, gridmetrics)
+    end
+)
 
 Γout_ensemblemean1 = dropdims(mean(Γout_ensemble1, dims = 3), dims = 3)
 Γout_ensemblemean2 = dropdims(mean(Γout_ensemble2, dims = 3), dims = 3)
 Γout_ensemblemean_diff = Γout_ensemblemean2 - Γout_ensemblemean1
 
 
-
-
 usecontourf = false
 
-axs = Array{Any,2}(undef, (3, 2))
-contours = Array{Any,2}(undef, (3, 2))
+axs = Array{Any, 2}(undef, (3, 2))
+contours = Array{Any, 2}(undef, (3, 2))
 nrows, ncols = size(axs)
 
 fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
 yticks = -60:30:60
-xticks = -120:60:120 + 360
+xticks = -120:60:(120 + 360)
 
-datamean = (Γout_ensemblemean2, ℰ1050_ensemblemean2[:,:,2], ℰ1050_ensemblemean2[:,:,1])
-datadiff = (Γout_ensemblemean_diff, ℰ1050_ensemblemean_diff[:,:,2], ℰ1050_ensemblemean_diff[:,:,1])
+datamean = (Γout_ensemblemean2, ℰ1050_ensemblemean2[:, :, 2], ℰ1050_ensemblemean2[:, :, 1])
+datadiff = (Γout_ensemblemean_diff, ℰ1050_ensemblemean_diff[:, :, 2], ℰ1050_ensemblemean_diff[:, :, 1])
 𝒓 = rich("r", font = :bold_italic)
 Γstr = rich("Γ", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
 Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
@@ -199,7 +203,7 @@ for (irow, (x2Dmean, x2Ddiff, text)) in enumerate(zip(datamean, datadiff, rowlab
     levels = 0:200:4000
     colormap = cgrad(:viridis, length(levels), categorical = true)
     highclip = colormap[end]
-    colormap = cgrad(colormap[1:end-1], categorical = true)
+    colormap = cgrad(colormap[1:(end - 1)], categorical = true)
     colorrange = extrema(levels)
 
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
@@ -216,10 +220,10 @@ for (irow, (x2Dmean, x2Ddiff, text)) in enumerate(zip(datamean, datadiff, rowlab
     # Plot ensemble diff
     icol = 2
     levels = -1200:100:1200
-    colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+    colormap = cgrad(cgrad(:balance, length(levels), categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]], categorical = true)
     highclip = colormap[end]
     lowclip = colormap[1]
-    colormap = cgrad(colormap[2:end-1], categorical = true)
+    colormap = cgrad(colormap[2:(end - 1)], categorical = true)
     colorrange = extrema(levels)
 
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
@@ -233,18 +237,18 @@ for (irow, (x2Dmean, x2Ddiff, text)) in enumerate(zip(datamean, datadiff, rowlab
     myhidexdecorations!(ax, irow < nrows)
     myhideydecorations!(ax, icol > 1)
 
-    Label(fig[irow, 0]; text, rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text, rotation = π / 2, tellheight = false)
 
 end
 
 
 label = rich("ensemble mean (years)")
 cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:1000:4000)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 label = rich("ensemble mean 2090s − 2030s (years)")
 cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -1200:600:1200, tickformat = divergingcbarticklabelformat)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 # column labels
 # Label(fig[0, 1]; text = "ensemble mean", tellwidth = false)
@@ -277,13 +281,6 @@ outputfile = joinpath(outputdir, "reemergencetime_diff$(upwind_str)_$(κVdeep_st
 save(outputfile, fig)
 
 
-
-
-
-
-
-
-
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
 data = Γout_ensemblemean_diff[ikeep] ./ Γout_ensemblemean1[ikeep]
 weights = Weights(gridmetrics.area2D[ikeep])
@@ -296,10 +293,8 @@ save(outputfile, fig)
 @show quantile(data, weights, 0:0.1:1)
 
 
-
-
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
-data = ℰ1050_ensemblemean_diff[:,:,2][ikeep] ./ ℰ1050_ensemblemean1[:,:,2][ikeep]
+data = ℰ1050_ensemblemean_diff[:, :, 2][ikeep] ./ ℰ1050_ensemblemean1[:, :, 2][ikeep]
 weights = Weights(gridmetrics.area2D[ikeep])
 fig, ax, plt = hist(data; weights, bins = -1:0.1:3)
 outputfile = joinpath(outputdir, "diffE50_over_E50_$(time_window1)-$(time_window2).png")
@@ -310,9 +305,8 @@ save(outputfile, fig)
 @show quantile(data, weights, 0:0.1:1)
 
 
-
 ikeep = .!isnan.(datamean[1]) .& (seafloorvalue(Z3D, wet3D) .> 3000)
-data = ℰ1050_ensemblemean_diff[:,:,1][ikeep] ./ ℰ1050_ensemblemean1[:,:,1][ikeep]
+data = ℰ1050_ensemblemean_diff[:, :, 1][ikeep] ./ ℰ1050_ensemblemean1[:, :, 1][ikeep]
 weights = Weights(gridmetrics.area2D[ikeep])
 fig, ax, plt = hist(data; weights, bins = -1:0.1:3)
 outputfile = joinpath(outputdir, "diffE90_over_E90_$(time_window1)-$(time_window2).png")
@@ -321,4 +315,3 @@ save(outputfile, fig)
 @show mean(data, weights)
 @show std(data, weights)
 @show quantile(data, weights, 0:0.1:1)
-

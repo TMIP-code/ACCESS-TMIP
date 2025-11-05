@@ -57,7 +57,7 @@ for member in members
             x3D = ncread(fname, var) |> Array
             x3Dnans = isnan.(x3D)
             x3Dzeros = iszero.(x3D)
-            x3Dfillvalues = x3D .== -1f20
+            x3Dfillvalues = x3D .== -1.0f20
 
             x = x3D[.!x3Dnans .& .!x3Dzeros .& .!x3Dfillvalues]
 
@@ -70,9 +70,9 @@ for member in members
 
             (icol == 1) && Label(fig[irow, 0]; text = decade_str, tellheight = false)
 
-            text!(ax, 0, 1; text="$(sum(x3Dnans)) nans", align = (:left, :top), space = :relative)
-            text!(ax, 0, 0.85; text="$(sum(x3Dzeros)) zeros", align = (:left, :top), space = :relative)
-            text!(ax, 0, 0.7; text="$(sum(x3Dfillvalues)) fillvalues", align = (:left, :top), space = :relative)
+            text!(ax, 0, 1; text = "$(sum(x3Dnans)) nans", align = (:left, :top), space = :relative)
+            text!(ax, 0, 0.85; text = "$(sum(x3Dzeros)) zeros", align = (:left, :top), space = :relative)
+            text!(ax, 0, 0.7; text = "$(sum(x3Dfillvalues)) fillvalues", align = (:left, :top), space = :relative)
 
         end
 
@@ -86,11 +86,3 @@ for member in members
     save(outputfile, fig)
 
 end
-
-
-
-
-
-
-
-

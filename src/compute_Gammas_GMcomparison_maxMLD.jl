@@ -59,7 +59,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 ρ = 1035.0    # kg/m^3
 κH = 500.0    # m^2/s
 κVML = 0.1    # m^2/s
-κVdeep = 1e-5 # m^2/s
+κVdeep = 1.0e-5 # m^2/s
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
@@ -83,7 +83,8 @@ for (umo, vmo, str) in zip(umos, vmos, strs)
     # Save matrices
     outputfile = joinpath(inputdir, "transportmatrix_$(str)_maxMLD.jld2")
     @info "Saving matrices + metrics as $outputfile"
-    save(outputfile,
+    save(
+        outputfile,
         Dict(
             "T" => T,
             "Tadv" => Tadv,
@@ -105,7 +106,7 @@ for (umo, vmo, str) in zip(umos, vmos, strs)
     )
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
+    (; lon, lat, zt, v3D) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -114,7 +115,7 @@ for (umo, vmo, str) in zip(umos, vmos, strs)
 
     # surface mask
     issrf3D = copy(wet3D)
-    issrf3D[:,:,2:end] .= false
+    issrf3D[:, :, 2:end] .= false
     issrf = issrf3D[wet3D]
     # Ideal mean age Γ↓ is governed by
     # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
@@ -147,7 +148,8 @@ for (umo, vmo, str) in zip(umos, vmos, strs)
     (v' * Γout) / sum(v)
 
     # Turn Γin into a YAXArray by rebuilding from volcello
-    Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γinyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γinyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -159,7 +161,8 @@ for (umo, vmo, str) in zip(umos, vmos, strs)
     Γin_ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Turn Γout into a YAXArray by rebuilding from volcello
-    Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γoutyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γoutyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(

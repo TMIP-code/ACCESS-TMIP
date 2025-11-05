@@ -111,12 +111,12 @@ fig = Figure()
 ax = Axis(fig[1, 1]; title = "$(model) neighboring grid cell vertices (v2)", xlabel = "Longitude", ylabel = "Latitude", aspect = DataAspect())
 plotgridcell!(ax, lon_vertices[:, i, j], lat_vertices[:, i, j]; color = (:blue, 0.3), strokewidth = 2)
 text!(ax, mean(lon_vertices[:, i, j]), mean(lat_vertices[:, i, j]); text = "(i=$i,j=$j)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i+1, j], lat_vertices[:, i+1, j]; color = (:red, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i+1, j]), mean(lat_vertices[:, i+1, j]); text = "(i+1,j)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i, j+1], lat_vertices[:, i, j+1]; color = (:purple, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i, j+1]), mean(lat_vertices[:, i, j+1]); text = "(i,j+1)", align = (:center, :center))
-plotgridcell!(ax, lon_vertices[:, i+1, j+1], lat_vertices[:, i+1, j+1]; color = (:orange, 0.3), strokewidth = 2)
-text!(ax, mean(lon_vertices[:, i+1, j+1]), mean(lat_vertices[:, i+1, j+1]); text = "(i+1,j+1)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i + 1, j], lat_vertices[:, i + 1, j]; color = (:red, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i + 1, j]), mean(lat_vertices[:, i + 1, j]); text = "(i+1,j)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i, j + 1], lat_vertices[:, i, j + 1]; color = (:purple, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i, j + 1]), mean(lat_vertices[:, i, j + 1]); text = "(i,j+1)", align = (:center, :center))
+plotgridcell!(ax, lon_vertices[:, i + 1, j + 1], lat_vertices[:, i + 1, j + 1]; color = (:orange, 0.3), strokewidth = 2)
+text!(ax, mean(lon_vertices[:, i + 1, j + 1]), mean(lat_vertices[:, i + 1, j + 1]); text = "(i+1,j+1)", align = (:center, :center))
 
 save(joinpath(inputdir, "$(model)_gridcell_vertices_check_$(i)_$(j)_v2.png"), fig)
 println(joinpath(inputdir, "$(model)_gridcell_vertices_check_$(i)_$(j)_v2.png"))
@@ -128,12 +128,12 @@ volcello.properties["_FillValue"] = FillValue
 
 # DEBUGGING
 OceanTransportMatrixBuilder.getgridtopology(lon_vertices, lat_vertices, lev) # unknowngrid topology
-    nx = size(lon_vertices, 2)
-    ny = size(lon_vertices, 3)
-    nz = length(lev)
-    # North pole vertices
-    NPlon = @view lon_vertices[3:4,:,end]
-    NPlat = @view lat_vertices[3:4,:,end]
+nx = size(lon_vertices, 2)
+ny = size(lon_vertices, 3)
+nz = length(lev)
+# North pole vertices
+NPlon = @view lon_vertices[3:4, :, end]
+NPlat = @view lat_vertices[3:4, :, end]
 
 
 # Make makegridmetrics
@@ -192,20 +192,16 @@ vmo = replace(vmo, missing => 0)
 (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
 # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-κVML_str = "kVML" * format(κVML, conversion="e")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+κVML_str = "kVML" * format(κVML, conversion = "e")
 # outputfile = joinpath(inputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
 outputfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Saving matrix as $outputfile"
-save(outputfile,
+save(
+    outputfile,
     Dict(
         "T" => T,
         "note" => "Test 0.1-degree transport matrix built from averaging the transport variables tx_trans, ty_trans, and mld."
     )
 )
-
-
-
-
-

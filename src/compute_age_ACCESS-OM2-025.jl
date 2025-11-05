@@ -27,7 +27,6 @@ using NonlinearSolve
 using ProgressMeter
 
 
-
 # script options
 @show model = "ACCESS-OM2-025"
 if isempty(ARGS)
@@ -49,9 +48,9 @@ end
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 upwind = false
 @show upwind
@@ -93,7 +92,7 @@ V = sparse(Diagonal(v3D[wet3D]))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -108,12 +107,13 @@ M = T + Ω
 matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
-prob = init(LinearProblem(M, ones(N)), solver, rtol = 1e-10)
+prob = init(LinearProblem(M, ones(N)), solver, rtol = 1.0e-10)
 sol = solve!(prob).u
 
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
     dims = dims(volcello),
     metadata = Dict(

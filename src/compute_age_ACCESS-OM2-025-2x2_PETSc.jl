@@ -52,10 +52,10 @@ parentκH = gridscale_κH ? 2κH : κH
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-parentκH_str = "kH" * format(parentκH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+parentκH_str = "kH" * format(parentκH, conversion = "d")
 parentκH_str2 = gridscale_κH ? "_gridscaled" : ""
 
 
@@ -100,7 +100,7 @@ V = sparse(Diagonal(v))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -115,7 +115,7 @@ b = ones(N)
 
 # Coarsen 2x2 (so effectively 0.25° -> 0.5°)
 @info "coarsening grid 2x2 everywhere"
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T; di=2, dj=2, dk=1)
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T; di = 2, dj = 2, dk = 1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 
@@ -131,7 +131,7 @@ ksp = PETSc.KSP(
     ksp_monitor_true_residual = false,
     ksp_view = false,
     ksp_type = "gmres",
-    ksp_atol = 1e-10,
+    ksp_atol = 1.0e-10,
     pc_type = "ilu",
 );
 PETSc.solve!(x_PETSc, ksp, b_PETSc);
@@ -140,7 +140,8 @@ sol_c = x_PETSc.array
 sol = SPRAY * sol_c
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
     dims = dims(volcello),
     metadata = Dict(

@@ -39,9 +39,6 @@
 # include("plotting_functions.jl")
 
 
-
-
-
 # # Load matrix and grid metrics
 # # @show model = "ACCESS-ESM1-5"
 # # @show experiment = ARGS[1]
@@ -152,9 +149,6 @@
 # # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
 
-
-
-
 # @info "Grab TTDs"
 # members = ["r$(r)i1p1f1" for r in 1:3]
 # # Gadi directory for input files
@@ -179,9 +173,7 @@
 TTD_time = ℰs[1].Ti |> Array
 
 
-
-
-fig = Figure(size=(800, 800))
+fig = Figure(size = (800, 800))
 
 
 limits = ((107, 158), (-48, -7))
@@ -189,7 +181,8 @@ xticks = -180:10:360
 yticks = -90:10:90
 xticks = (xticks, lonticklabel.(xticks))
 yticks = (yticks, latticklabel.(yticks))
-panelh = Axis(fig[2, 2];
+panelh = Axis(
+    fig[2, 2];
     backgroundcolor = :black,
     limits,
     # dest = "+proj=longlat +datum=WGS84",
@@ -207,7 +200,7 @@ hideydecorations!(panelh)
 # xlims!(panelh2, limits[1])
 # ylims!(panelh2, limits[2])
 # image!(panelh2, -180..180, -90..90, GeoMakie.earth() |> rotr90; interpolate = false)
-colors = cgrad(:jblue, length(depths), categorical=true)
+colors = cgrad(:jblue, length(depths), categorical = true)
 # colors = cgrad(:blues, length(depths), categorical=true)
 # colors = cgrad(:grays, length(depths), categorical=true, rev=true)
 
@@ -226,11 +219,12 @@ poly!(panelh2, GeoMakie.land(); color = :lightgray, strokecolor = :black, stroke
 cbarlabelformat(x) = isinteger(x) ? string(round(Int, x)) : string(x)
 ilow = only(findall(depths .== 0))
 ihigh = only(findall(depths .== maxdepth))
-Colorbar(fig;
-    limits = (1,length(simplepolygons) - 2),
+Colorbar(
+    fig;
+    limits = (1, length(simplepolygons) - 2),
     # ticks = (1:length(simplepolygons) - 2, cbarlabelformat.(1e-3 * reverse(depths[ihigh + 1 : ilow - 1]))),
-    ticks = (1:length(simplepolygons) - 2, string.(reverse(depths[ihigh + 1 : ilow - 1]))),
-    colormap = cgrad(reverse(colors)[ihigh + 2 : ilow - 1], categorical = true, rev = true),
+    ticks = (1:(length(simplepolygons) - 2), string.(reverse(depths[(ihigh + 1):(ilow - 1)]))),
+    colormap = cgrad(reverse(colors)[(ihigh + 2):(ilow - 1)], categorical = true, rev = true),
     highclip = reverse(colors)[ihigh + 1],
     lowclip = reverse(colors)[ilow],
     label = "seafloor depth (m)",
@@ -259,9 +253,9 @@ Colorbar(fig;
 # # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 # hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 # TODO: read src_P somehow (file name or variable inside file)
-colors = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
+colors = cgrad(:Egypt, categorical = true)[[3, 4, 1]]
 # colors = Makie.wong_colors()[[1, 3, 6]]
-offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
+offsets = map(x -> x .* 2, [(-2, 1), (-2, -1), (2, -1)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
 aligns = [(:right, :center), (:right, :center), (:left, :center)]
 texts = ["A", "B", "C"]
@@ -270,13 +264,13 @@ for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, off
     src_P = sourcelocation(srcname)
     # sc = scatter!(panelh2, src_P; marker=:star5, markersize=20, color=colors[ksrc], strokecolor=:black, strokewidth=1)
     # sc1 = scatter!(panelh2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=3)
-    sc2 = scatter!(panelh2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
-    sc2 = scatter!(panelh2, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
+    sc2 = scatter!(panelh2, src_P; marker = :circle, markersize = 10, color = (:black, 0), strokecolor = :black, strokewidth = 4)
+    sc2 = scatter!(panelh2, src_P; marker = :circle, markersize = 10, color = (:black, 0), strokecolor = color, strokewidth = 2)
     # lines!(panelh2, [src_P, src_P .+ offset]; color=:white)
-    lines!(panelh2, kinkline(src_P .+ offset, src_P); color=:black, linewidth = 1)
+    lines!(panelh2, kinkline(src_P .+ offset, src_P); color = :black, linewidth = 1)
     # lines!(panelh2, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
     # lines!(panelh2, kinkline(src_P .+ offset, src_P); color)
-    text!(panelh2, src_P .+ offset; text, align, color=:black, strokecolor=:black)
+    text!(panelh2, src_P .+ offset; text, align, color = :black, strokecolor = :black)
     # text!(panelh2, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
     # text!(panelh2, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
     # translate!(sc1, 0, 0, 99)
@@ -328,11 +322,6 @@ x = -10:(length(times) - 11)
 # end
 
 
-
-
-
-
-
 color = :gray
 linestyle = :dash
 align = (:center, :center)
@@ -350,16 +339,16 @@ text!(panela, 300, 5; text = "c", align, color)
 text!(panela, 1000, 5; text = "d", align, color)
 
 for ylev in 10:20:90
-    hspan!(panela, ylev, ylev+10; color = (:black, 0.025))
+    hspan!(panela, ylev, ylev + 10; color = (:black, 0.025))
 end
 # Band for injection time window
 # ibnd = vspan!(panela, -10, 0; color = (:black, 0.1))
 # text!(panela, 10, 50; text = "10-year injection", rotation = π/2, align = (:center, :center))
-for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
+for (ksrc, (srcname, text)) in enumerate(zip(srcnames, texts))
     Cseqksrc = yaxdata[source = At(srcname)]
-    Cseqmean = dropdims(mean(Cseqksrc, dims=:member), dims=:member).data
-    Cseqmin = dropdims(minimum(Cseqksrc, dims=:member), dims=:member).data
-    Cseqmax = dropdims(maximum(Cseqksrc, dims=:member), dims=:member).data
+    Cseqmean = dropdims(mean(Cseqksrc, dims = :member), dims = :member).data
+    Cseqmin = dropdims(minimum(Cseqksrc, dims = :member), dims = :member).data
+    Cseqmax = dropdims(maximum(Cseqksrc, dims = :member), dims = :member).data
     color = colors[ksrc]
     # Cseqmin = dropdims(minimum(Cseqksrc, dims = 2), dims = 2)
     # Cseqmax = dropdims(maximum(Cseqksrc, dims = 2), dims = 2)
@@ -370,7 +359,7 @@ for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
     Cseqmin[inan] .= NaN
     Cseqmax[inan] .= NaN
     # bd = band!(panela, x, Cseqmin, Cseqmax; color=(:black, 0.3))
-    bd = band!(panela, x, clamp.(Cseqmin, 0, 100), clamp.(Cseqmax, 0, 100); color=(color, 0.3))
+    bd = band!(panela, x, clamp.(Cseqmin, 0, 100), clamp.(Cseqmax, 0, 100); color = (color, 0.3))
     # for Cseqksrc_m in eachslice(Cseqksrc, dims = 2)
     #     # cannot work if saved umass have different time span
     #     # y = 100 * [0; data[m]["umass"][:, ksrc]] / data[m]["src_mass"][ksrc]
@@ -378,14 +367,14 @@ for (ksrc, (srcname, text)) = enumerate(zip(srcnames, texts))
     #     lines!(panela, x, Cseqksrc_m; color = :black, linewidth=0.1)
     # end
     # ln = lines!(panela, x, Cseqmean; color=:black, linewidth=2, linecap=:round, joinstyle=:round)
-    ln = lines!(panela, x, clamp.(Cseqmean, 0, 100); color, linewidth=2, linecap=:round, joinstyle=:round)
+    ln = lines!(panela, x, clamp.(Cseqmean, 0, 100); color, linewidth = 2, linecap = :round, joinstyle = :round)
     # The line below is from the adjoint propagator
-    ln2 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round)
-    ln3 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2); color = :black, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
+    ln2 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs[ksrc].data, dims = 2), dims = 2); color = :black, linewidth = 2, linecap = :round, joinstyle = :round)
+    ln3 = lines!(panela, TTD_time, dropdims(mean(100 * ℰs2[ksrc].data, dims = 2), dims = 2); color = :black, linewidth = 2, linecap = :round, joinstyle = :round, linestyle = :dash)
     i = 250 - 10ksrc
     # (ksrc == 1) && (text = "tracer injected at $text")
     # text!(panela, x[i], Cseqmean[i]; text, offset = (1.5, 1.5), align = (:left, :bottom), color=:black)
-    text!(panela, x[i], Cseqmean[i]; text, offset = (-1.5, 1.5), align = (:right, :bottom), color=:black)
+    text!(panela, x[i], Cseqmean[i]; text, offset = (-1.5, 1.5), align = (:right, :bottom), color = :black)
     # text!(panela, x[i], Cseqmean[i]; text, offset = (3, 3), align = (:left, :bottom), color, fontsize=18)
     # Add a bar chart in the middle?
     # for xbar in 2100:100:2500
@@ -438,7 +427,8 @@ axisoptions = (
 
 
 panelsefg = fig[2, 1] = GridLayout()
-ylabel = rich("""
+ylabel = rich(
+    """
     mean time
     """,
     Γup, "(", 𝒓, ")"
@@ -448,10 +438,10 @@ values = reduce(vcat, Γouts)
 categories = reduce(vcat, fill(label, 40) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 40) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 40) for color in colors)
-boxplot!(panele, categorypositions, values; color=color, orientation = :horizontal)
+boxplot!(panele, categorypositions, values; color = color, orientation = :horizontal)
 for (ksrc, text) in enumerate(texts)
     # (ksrc == 1) && (text = "mean reemergence time at $text")
-    text!(panele, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3,0), align = (:right, :center))
+    text!(panele, minimum(Γouts[ksrc]), Nsrc + 1 - ksrc; text, offset = (-3, 0), align = (:right, :center))
 end
 # raincloudoptions = (
 #     boxplot_nudge = -0.5,
@@ -466,10 +456,8 @@ end
 hidexdecorations!(panele, grid = false)
 
 
-
-
-
-ylabel = rich("""
+ylabel = rich(
+    """
     median time
     """,
     ℰstr, " = 50 %"
@@ -479,12 +467,13 @@ values = [findfirst(ℰi .< 0.5) for ℰ in ℰs for ℰi in eachcol(ℰ.data)]
 categories = reduce(vcat, fill(label, 3) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 3) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 3) for color in colors)
-boxplot!(panelf, categorypositions, values; color=color, orientation = :horizontal)
+boxplot!(panelf, categorypositions, values; color = color, orientation = :horizontal)
 linkxaxes!(panelf, panele)
 xlims!(panelf, (xmin, xmax))
 hidexdecorations!(panelf, grid = false)
 
-ylabel = rich("""
+ylabel = rich(
+    """
     time to 10 % leak
     """,
     ℰstr, " = 90 %"
@@ -494,7 +483,7 @@ values = [findfirst(ℰi .< 0.9) for ℰ in ℰs for ℰi in eachcol(ℰ.data)]
 categories = reduce(vcat, fill(label, 3) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 3) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 3) for color in colors)
-boxplot!(panelg, categorypositions, values; color=color, orientation = :horizontal)
+boxplot!(panelg, categorypositions, values; color = color, orientation = :horizontal)
 linkxaxes!(panelg, panelf)
 xlims!(panelg, (xmin, xmax))
 
@@ -525,7 +514,7 @@ values = [100 * ℰi[100 + 1] for ℰ in ℰs for ℰi in eachcol(ℰ.data)]
 categories = reduce(vcat, fill(label, 3) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 3) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 3) for color in colors)
-boxplot!(panelb, categorypositions, values; color=color, orientation = :vertical)
+boxplot!(panelb, categorypositions, values; color = color, orientation = :vertical)
 linkyaxes!(panelb, panela)
 ylims!(panelb, (ymin, ymax))
 hideydecorations!(panelb)
@@ -536,7 +525,7 @@ values = [100 * ℰi[300 + 1] for ℰ in ℰs for ℰi in eachcol(ℰ.data)]
 categories = reduce(vcat, fill(label, 3) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 3) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 3) for color in colors)
-boxplot!(panelc, categorypositions, values; color=color, orientation = :vertical)
+boxplot!(panelc, categorypositions, values; color = color, orientation = :vertical)
 linkyaxes!(panelc, panela)
 ylims!(panelc, (ymin, ymax))
 hideydecorations!(panelc)
@@ -547,7 +536,7 @@ values = [100 * ℰi[1000 + 1] for ℰ in ℰs for ℰi in eachcol(ℰ.data)]
 categories = reduce(vcat, fill(label, 3) for label in texts)
 categorypositions = reduce(vcat, fill(ilabel, 3) for ilabel in reverse(eachindex(texts)))
 color = reduce(vcat, fill(color, 3) for color in colors)
-boxplot!(paneld, categorypositions, values; color=color, orientation = :vertical)
+boxplot!(paneld, categorypositions, values; color = color, orientation = :vertical)
 linkyaxes!(paneld, panela)
 ylims!(paneld, (ymin, ymax))
 hideydecorations!(paneld, label = false, ticklabels = false, ticks = false)
@@ -555,7 +544,7 @@ hideydecorations!(paneld, label = false, ticklabels = false, ticks = false)
 
 for panel in (panelb, panelc, paneld)
     for ylev in 10:20:90
-        bg = hspan!(panel, ylev, ylev+10; color = (:black, 0.025))
+        bg = hspan!(panel, ylev, ylev + 10; color = (:black, 0.025))
         translate!(bg, 0, 0, -100)
     end
 end
@@ -578,8 +567,8 @@ end
 # sc = scatter!(inset_ax, src_P; marker=:star5, markersize=15, color, strokecolor=:black, strokewidth=1)
 # translate!(sc, 0, 0, 100)
 
-rowsize!(fig.layout, 1, Relative(1/2))
-colsize!(fig.layout, 1, Relative(1/2))
+rowsize!(fig.layout, 1, Relative(1 / 2))
+colsize!(fig.layout, 1, Relative(1 / 2))
 rowgap!(panelsefg, 10)
 colgap!(panelsefg, 10)
 rowgap!(panelsbcd, 10)
@@ -592,7 +581,7 @@ labeloptions = (
     align = (:left, :top),
     offset = (5, -2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 for (ax, label) in zip([panela, panelb, panelc, paneld, panele, panelf, panelg, panelh], string.('a':'h'))
     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)

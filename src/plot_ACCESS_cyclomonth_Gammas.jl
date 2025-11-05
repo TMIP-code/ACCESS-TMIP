@@ -91,7 +91,6 @@
 # )
 
 
-
 # member = first(valid_members)
 
 # inputdir = inputdirfun(member)
@@ -314,12 +313,6 @@
 # save(outputfile, fig)
 
 
-
-
-
-
-
-
 # # Compare age built from cyclo(T) vs T(mean) vs mean(T)
 # strs = ("cyclo", "mean(T)", "T(mean)")
 # # Load ideal mean age and reemergence time
@@ -338,11 +331,10 @@
 # end
 
 
-
 Nrows = length(strs)
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
     for (irow, (x3D, str)) in enumerate(zip(Γ3Ds, strs))
@@ -374,12 +366,13 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 end
 
 Γdown = rich("Γ", superscript("↓"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γdown, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
@@ -413,25 +406,26 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
     end
 end
 
-cb = Colorbar(fig[Nrows+1:2Nrows-1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γdown, " (yr)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
-Label(fig[1, 0], text = "cyclo", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[4, 0], text = "mean(T) − cyclo", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[5, 0], text = "T(mean) − cyclo", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[4, 0], text = "mean(T) − cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[5, 0], text = "T(mean) − cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
 
 title = "$model $experiment $member $(time_window) ideal age"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 
 rowgap!(fig.layout, 10)
@@ -444,10 +438,6 @@ outputfile = joinpath(inputdir, "ideal_age_ZAVGs_cyclo_vs_meanT_vs_Tmean.png")
 save(outputfile, fig)
 
 
-
-
-
-
 contouroptionsrelativecomparison = let
     levels = -100:10:100
     colormap = cgrad(:balance)
@@ -457,11 +447,10 @@ contouroptionsrelativecomparison = let
 end
 
 
-
 Nrows = length(strs)
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
     for (irow, (x3D, str)) in enumerate(zip(Γ3Ds, strs))
@@ -493,12 +482,13 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 end
 
 Γdown = rich("Γ", superscript("↓"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γdown, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
@@ -533,25 +523,26 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
     end
 end
 
-cb = Colorbar(fig[Nrows+1:2Nrows-1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γdown, " / ", Γdown, " (%)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
-Label(fig[1, 0], text = "cyclo", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[4, 0], text = "mean(T) − cyclo", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[5, 0], text = "T(mean) − cyclo", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[4, 0], text = "mean(T) − cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[5, 0], text = "T(mean) − cyclo", fontsize = 20, tellheight = false, rotation = π / 2)
 
 title = "$model $experiment $member $(time_window) ideal age"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 
 rowgap!(fig.layout, 10)
@@ -565,8 +556,6 @@ save(outputfile, fig)
 
 
 # end
-
-
 
 
 # # Plot Γ↑ zonal averages
@@ -642,7 +631,6 @@ save(outputfile, fig)
 # end
 
 
-
 # for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
 #     Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
 #     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
@@ -658,13 +646,6 @@ save(outputfile, fig)
 # outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_v3.png")
 # @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
 # save(outputfile, fig)
-
-
-
-
-
-
-
 
 
 # fig = Figure(size = (1200, 1200), fontsize = 18)
@@ -703,19 +684,6 @@ save(outputfile, fig)
 # outputfile = joinpath(outputdir, "mean_age_at_seafloor_v3.png")
 # @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
 # save(outputfile, fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # fig = Figure(size = (1200, 1200), fontsize = 18)

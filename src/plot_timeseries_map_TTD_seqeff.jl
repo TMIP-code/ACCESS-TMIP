@@ -39,9 +39,6 @@ using LibGEOS
 include("plotting_functions.jl")
 
 
-
-
-
 # Load matrix and grid metrics
 # @show model = "ACCESS-ESM1-5"
 # @show experiment1 = ARGS[1]
@@ -60,9 +57,9 @@ include("plotting_functions.jl")
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
@@ -91,7 +88,7 @@ lat_vertices = readcubedata(getproperty(volcello_ds, lat_vertices_key))
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D, ) = gridmetrics
+(; lon_vertices, lat_vertices, v3D) = gridmetrics
 
 # Make indices
 indices = makeindices(v3D)
@@ -102,17 +99,16 @@ indices = makeindices(v3D)
 depths = [10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 200, 0]
 # maxdepth = 6000
 maxdepth = 5000
-@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol=0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
+@time "simplepolygons" simplepolygons = [GeometryOps.simplify(VisvalingamWhyatt(tol = 0.2), NaturalEarth.bathymetry(z).geometry) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, tol=0.2) for z in depths[depths .≤ maxdepth]]
 # @time "simplepolygons" simplepolygons = [GeometryOps.simplify(NaturalEarth.bathymetry(z).geometry, ratio=0.05) for z in depths[depths .≤ maxdepth]]
 
 
-
 function sourcelocation(srcname)
     if srcname == "Karratha"
-        return (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+        return (115.45849390000001, -16.56466979999999) # Carnarvon Basin?" North West of Australia
     elseif srcname == "Portland"
-        return (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+        return (141.73529860000008, -38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
     elseif srcname == "Marlo"
         return (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
     else
@@ -163,7 +159,7 @@ members = map(m -> "r$(m)i1p1f1", 1:40)
 Γouts1 = map(srcnames) do srcname
     src_P = sourcelocation(srcname)
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
+    src_k = findlast(wet3D[src_i, src_j, :])
     map(members) do member
         @info "loading $member Γ†"
         Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment1/$member/$(time_window1)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
@@ -174,7 +170,7 @@ end
 Γouts2 = map(srcnames) do srcname
     src_P = sourcelocation(srcname)
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
+    src_k = findlast(wet3D[src_i, src_j, :])
     map(members) do member
         @info "loading $member Γ†"
         Γout_file = "/scratch/xv83/TMIP/data/$model/$experiment2/$member/$(time_window2)/cyclomonth/reemergence_time$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc"
@@ -249,15 +245,7 @@ else
 end
 
 
-
-
-
-
-
-
-
-fig = Figure(size=(800, 600))
-
+fig = Figure(size = (800, 600))
 
 
 #######
@@ -268,7 +256,8 @@ xticks = -180:10:360
 yticks = -90:10:90
 xticks = (xticks, lonticklabel.(xticks))
 yticks = (yticks, latticklabel.(yticks))
-panela = Axis(fig[1, 1];
+panela = Axis(
+    fig[1, 1];
     backgroundcolor = :black,
     limits,
     # dest = "+proj=longlat +datum=WGS84",
@@ -287,7 +276,7 @@ panela = Axis(fig[1, 1];
 # xlims!(panela2, limits[1])
 # ylims!(panela2, limits[2])
 # image!(panela2, -180..180, -90..90, GeoMakie.earth() |> rotr90; interpolate = false)
-colors = cgrad(:jblue, length(depths), categorical=true)
+colors = cgrad(:jblue, length(depths), categorical = true)
 # colors = cgrad(:blues, length(depths), categorical=true)
 # colors = cgrad(:grays, length(depths), categorical=true, rev=true)
 
@@ -306,17 +295,18 @@ poly!(panela, GeoMakie.land(); color = :lightgray, strokecolor = :black, strokew
 cbarlabelformat(x) = isinteger(x) ? string(round(Int, x)) : string(x)
 ilow = only(findall(depths .== 0))
 ihigh = only(findall(depths .== maxdepth))
-Colorbar(fig;
+Colorbar(
+    fig;
     # limits = (1,length(simplepolygons) - 2),
     # # ticks = (1:length(simplepolygons) - 2, cbarlabelformat.(1e-3 * reverse(depths[ihigh + 1 : ilow - 1]))),
     # ticks = (1:length(simplepolygons) - 2, string.(reverse(depths[ihigh + 1 : ilow - 1]))),
     # colormap = cgrad(reverse(colors)[ihigh + 2 : ilow - 1], categorical = true, rev = true),
     # highclip = reverse(colors)[ihigh + 1],
     # lowclip = reverse(colors)[ilow],
-    limits = (1,length(simplepolygons) - 1),
+    limits = (1, length(simplepolygons) - 1),
     # ticks = (1:length(simplepolygons) - 2, cbarlabelformat.(1e-3 * reverse(depths[ihigh + 1 : ilow - 1]))),
-    ticks = (1:length(simplepolygons) - 1, string.(reverse(depths[ihigh : ilow - 1]))),
-    colormap = cgrad(reverse(colors)[ihigh + 1 : ilow - 1], categorical = true, rev = true),
+    ticks = (1:(length(simplepolygons) - 1), string.(reverse(depths[ihigh:(ilow - 1)]))),
+    colormap = cgrad(reverse(colors)[(ihigh + 1):(ilow - 1)], categorical = true, rev = true),
     highclip = reverse(colors)[ihigh],
     lowclip = reverse(colors)[ilow],
     label = "seafloor depth (m)",
@@ -347,19 +337,19 @@ Colorbar(fig;
 # TODO: read src_P somehow (file name or variable inside file)
 # colors1 = cgrad(:Egypt, categorical=true)[[3, 4, 1]]
 # colors1 = cgrad(:Egypt, categorical=true)[[3]]
-colors1 = cgrad(:galah, categorical=true)[[3]]
+colors1 = cgrad(:galah, categorical = true)[[3]]
 # color2 = cgrad(:Egypt, categorical=true)[4]
-colors2 = cgrad(:galah, categorical=true)[[6]]
+colors2 = cgrad(:galah, categorical = true)[[6]]
 # bdcolors1 = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors1]
 # bdcolors2 = [(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors2]
-bdcolors1 = colors1#[(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors1]
-bdcolors2 = colors2#[(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors2]
-Γcolors1 = [(c + 3 * RGBA(1,1,1,1)) / 4 for c in colors1]
-Γcolors2 = [(c + 3 * RGBA(1,1,1,1)) / 4 for c in colors2]
+bdcolors1 = colors1 #[(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors1]
+bdcolors2 = colors2 #[(c + 2 * RGBA(1,1,1,1)) / 3 for c in colors2]
+Γcolors1 = [(c + 3 * RGBA(1, 1, 1, 1)) / 4 for c in colors1]
+Γcolors2 = [(c + 3 * RGBA(1, 1, 1, 1)) / 4 for c in colors2]
 # colors = Makie.wong_colors()[[1, 3, 6]]
 # offsets = map(x -> x.* 2, [(-2, 1), (-2, -1), (2, -1)])
 # offsets = map(x -> x.* 2, [(-2, 1)])
-offsets = map(x -> x.* 2, [(6, -3)])
+offsets = map(x -> x .* 2, [(6, -3)])
 # aligns = [(:right, :bottom), (:right, :top), (:left, :top)]
 # aligns = [(:right, :center), (:right, :center), (:left, :center)]
 aligns = [(:right, :center)]
@@ -373,11 +363,11 @@ for (ksrc, (srcname, offset, align, color, text)) in enumerate(zip(srcnames, off
     # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=:black, strokewidth=4)
     # sc2 = scatter!(panela, src_P; marker=:circle, markersize=10, color=(:black, 0), strokecolor=color, strokewidth=2)
     # lines!(panela2, [src_P, src_P .+ offset]; color=:white)
-    lines!(panela, kinkline(src_P .+ offset, src_P); color=:black)
-    sc = scatter!(panela, src_P; marker=:star5, markersize=20, color=colors1[ksrc], strokecolor=:black, strokewidth=1)
+    lines!(panela, kinkline(src_P .+ offset, src_P); color = :black)
+    sc = scatter!(panela, src_P; marker = :star5, markersize = 20, color = colors1[ksrc], strokecolor = :black, strokewidth = 1)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color=:black, linewidth=3)
     # lines!(panela2, kinkline(src_P .+ offset, src_P); color)
-    text!(panela, src_P .+ offset; text, align, color=:black, strokecolor=:black)
+    text!(panela, src_P .+ offset; text, align, color = :black, strokecolor = :black)
     # text!(panela2, src_P .+ offset; text, align, color=:black, font=:bold, fontsize=18, strokecolor=:black, strokewidth=2)
     # text!(panela2, src_P .+ offset; text, align, color, font=:bold, fontsize=18)
     # translate!(sc1, 0, 0, 99)
@@ -397,11 +387,6 @@ end
 Γfun = rich(Γstr, rich("(", 𝒓, ")", offset = (0.4, 0)))
 𝒢str = rich("𝒢", superscript("†"), rich("‾", offset = (-0.55, 0.25)), rich("‾", offset = (-0.85, 0.25)))
 𝒢fun = rich(𝒢str, rich("(", 𝒓, ", τ)", offset = (0.4, 0)))
-
-
-
-
-
 
 
 #######
@@ -433,7 +418,7 @@ axisoptions = (
 )
 panelb = Axis(fig[1, 2]; axisoptions...)
 maxall𝒢s1 = ustrip.(kyr^-1, maximum(maximum(𝒢s1[ksrc]) for ksrc in eachindex(srcnames)) * s^-1)
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) in enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
     vspan!(panelb, minimum(Γouts1[ksrc]), maximum(Γouts1[ksrc]), color = Γcolors1[ksrc])
     vspan!(panelb, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = Γcolors2[ksrc])
     𝒢2030smin = ustrip.(kyr^-1, dropdims(minimum(𝒢s1[ksrc], dims = 2), dims = 2) * s^-1)
@@ -444,18 +429,11 @@ for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(sr
     𝒢2090s = ustrip.(kyr^-1, dropdims(mean(𝒢s2[ksrc], dims = 2), dims = 2) * s^-1)
     bd2030s = band!(panelb, TTD_time, 𝒢2030smin, 𝒢2030smax; color = bdcolor, alpha = 0.5)
     bd2090s = band!(panelb, TTD_time, 𝒢2090smin, 𝒢2090smax; color = bdcolor2, alpha = 0.5)
-    ln2030s = lines!(panelb, TTD_time, 𝒢2030s; color = color, linewidth=2, linecap=:round, joinstyle=:round)
-    ln2090s = lines!(panelb, TTD_time, 𝒢2090s; color = color2, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
+    ln2030s = lines!(panelb, TTD_time, 𝒢2030s; color = color, linewidth = 2, linecap = :round, joinstyle = :round)
+    ln2090s = lines!(panelb, TTD_time, 𝒢2090s; color = color2, linewidth = 2, linecap = :round, joinstyle = :round, linestyle = :dash)
     text!(panelb, 800, 𝒢2030smax[800]; text = "2030s TTD", align = (:left, :bottom), offset = (3, 1), color = color)
     text!(panelb, 500, 𝒢2090smin[500]; text = "2090s TTD", align = (:left, :top), offset = (3, -1), color = color2)
 end
-
-
-
-
-
-
-
 
 
 ############################
@@ -505,7 +483,7 @@ align = (:center, :center)
 # Band for injection time window
 # ibnd = vspan!(panelc, -10, 0; color = (:black, 0.1))
 # text!(panelc, 10, 50; text = "10-year injection", rotation = π/2, align = (:center, :center))
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) in enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
     ℰ2030smin = dropdims(minimum(100 * ℰs1[ksrc], dims = 2), dims = 2)
     ℰ2030smax = dropdims(maximum(100 * ℰs1[ksrc], dims = 2), dims = 2)
     ℰ2090smin = dropdims(minimum(100 * ℰs2[ksrc], dims = 2), dims = 2)
@@ -514,12 +492,10 @@ for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(sr
     ℰ2090s = dropdims(mean(100 * ℰs2[ksrc], dims = 2), dims = 2)
     bd2030s = band!(panelc, TTD_time, ℰ2030smin, ℰ2030smax; color = bdcolor, alpha = 0.5)
     bd2090s = band!(panelc, TTD_time, ℰ2090smin, ℰ2090smax; color = bdcolor2, alpha = 0.5)
-    ln2030s = lines!(panelc, TTD_time, ℰ2030s; color, linewidth=2, linecap=:round, joinstyle=:round)
-    ln2090s = lines!(panelc, TTD_time, ℰ2090s; color = color2, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
+    ln2030s = lines!(panelc, TTD_time, ℰ2030s; color, linewidth = 2, linecap = :round, joinstyle = :round)
+    ln2090s = lines!(panelc, TTD_time, ℰ2090s; color = color2, linewidth = 2, linecap = :round, joinstyle = :round, linestyle = :dash)
 end
 ylims!(panelc, ymax, ymin)
-
-
 
 
 # Repeat for unzoomed time series
@@ -555,7 +531,7 @@ linestyle = :dash
 align = (:center, :center)
 # hlines!(paneld, [50, 90]; color, linestyle)
 # vlines!(paneld, [100, 300, 1000]; color, linestyle)
-for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
+for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) in enumerate(zip(srcnames, texts, colors1, bdcolors1, colors2, bdcolors2))
     vspan!(paneld, minimum(Γouts1[ksrc]), maximum(Γouts1[ksrc]), color = Γcolors1[ksrc])
     vspan!(paneld, minimum(Γouts2[ksrc]), maximum(Γouts2[ksrc]), color = Γcolors2[ksrc])
     ℰ2030smin = dropdims(minimum(100 * ℰs1[ksrc], dims = 2), dims = 2)
@@ -566,11 +542,10 @@ for (ksrc, (srcname, text, color, bdcolor, color2, bdcolor2)) = enumerate(zip(sr
     ℰ2090s = dropdims(mean(100 * ℰs2[ksrc], dims = 2), dims = 2)
     bd2030s = band!(paneld, TTD_time, ℰ2030smin, ℰ2030smax; color = bdcolor, alpha = 0.5)
     bd2090s = band!(paneld, TTD_time, ℰ2090smin, ℰ2090smax; color = bdcolor2, alpha = 0.5)
-    ln2030s = lines!(paneld, TTD_time, ℰ2030s; color = color, linewidth=2, linecap=:round, joinstyle=:round)
-    ln2090s = lines!(paneld, TTD_time, ℰ2090s; color = color2, linewidth=2, linecap=:round, joinstyle=:round, linestyle = :dash)
+    ln2030s = lines!(paneld, TTD_time, ℰ2030s; color = color, linewidth = 2, linecap = :round, joinstyle = :round)
+    ln2090s = lines!(paneld, TTD_time, ℰ2090s; color = color2, linewidth = 2, linecap = :round, joinstyle = :round, linestyle = :dash)
 end
 ylims!(paneld, ymax, ymin)
-
 
 
 # Add zoom lines
@@ -582,7 +557,6 @@ zoom_lines!(panelc, paneld; rectattrs, lineattrs)
 colsize!(fig.layout, 1, Relative(0.4))
 rowgap!(fig.layout, 20)
 colgap!(fig.layout, 20)
-
 
 
 #############
@@ -600,7 +574,7 @@ color = reduce(vcat, fill(color, 40) for color in colors1)
 limits_dataspace = panelb.finallimits[].widths[2]
 limits_figspace = fullproject(panelb, panelb.finallimits[]).widths[2]
 width = 20 * limits_dataspace / limits_figspace
-boxplot!(panelb, categorypositions, valuesΓ2030s; color=color, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
+boxplot!(panelb, categorypositions, valuesΓ2030s; color = color, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
 # Repeat for 2090s
 valuesΓ2090s = reduce(vcat, Γouts2)
 categories = reduce(vcat, fill(label, 40) for label in texts)
@@ -613,7 +587,7 @@ color2 = reduce(vcat, fill(color, 40) for color in colors2)
 limits_dataspace = panelb.finallimits[].widths[2]
 limits_figspace = fullproject(panelb, panelb.finallimits[]).widths[2]
 width = 20 * limits_dataspace / limits_figspace
-boxplot!(panelb, categorypositions, valuesΓ2090s; color=color2, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
+boxplot!(panelb, categorypositions, valuesΓ2090s; color = color2, orientation = :horizontal, width, strokewidth = 1, whiskerwidth = :match)
 text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = rich("mean time, ", Γstr), align = (:center, :bottom), offset = (0, 30))
 text!(panelb, (minimum(valuesΓ2030s) + maximum(valuesΓ2030s)) / 2, categorypositions[1]; text = "2030s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
 text!(panelb, (minimum(valuesΓ2090s) + maximum(valuesΓ2090s)) / 2, categorypositions[1]; text = "2090s", align = (:center, :bottom), offset = (0, 15), fontsize = 10)
@@ -622,8 +596,8 @@ text!(panelb, (minimum(valuesΓ2090s) + maximum(valuesΓ2090s)) / 2, categorypos
 
 mediantimetxtpos = mean([findfirst(100 * ℰi .< 50) for ℰi in eachcol([ℰs1[1] ℰs2[1]])])
 tenthpercentiletxtpos = mean([findfirst(100 * ℰi .< 90) for ℰi in eachcol([ℰs1[1] ℰs2[1]])])
-ℰ300txtpos = 100 * mean([ℰs1[1] ℰs2[1]][300,:])
-ℰ1000txtpos = 100 * mean([ℰs1[1] ℰs2[1]][1000,:])
+ℰ300txtpos = 100 * mean([ℰs1[1] ℰs2[1]][300, :])
+ℰ1000txtpos = 100 * mean([ℰs1[1] ℰs2[1]][1000, :])
 
 for (ℰsdecade, colors) in zip((ℰs1, ℰs2), (colors1, colors2))
     for panel in (panelc, paneld)
@@ -644,7 +618,7 @@ for (ℰsdecade, colors) in zip((ℰs1, ℰs2), (colors1, colors2))
             (ℰval == 90) && (panel == panelc) && (ℰsdecade == ℰs1) && text!(panel, tenthpercentiletxtpos, 90; text = "10th percentile time", align = (:center, :bottom), offset = (0, 15))
         end
         # given τ
-        for τval = [100, 300, 1000]
+        for τval in [100, 300, 1000]
             values = [100 * ℰi[τval] for ℰ in ℰsdecade for ℰi in eachcol(ℰ)]
             local categorypositions = fill(τval, length(values))
             local color = fill(colors[1], length(values))
@@ -661,21 +635,17 @@ end
 # band for mean age
 
 
-
-
-
 labeloptions = (
     font = :bold,
     align = (:left, :top),
     offset = (5, -2),
     space = :relative,
-    fontsize = 24
+    fontsize = 24,
 )
 for (ax, label) in zip([panela, panelb, panelc, paneld], string.('a':'h'))
     text!(ax, 0, 1; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
     text!(ax, 0, 1; text = label, labeloptions...)
 end
-
 
 
 # save plot
@@ -716,7 +686,7 @@ properties = Dict(
     "description" => "Mean reemergence time as plotted in Fig. 3b,c,d in Pasquier et al. (2025)",
     "unit" => "years",
 )
-meantimecube = YAXArray(axlist[[2,3]], [Γouts1[1];; Γouts2[1]], properties)
+meantimecube = YAXArray(axlist[[2, 3]], [Γouts1[1];; Γouts2[1]], properties)
 
 
 arrays = Dict(:TTD => TTDcube, :seqeff => seqeffcube, :meantime => meantimecube)

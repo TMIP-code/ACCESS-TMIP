@@ -63,7 +63,7 @@ println()
 Γup = rich("Γ", superscript("↑"))
 
 for member in members[dataavailability.has_it_all]
-# for member in [last(members)]
+    # for member in [last(members)]
 
     inputdir = inputdirfun(member)
 
@@ -72,7 +72,7 @@ for member in members[dataavailability.has_it_all]
     gridmetrics, indices = load(transportmatrix_filepath, "gridmetrics", "indices")
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
+    (; lon, lat, zt, v3D) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -91,35 +91,38 @@ for member in members[dataavailability.has_it_all]
     basin_functions = (isatlantic, ispacific, isindian)
     basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
     basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
     basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
     levels = 0:100:2500
-    colormap = cgrad(:viridis, length(levels); categorical=true)
+    colormap = cgrad(:viridis, length(levels); categorical = true)
     extendlow = nothing
     extendhigh = colormap[end]
-    colormap = cgrad(colormap[1:end-1]; categorical=true)
+    colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
 
     # Plot Γ↓ zonal averages
 
     fig = Figure(size = (1200, 300), fontsize = 18)
-    axs = Array{Any,2}(undef, (1, 3))
-    contours = Array{Any,2}(undef, (1, 3))
+    axs = Array{Any, 2}(undef, (1, 3))
+    contours = Array{Any, 2}(undef, (1, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         irow = 1
 
         x2D = zonalaverage(Γinyr3D, gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=false, ygridvisible=false,
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -139,32 +142,37 @@ for member in members[dataavailability.has_it_all]
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 1, ticklabels = irow < 1,
-            ticks = irow < 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
     end
 
-    cb = Colorbar(fig[1, 4], contours[1, 1];
+    cb = Colorbar(
+        fig[1, 4], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich(Γdown, " (yr)"),
-        )
+    )
     cb.height = Relative(1)
 
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
 
     title = "$model $experiment $member $(time_window) ideal age"
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
     rowgap!(fig.layout, 10)
     colgap!(fig.layout, 10)
@@ -175,30 +183,28 @@ for member in members[dataavailability.has_it_all]
     save(outputfile, fig)
 
 
-
-
-
-
-
     # Plot Γ↑ zonal averages
 
     fig = Figure(size = (1200, 300), fontsize = 18)
-    axs = Array{Any,2}(undef, (1, 3))
-    contours = Array{Any,2}(undef, (1, 3))
+    axs = Array{Any, 2}(undef, (1, 3))
+    contours = Array{Any, 2}(undef, (1, 3))
     for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(Γoutyr3D, gridmetrics; mask = basin)
         irow = 1
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=false, ygridvisible=false,
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = false, ygridvisible = false,
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -218,31 +224,36 @@ for member in members[dataavailability.has_it_all]
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 1, ticklabels = irow < 1,
-            ticks = irow < 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
         axs[irow, icol] = ax
     end
 
-    cb = Colorbar(fig[1, 4], contours[1, 1];
+    cb = Colorbar(
+        fig[1, 4], contours[1, 1];
         vertical = true, flipaxis = true,
         # ticks = (, cbarticklabelformat.(levels)),
         label = rich(Γup, " (yr)"),
-        )
+    )
     cb.height = Relative(1)
 
 
     for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
         colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
     end
 
     title = "$model $experiment $member $(time_window) reemergence time"
-    Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
     rowgap!(fig.layout, 10)
     colgap!(fig.layout, 10)
@@ -262,9 +273,9 @@ for member in members[dataavailability.has_it_all]
     title = "$model $experiment $member $(time_window) mean age at seafloor"
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label=rich(Γdown, " at seafloor (yr)"))
+    Colorbar(fig[1, 2], plt, label = rich(Γdown, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(inputdir, "mean_age_at_seafloor_v3.png")
     @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
@@ -276,9 +287,9 @@ for member in members[dataavailability.has_it_all]
     title = "$model $experiment $member $(time_window) reemergence time at seafloor"
     # plot
     fig = Figure(size = (1200, 600), fontsize = 18)
-    ax = Axis(fig[1,1]; title, xtickformat, ytickformat)
+    ax = Axis(fig[1, 1]; title, xtickformat, ytickformat)
     plt = plotmap!(ax, Γoutyrseafloor, gridmetrics; colorrange, colormap)
-    Colorbar(fig[1,2], plt, label=rich(Γup, " at seafloor (yr)"))
+    Colorbar(fig[1, 2], plt, label = rich(Γup, " at seafloor (yr)"))
     # save plot
     outputfile = joinpath(inputdir, "reemergence_time_at_seafloor_v3.png")
     @info "Saving mean reemergence time at seafloor as image file:\n  $(outputfile)"
@@ -286,5 +297,3 @@ for member in members[dataavailability.has_it_all]
 
 
 end
-
-

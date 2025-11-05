@@ -22,7 +22,7 @@ function CMIP6member2CSIROmember(member)
     # Convert to the member number to be used in the file path by CSIRO
     # I.e., r1i1p1f1 -> HI-05 (so add 4 to the r number and format it as a 2 digit number)
     member_r = parse(Int, split(member, "r")[2][1])
-    CSIRO_member = "HI-$(format(member_r + 4, width=2, zeropadding=true))"
+    CSIRO_member = "HI-$(format(member_r + 4, width = 2, zeropadding = true))"
     return CSIRO_member
 end
 
@@ -36,16 +36,16 @@ end
 function timeaverage(files, varname)
     FILLVALUE = ncgetatt(first(files), varname, "_FillValue")
     varmonthly = replace(ncread(first(files), varname) |> Array .|> Float64, FILLVALUE => 0.0)
-    weights = diff(ncread(first(files), "time_bounds"), dims=1)
+    weights = diff(ncread(first(files), "time_bounds"), dims = 1)
     cumweights = sum(weights)
-    varmean = sum(weights) * dropdims(nanmean(varmonthly, reshape(weights, (1, 1, 1, length(weights))), dims=4), dims=4)
+    varmean = sum(weights) * dropdims(nanmean(varmonthly, reshape(weights, (1, 1, 1, length(weights))), dims = 4), dims = 4)
     for filepath in files[2:end]
-        weights = diff(ncread(filepath, "time_bounds"), dims=1)
+        weights = diff(ncread(filepath, "time_bounds"), dims = 1)
         cumweights += sum(weights)
         varmonthly .= replace(ncread(filepath, varname) |> Array .|> Float64, FILLVALUE => 0.0)
-        varmean .+= sum(weights) * dropdims(nanmean(varmonthly, reshape(weights, (1, 1, 1, length(weights))), dims=4), dims=4)
+        varmean .+= sum(weights) * dropdims(nanmean(varmonthly, reshape(weights, (1, 1, 1, length(weights))), dims = 4), dims = 4)
     end
-    varmean ./= cumweights
+    return varmean ./= cumweights
 end
 
 
@@ -70,15 +70,12 @@ function ϕfromACCESSESM15(gm_or_submeso, member, time_window)
     # These are transport diagnostics at the bottom of the face cells, so need to diff to get mass transport
     @info "  Taking vertical diff"
     (nx, ny, _) = size(ψᵢmean)
-    ϕᵢmean = diff([fill(0.0, nx, ny, 1);;; ψᵢmean], dims=3)
-    ϕⱼmean = diff([fill(0.0, nx, ny, 1);;; ψⱼmean], dims=3)
+    ϕᵢmean = diff([fill(0.0, nx, ny, 1);;; ψᵢmean], dims = 3)
+    ϕⱼmean = diff([fill(0.0, nx, ny, 1);;; ψⱼmean], dims = 3)
 
     return ϕᵢmean, ϕⱼmean
 
 end
-
-
-
 
 
 function ϕfromACCESSESM15_Tilo(gm_or_submeso, member, time_window)
@@ -102,8 +99,8 @@ function ϕfromACCESSESM15_Tilo(gm_or_submeso, member, time_window)
     # These are transport diagnostics at the bottom of the face cells, so need to diff to get mass transport
     @info "  Taking vertical diff"
     (nx, ny, _) = size(ψᵢmean)
-    ϕᵢmean = diff([fill(0.0, nx, ny, 1);;; ψᵢmean], dims=3)
-    ϕⱼmean = diff([fill(0.0, nx, ny, 1);;; ψⱼmean], dims=3)
+    ϕᵢmean = diff([fill(0.0, nx, ny, 1);;; ψᵢmean], dims = 3)
+    ϕⱼmean = diff([fill(0.0, nx, ny, 1);;; ψⱼmean], dims = 3)
 
     return ϕᵢmean, ϕⱼmean
 

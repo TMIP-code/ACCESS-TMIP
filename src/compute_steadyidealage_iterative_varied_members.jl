@@ -44,7 +44,6 @@ using NonlinearSolve
 # So the δt that multiplies Mₘ is δ(m..m+1).
 
 
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -59,8 +58,8 @@ if isempty(ARGS)
 else
     experiment, member, time_window, average_over = ARGS
 end
-κVML = 1e-7   # m^2/s
-κVdeep = 1e-7 # m^2/s
+κVML = 1.0e-7   # m^2/s
+κVdeep = 1.0e-7 # m^2/s
 κH = 5        # m^2/s
 @show experiment
 @show member
@@ -70,9 +69,9 @@ end
 @show κVML
 @show average_over
 
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-κVML_str = "kVML" * format(κVML, conversion="e")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+κVML_str = "kVML" * format(κVML, conversion = "e")
 
 lumpby = "month"
 months = 1:12
@@ -110,7 +109,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -133,13 +132,14 @@ elseif average_over == "flow"
     T + Ω
 end
 
-@time "steady state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+@time "steady state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1.0e-10).u
 
 # Save steady-state age
 Γinyr = ustrip.(yr, u0 .* s)
 Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
 
-cube3D = rebuild(volcello_ds["volcello"];
+cube3D = rebuild(
+    volcello_ds["volcello"];
     data = Γinyr3D,
     dims = dims(volcello_ds["volcello"]),
     metadata = Dict(
@@ -155,4 +155,3 @@ ds = Dataset(; volcello_ds.properties, arrays...)
 outputfile = joinpath(cycloinputdir, "steady_state_ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_mean$(average_over).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-

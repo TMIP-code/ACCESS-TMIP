@@ -58,9 +58,6 @@
 # g0 = Ω / τ₀
 
 
-
-
-
 # Tsim = 13yr
 
 # resolution = 48
@@ -113,7 +110,8 @@ yticks = 0:1:ustrip(yr, Tsim + 1yr)
 Δt = ustrip(yr, Tsim / 2 + 1yr)
 limits = (0, Δt + 1 + 1, ustrip(yr, Tsim) - Δt - 1, ustrip(yr, Tsim + 1yr))
 
-ax = Axis(fig[1, 1];
+ax = Axis(
+    fig[1, 1];
     xlabel = rich("injection time, ", 𝓉i, " (yr)"),
     ylabel = rich("reemergence time, ", 𝓉f, " (yr)"),
     # limits = (nothing, nothing, nothing, nothing),
@@ -128,8 +126,9 @@ ax = Axis(fig[1, 1];
     backgroundcolor = :lightgray,
 )
 
-ctrf = contourf!(ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃;
-    colormap = cgrad(:devon, rev=true),
+ctrf = contourf!(
+    ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃;
+    colormap = cgrad(:devon, rev = true),
 )
 # ctrf = heatmap!(ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃)
 
@@ -144,16 +143,16 @@ translate!(ctrf, 0, 0, -100)
 brokenabline = [t0 - 10, t0 - 1.4, NaN, t0 - 0.6, t0 + 1.6, NaN, t0 + 2.4, t0 + 10]
 lines!(ax, brokenabline, brokenabline, color = :black)
 # lines!(ax, [, t0 - 0.7], [t0 - 1.3, t0 - 0.7], color = :white)
-text!(ax, t0 - 1, t0 - 1, text = rich(𝓉i, " = ", 𝓉f), rotation = π/4, align = (:center, :center), color = :black)
+text!(ax, t0 - 1, t0 - 1, text = rich(𝓉i, " = ", 𝓉f), rotation = π / 4, align = (:center, :center), color = :black)
 # lines!(ax, [t0 + 1.7, t0 + 2.3], [t0 + 1.7, t0 + 2.3], color = :white)
-text!(ax, t0 + 2, t0 + 2, text = "τ = 0", rotation = π/4, align = (:center, :center), color = :black)
+text!(ax, t0 + 2, t0 + 2, text = "τ = 0", rotation = π / 4, align = (:center, :center), color = :black)
 
 # colors of polygons and labels
 colors = cgrad(:Egypt, categorical = true)[[3, 1]]
 
 # text for tf = ti + τ
-text!(ax, t0 + 0.5 - 0.2, t0 + 0.5 + τ + 0.2, text = rich(𝓉f, " = ", 𝓉i, " + τ"), rotation = π/4, align = (:center, :center), color = colors[1])
-text!(ax, t0 + 0.5 - 0.2 - τ, t0 + 0.5 + 0.2, text = rich(𝓉i, " = ", 𝓉f, " − τ"), rotation = π/4, align = (:center, :center), color = colors[2])
+text!(ax, t0 + 0.5 - 0.2, t0 + 0.5 + τ + 0.2, text = rich(𝓉f, " = ", 𝓉i, " + τ"), rotation = π / 4, align = (:center, :center), color = colors[1])
+text!(ax, t0 + 0.5 - 0.2 - τ, t0 + 0.5 + 0.2, text = rich(𝓉i, " = ", 𝓉f, " − τ"), rotation = π / 4, align = (:center, :center), color = colors[2])
 
 # Draw
 τ = Δt - 2.1
@@ -181,7 +180,7 @@ bracket!(ax, t0, t0 - offset, t0 + 1, t0 - offset, text = "1 yr", offset = 2, c
 lines!(ax, [t0, t0, NaN, t0 + 1, t0 + 1], [t0 - offset, t0, NaN, t0 - offset, t0 + 1], color = :black, linestyle = :dot)
 
 # Equality
-𝒢̃str = rich("𝒢", superscript("~", offset=(-0.5, 0.2)))
+𝒢̃str = rich("𝒢", superscript("~", offset = (-0.5, 0.2)))
 𝒢̃funstr = rich(𝒢̃str, "(", 𝓉i, ",", 𝓉f, ")")
 # intstr(sub, sup) = rich("∫", subsup(sub, sup))
 intstr(sub, sup, offsub, offsup) = rich("∫", subscript(sub, offset = (-offsub, -1)), superscript(sup, offset = (-offsup, 1)))
@@ -191,10 +190,11 @@ text = rich(intstr("0", "1", 0.6, 0.5), "d", 𝓉f, "  ", intstr(rich(𝓉f, " 
 text!(ax, t0 - 2.5, t0 + 1.2; text, align = (:center, :bottom), color = colors[2], fontsize = 20)
 
 # Colorbar
-cb = Colorbar(fig[2, 1], ctrf;
+cb = Colorbar(
+    fig[2, 1], ctrf;
     label = rich("Cyclostationary ", 𝒢̃str, "(", 𝓉i, ",", 𝓉f, ")"),
     # label = L"$\tilde{\mathcal{G}}(t_\mathrm{i}, t_\mathrm{f})$",
-    width = Relative(3/4),
+    width = Relative(3 / 4),
     vertical = false,
     flipaxis = false,
     ticklabelsvisible = false,

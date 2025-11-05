@@ -64,8 +64,6 @@ include("plotting_functions.jl")
 #
 
 
-
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -88,9 +86,9 @@ end
 # Injection locations
 # I Identify location with nearest towns to use the name for saving files
 src_P = if srcname == "Karratha"
-    (115.45849390000001,-16.56466979999999) # Carnarvon Basin?" North West of Australia
+    (115.45849390000001, -16.56466979999999) # Carnarvon Basin?" North West of Australia
 elseif srcname == "Portland"
-    (141.73529860000008,-38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
+    (141.73529860000008, -38.93477809999996) # Otway Basin" South West of Melbourne (West of Tas)
 elseif srcname == "Marlo"
     (149.05333500000006, -38.25798499999996) # "Shark 1" Gippsland Basin" South East (East of Tas)
 else
@@ -135,7 +133,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -159,19 +157,19 @@ end
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1.0e-10)
 end
 
 p = (;
     steps,
     δts,
-    stepprobs = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)]
+    stepprobs = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)],
 )
 
 # Point sources for carbon injection
 src1D = let
     src_i, src_j = Tuple(argmin(map(P -> norm(P .- src_P), zip(lon, lat))))
-    src_k = findlast(wet3D[src_i, src_j,:])
+    src_k = findlast(wet3D[src_i, src_j, :])
     isnothing(src_k) && error("No seafloor at (lon,lat)=$src_P")
     srcdepth = round(Int, gridmetrics.Z3D[src_i, src_j, src_k])
     @info "source depth is $(srcdepth)m"
@@ -187,10 +185,10 @@ v = v3D[wet3D]
 src_mass = v' * sum(src(y) * sum(δts) for y in 1:src_years)
 
 # Plot
-function plotandprint!(x3D, state, year, text="")
+function plotandprint!(x3D, state, year, text = "")
     x3D[wet3D] = state
-    fig = Figure(size=(600, 300))
-    ax = Axis(fig[1, 1], title="Injected tracer (year $year: $text sequestered)")
+    fig = Figure(size = (600, 300))
+    ax = Axis(fig[1, 1], title = "Injected tracer (year $year: $text sequestered)")
     x2D = volumeintegral(x3D, gridmetrics; dim = 3)
     plt = plotmap!(ax, x2D, gridmetrics; colormap = :viridis)
     # scatter!(ax, src_P, marker=:star5, markersize=15, color=:red, strokecolor=:black, strokewidth=1)
@@ -199,7 +197,7 @@ function plotandprint!(x3D, state, year, text="")
     # save plot
     outputfile = joinpath(inputdir, "$(srcname)_injected_tracer_year$year.png")
     @info "Saving injection location as image file:\n  $(outputfile)"
-    save(outputfile, fig)
+    return save(outputfile, fig)
 end
 
 x3D = fill(NaN, size(wet3D))
@@ -242,7 +240,8 @@ end
 
 outputfile = joinpath(inputdir, "$(srcname)_timeseries_injected.jld2")
 @info "Saving injection time series file:\n  $(outputfile)"
-save(outputfile,
+save(
+    outputfile,
     Dict(
         "umass" => umass,
         # "uprofile" => uprofile,

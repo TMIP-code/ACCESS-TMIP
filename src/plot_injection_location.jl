@@ -35,9 +35,6 @@
 # include("plotting_functions.jl")
 
 
-
-
-
 # # Load matrix and grid metrics
 # # @show model = "ACCESS-ESM1-5"
 # # @show experiment = ARGS[1]
@@ -91,19 +88,20 @@
 
 colors = Makie.wong_colors()[[1, 3, 6]]
 fig = Figure(size = (400, 300))
-ax = Axis(fig[1, 1];
+ax = Axis(
+    fig[1, 1];
     yticks = (-60:20:0, ["$(-i)°S" for i in -60:20:0]),
     xticks = (100:20:180, ["$(i)°E" for i in 100:20:180]),
 )
 
 depth2D = nansum(gridmetrics.thkcello; dim = 3)
-depth2D[.!wet3D[:,:,1]] .= NaN
+depth2D[.!wet3D[:, :, 1]] .= NaN
 # plotmap!(ax, depth2D, gridmetrics; colormap = :deep, colorscale = log10)
 hm = plotmap!(ax, depth2D, gridmetrics; colormap = :GnBu, colorscale = log10)
 src_P = (110, -15) # <- Choose (lon,lat) of source here
 # TODO: read src_P somehow (file name or variable inside file)
 for (ksrc, (src_name, src_P)) in enumerate(pairs(first(values(data))["src_Ps"]))
-    sc = scatter!(ax, src_P; marker=:star5, markersize=10, color=colors[ksrc], strokecolor=:black, strokewidth=1)
+    sc = scatter!(ax, src_P; marker = :star5, markersize = 10, color = colors[ksrc], strokecolor = :black, strokewidth = 1)
     translate!(sc, 0, 0, 100)
 end
 xlims!(ax, (100, 180))

@@ -74,7 +74,7 @@ indices = makeindices(gridmetrics.v3D)
 age_dir = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output"
 age_files = [joinpath(age_dir, f) for f in readdir(age_dir) if startswith(f, "ocean_age.res")]
 age_files = sort(age_files)
-age_idx = [parse(Int, f[end-6:end-3]) for f in age_files]
+age_idx = [parse(Int, f[(end - 6):(end - 3)]) for f in age_files]
 age_ds = open_mfdataset(DimArray(age_files, Dim{:Decade}(age_idx)))
 age = readcubedata(age_ds.age_global)
 age = dropdims(age, dims = 4)
@@ -85,7 +85,7 @@ age4D[.!wet3D, :] .= NaN;
 cyclestart_age_dir = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output"
 cyclestart_age_files = [joinpath(cyclestart_age_dir, f) for f in readdir(cyclestart_age_dir) if startswith(f, "ocean_age.cyclestart")]
 cyclestart_age_files = sort(cyclestart_age_files)
-cyclestart_idx = [parse(Int, f[end-6:end-3]) for f in cyclestart_age_files] # CHECK shift?
+cyclestart_idx = [parse(Int, f[(end - 6):(end - 3)]) for f in cyclestart_age_files] # CHECK shift?
 cyclestart_age_ds = open_mfdataset(DimArray(cyclestart_age_files, Dim{:Decade}(cyclestart_idx)))
 cyclestart_age = readcubedata(cyclestart_age_ds.age_global)
 cyclestart_age = dropdims(cyclestart_age, dims = 4)
@@ -93,28 +93,23 @@ cyclestart_age4D = cyclestart_age.data
 cyclestart_age4D[.!wet3D, :] .= NaN;
 
 
-maxage = dropdims(nanmaximum(age4D, dims = (1,2,3)), dims = (1,2,3))
+maxage = dropdims(nanmaximum(age4D, dims = (1, 2, 3)), dims = (1, 2, 3))
 i2000m = argmin(abs.(zt .- 2000))
-volumeintegralage2000m = dropdims(nansum((age4D .* v3D)[:,:,i2000m,:], dims = (1,2)), dims = (1,2))
-volumeintergal2000m = dropdims(nansum(v3D[:,:,i2000m], dims = (1,2)), dims = (1,2))
+volumeintegralage2000m = dropdims(nansum((age4D .* v3D)[:, :, i2000m, :], dims = (1, 2)), dims = (1, 2))
+volumeintergal2000m = dropdims(nansum(v3D[:, :, i2000m], dims = (1, 2)), dims = (1, 2))
 meanage2000m = volumeintegralage2000m ./ volumeintergal2000m
 i4000m = argmin(abs.(zt .- 4000))
-volumeintegralage4000m = dropdims(nansum((age4D .* v3D)[:,:,i4000m,:], dims = (1,2)), dims = (1,2))
-volumeintergal4000m = dropdims(nansum(v3D[:,:,i4000m], dims = (1,2)), dims = (1,2))
+volumeintegralage4000m = dropdims(nansum((age4D .* v3D)[:, :, i4000m, :], dims = (1, 2)), dims = (1, 2))
+volumeintergal4000m = dropdims(nansum(v3D[:, :, i4000m], dims = (1, 2)), dims = (1, 2))
 meanage4000m = volumeintegralage4000m ./ volumeintergal4000m
 
 include("plotting_functions.jl")
 
 
-
-
-
-
-
 fig = Figure()
 axisoptions = (
     limits = (0, nothing, nothing, nothing),
-    xlabel = "ACCESS-ESM1.5 simulation years"
+    xlabel = "ACCESS-ESM1.5 simulation years",
 )
 ax1 = Axis(fig[1, 1]; axisoptions..., ylabel = "age (years)")
 x = 10 * age_idx
@@ -138,12 +133,10 @@ outputfile = joinpath(outputdir, "AA_age_timeseries_postmaxagefix.png")
 save(outputfile, fig)
 
 
-
-
-
 # Rebuild dims from volcello
-finalage = rebuild(age;
-    data = age4D[:,:,:,end],
+finalage = rebuild(
+    age;
+    data = age4D[:, :, :, end],
     dims = dims(volcello),
 )
 finalage2000m = finalage[lev = Near(2000)]
@@ -153,11 +146,11 @@ fig = Figure()
 Ncycles = length(age_idx) - 1
 Label(fig[0, :], "Anderson-Acceleration age after $(10Ncycles) simulation years ($(Ncycles) cycles)", tellwidth = false)
 yticks = -60:30:60
-xticks = -120:60:120 + 360
+xticks = -120:60:(120 + 360)
 levels = 0:100:2500
 colormap = cgrad(:viridis, length(levels), categorical = true)
 highclip = colormap[end]
-colormap = cgrad(colormap[1:end-1], categorical = true)
+colormap = cgrad(colormap[1:(end - 1)], categorical = true)
 lowclip = :red
 colorrange = extrema(levels)
 
@@ -167,22 +160,20 @@ ax = Axis(fig[1, 1]; yticks, xticks, xtickformat, ytickformat)
 ctrf = plotmap!(ax, finalage2000m, gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
 myhidexdecorations!(ax, true)
 𝑧 = rich("z", font = :italic)
-Label(fig[1, 0]; text = rich(𝑧, " = 2000 m"), rotation = π/2, tellheight = false)
+Label(fig[1, 0]; text = rich(𝑧, " = 2000 m"), rotation = π / 2, tellheight = false)
 
 # 4000m age
 ax = Axis(fig[2, 1]; yticks, xticks, xtickformat, ytickformat)
 ctrf = plotmap!(ax, finalage4000m, gridmetrics; colorrange, colormap, highclip, lowclip) # <- need to fix wrapping longitude for contour levels
-Label(fig[2, 0]; text = rich(𝑧, " = 4000 m"), rotation = π/2, tellheight = false)
+Label(fig[2, 0]; text = rich(𝑧, " = 4000 m"), rotation = π / 2, tellheight = false)
 
 # Colorbar
 cb = Colorbar(fig[1:2, 2], ctrf; label = "age (years)", vertical = true, flipaxis = true, ticks = levels[1:2:end])
-cb.height = Relative(2/3)
+cb.height = Relative(2 / 3)
 
 outputfile = joinpath(outputdir, "AA_age_maps_$(Ncycles)_postmaxagefix.png")
 @info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
 
 
 # Below I try to plot the drift but it does not work with the AA data,
@@ -193,29 +184,29 @@ save(outputfile, fig)
 # Δage = diff(age4D, dims = 4)
 x = cyclestart_idx
 startidx, endidx = extrema(x) # Cannot use the last index of start of cycle (model has not finished corresponding run)
-Δage = (age[Decade = startidx..endidx] .- cyclestart_age[Decade = startidx..endidx]).data
+Δage = (age[Decade = startidx .. endidx] .- cyclestart_age[Decade = startidx .. endidx]).data
 Δage[.!wet3D, :] .= NaN;
 fracdrift = abs.(Δage) / 10
 issmalldrift = fracdrift .< 0.01
-volumeintegralissmalldrift = dropdims(nansum(issmalldrift .* v3D, dims = (1,2,3)), dims = (1,2,3))
+volumeintegralissmalldrift = dropdims(nansum(issmalldrift .* v3D, dims = (1, 2, 3)), dims = (1, 2, 3))
 fracsmalldrift = volumeintegralissmalldrift ./ nansum(v3D)
 
-volumeintegralfracdrift = dropdims(nansum(fracdrift .* v3D, dims = (1,2,3)), dims = (1,2,3))
+volumeintegralfracdrift = dropdims(nansum(fracdrift .* v3D, dims = (1, 2, 3)), dims = (1, 2, 3))
 meanfracdrift = volumeintegralfracdrift ./ nansum(v3D)
-volumeintegralfracdrift2000 = dropdims(nansum(fracdrift[:,:,i2000m,:] .* v3D[:,:,i2000m], dims = (1,2)), dims = (1,2))
-meanfracdrift2000 = volumeintegralfracdrift2000 ./ nansum(v3D[:,:,i2000m])
-volumeintegralfracdrift4000 = dropdims(nansum(fracdrift[:,:,i4000m,:] .* v3D[:,:,i4000m], dims = (1,2)), dims = (1,2))
-meanfracdrift4000 = volumeintegralfracdrift4000 ./ nansum(v3D[:,:,i4000m])
-maxfracdrift = dropdims(nanmaximum(Δage / 10, dims = (1,2,3)), dims = (1,2,3))
-minfracdrift = dropdims(nanminimum(Δage / 10, dims = (1,2,3)), dims = (1,2,3))
+volumeintegralfracdrift2000 = dropdims(nansum(fracdrift[:, :, i2000m, :] .* v3D[:, :, i2000m], dims = (1, 2)), dims = (1, 2))
+meanfracdrift2000 = volumeintegralfracdrift2000 ./ nansum(v3D[:, :, i2000m])
+volumeintegralfracdrift4000 = dropdims(nansum(fracdrift[:, :, i4000m, :] .* v3D[:, :, i4000m], dims = (1, 2)), dims = (1, 2))
+meanfracdrift4000 = volumeintegralfracdrift4000 ./ nansum(v3D[:, :, i4000m])
+maxfracdrift = dropdims(nanmaximum(Δage / 10, dims = (1, 2, 3)), dims = (1, 2, 3))
+minfracdrift = dropdims(nanminimum(Δage / 10, dims = (1, 2, 3)), dims = (1, 2, 3))
 
-fig = Figure(size=(800, 1000))
+fig = Figure(size = (800, 1000))
 axisoptions = (
     xlabel = "ACCESS-ESM1.5 simulation years",
     # yscale = log10,
     ylabel = "small drift (< 0.01 yr/yr) frac. vol.",
     yminorticksvisible = true,
-    )
+)
 ax = Axis(fig[1, 1]; axisoptions...)
 lines!(ax, 10 * x, fracsmalldrift)
 xlims!(ax, 0, nothing)
@@ -227,7 +218,7 @@ lines!(ax, 10 * x, meanfracdrift2000, label = "mean 2000 m")
 lines!(ax, 10 * x, meanfracdrift4000, label = "mean 4000 m")
 lines!(ax, 10 * x, meanfracdrift, color = :black, label = "mean global")
 xlims!(ax, 0, nothing)
-ylims!(ax, 1e-5, 1)
+ylims!(ax, 1.0e-5, 1)
 hidexdecorations!(ax, grid = false)
 axislegend(ax, position = :lt)
 

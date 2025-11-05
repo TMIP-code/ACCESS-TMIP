@@ -22,7 +22,6 @@ using LinearSolve
 import Pardiso # import Pardiso instead of using (to avoid name clash?)
 
 
-
 # Load matrix and grid metrics
 model = "ACCESS-ESM1-5"
 member = "r1i1p1f1"
@@ -66,7 +65,7 @@ v = v3D[wet3D];
 
 issrf = let
     issrf3D = zeros(size(wet3D))
-    issrf3D[:,:,1] .= 1
+    issrf3D[:, :, 1] .= 1
     issrf3D[wet3D]
 end
 M = sparse(Diagonal(issrf))
@@ -80,7 +79,7 @@ A = BlockArray(spzeros(Nseasons * N, Nseasons * N), fill(N, Nseasons), fill(N, N
     @info "Loading matrices + metrics as $inputfile"
     T = load(inputfile)["T"]
     A[Block(i, i)] = I + δt * (T + M)
-    A[Block(mod1(i+1, Nseasons), i)] = -I(N)
+    A[Block(mod1(i + 1, Nseasons), i)] = -I(N)
 end
 # @time "converting BlockArray to standard sparse" A = sparse(A)
 A = @time "converting BlockArray to standard sparse" reduce(hcat, reduce(vcat, A[Block(i, j)] for i in 1:blocksize(A, 1)) for j in 1:blocksize(A, 2))
@@ -99,4 +98,3 @@ nprocs = 48
 # @time "solve" solve!(linsolve)
 
 foo
-

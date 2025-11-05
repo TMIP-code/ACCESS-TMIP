@@ -69,10 +69,6 @@
 # (; wet3D, N) = indices
 
 
-
-
-
-
 # # Matrix cyclo ages for varied members
 # @info "Loading age computed from matrices of different members"
 # κVML = 1e-7   # m^2/s
@@ -168,15 +164,13 @@
 # σ̂max = 1.5
 
 
-
-
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
-fig = Figure(size=(400, 400))
+fig = Figure(size = (400, 400))
 
-κVdeep_str = rich("κVdeep = ", format(κVdeep, conversion="e"), " m", superscript("−2"), " s")
-κH_str = rich("κH = ", format(κH, conversion="d"), " m", superscript("−2"), " s")
-κVML_str = rich("κVML = ", format(κVML, conversion="e"), " m", superscript("−2"), " s")
+κVdeep_str = rich("κVdeep = ", format(κVdeep, conversion = "e"), " m", superscript("−2"), " s")
+κH_str = rich("κH = ", format(κH, conversion = "d"), " m", superscript("−2"), " s")
+κVML_str = rich("κVML = ", format(κVML, conversion = "e"), " m", superscript("−2"), " s")
 
 # Corrticks for Taylor diagram
 # corrticks = [-1; -0.99; -0.95; -0.9:0.1:-0.7; -0.6:0.2:0.6; 0.7:0.1:0.9; 0.95; 0.99; 1.0]
@@ -186,9 +180,10 @@ function myformat(corrtick)
     str = string(corrtick)
     return replace(str, "-" => "−")
 end
-rtickformat(rs) = map(r -> "$(format(round(10r/σ̂r)/10, stripzeros = true))σ̂ᵣ", rs)
-ax = PolarAxis(fig[1, 1];
-    thetalimits = (0, π/2), # first quadrant only
+rtickformat(rs) = map(r -> "$(format(round(10r / σ̂r) / 10, stripzeros = true))σ̂ᵣ", rs)
+ax = PolarAxis(
+    fig[1, 1];
+    thetalimits = (0, π / 2), # first quadrant only
     thetagridcolor = (:black, 0.5),
     thetagridstyle = :dot,
     thetaticks = (acos.(corrticks), myformat.(corrticks)),
@@ -209,8 +204,9 @@ E′fun(σ̂f, σ̂r, R) = sqrt(σ̂f^2 + σ̂r^2 - 2 * σ̂f * σ̂r * R)
 # E′grid = [sqrt(r^2 + σ̂r^2 - 2 * σ̂r * r * cos(θ)) for θ in θgrid, r in rgrid]
 E′grid = [E′fun(r, σ̂r, cos(θ)) for θ in θgrid, r in rgrid]
 # labelformatter(E′s) = map(E′ -> rich("$(E′/σ̂r)", rich(" σ", subscript("ref"))), E′s)
-labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σ̂r)/10, stripzeros = true))σᵣ", E′s)
-contour!(ax, θgrid, rgrid, E′grid;
+labelformatter(E′s) = map(E′ -> "$(format(round(10E′ / σ̂r) / 10, stripzeros = true))σᵣ", E′s)
+contour!(
+    ax, θgrid, rgrid, E′grid;
     levels,
     labels = true,
     labelformatter,
@@ -225,11 +221,12 @@ end
 # maximum correlation obtainable
 @show R₀ = nanmean(Rs_nans)
 # skill score isolines
-S(σ̂f, σ̂r, R) = 4 * (1 + R) / ((σ̂f/σ̂r + σ̂r/σ̂f)^2 * (1 + R₀))
+S(σ̂f, σ̂r, R) = 4 * (1 + R) / ((σ̂f / σ̂r + σ̂r / σ̂f)^2 * (1 + R₀))
 # S(σ̂f, σ̂r, R) = 4 * (1 + R)^4 / ((σ̂f/σ̂r + σ̂r/σ̂f)^2 * (1 + R₀)^4)
 Sgrid = [S(r, σ̂r, cos(θ)) for θ in θgrid, r in rgrid]
 Slevels = [0:0.1:0.9; 0.95; 0.99]
-contour!(ax, θgrid, rgrid, Sgrid;
+contour!(
+    ax, θgrid, rgrid, Sgrid;
     levels = Slevels,
     labels = true,
     color = cgrad(:Archambault, categorical = true)[4]
@@ -250,13 +247,14 @@ xy_from_R_and_σ̂(R, σ̂) = Point2(σ̂ * R, sqrt(σ̂^2 - (σ̂ * R)^2))
 # Plot all matrix ages
 transformation = Transformation(ax.scene.transformation; transform_func = identity)
 x, y = collect.(zip(xy_from_R_and_σ̂.(Rs, σ̂fs)...) |> collect)
-scatter!(ax, x, y;
+scatter!(
+    ax, x, y;
     color = :red,
     markersize = 3,
     transformation,
 )
 offset = 100
-txtline = [offset, offset/5]
+txtline = [offset, offset / 5]
 fontsize = 10
 lines!(ax, mean(x) .- txtline, mean(y) .+ txtline / 2; linewidth = 1, color = :black, transformation)
 text!(ax, mean(x) - offset, mean(y) + offset / 2; text = "cyclostationary\nage", transformation, align = (:right, :bottom), offset = (0, 0), fontsize)
@@ -301,7 +299,8 @@ text!(ax, xκ - 0.2σ̂r, yκ - 0.2σ̂r - 2offset; text = κVML_str, transforma
 
 
 # Plot reference (AA age)
-scatter!(ax, Point2(xy_from_R_and_σ̂(1, σ̂r));
+scatter!(
+    ax, Point2(xy_from_R_and_σ̂(1, σ̂r));
     color = :black,
     transformation,
 )

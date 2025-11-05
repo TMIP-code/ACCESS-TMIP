@@ -25,7 +25,6 @@ using NonlinearSolve
 using ProgressMeter
 
 
-
 # script options
 @show model = "ACCESS-OM2-025"
 if isempty(ARGS)
@@ -52,10 +51,10 @@ parentκH = gridscale_κH ? 2κH : κH
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-parentκH_str = "kH" * format(parentκH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+parentκH_str = "kH" * format(parentκH, conversion = "d")
 parentκH_str2 = gridscale_κH ? "_gridscaled" : ""
 
 
@@ -100,7 +99,7 @@ V = sparse(Diagonal(v))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -115,19 +114,20 @@ b = ones(N)
 
 # Coarsen 2x2 (so effectively 0.25° -> 0.5°)
 @info "coarsening grid 2x2 everywhere"
-LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T; di=2, dj=2, dk=1)
+LUMP, SPRAY, v_c = OceanTransportMatrixBuilder.lump_and_spray(wet3D, v, T; di = 2, dj = 2, dk = 1)
 M_c = LUMP * M * SPRAY
 b_c = LUMP * b
 
 matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
-prob = init(LinearProblem(M_c, b_c), solver, rtol = 1e-10)
+prob = init(LinearProblem(M_c, b_c), solver, rtol = 1.0e-10)
 sol_c = solve!(prob).u
 sol = SPRAY * sol_c
 
 # turn the age solution vector back into a 3D cube
-agecube = DimensionalData.rebuild(volcello_ds["volcello"];
+agecube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
     dims = dims(volcello),
     metadata = Dict(

@@ -82,9 +82,9 @@ indices = makeindices(gridmetrics.v3D)
 
 
 # unpack model grid
-(; lon, lat, zt, v3D,) = gridmetrics
+(; lon, lat, zt, v3D) = gridmetrics
 lev = zt
-maxlat = dropdims(maximum(lat, dims=1), dims=1)
+maxlat = dropdims(maximum(lat, dims = 1), dims = 1)
 
 # unpack indices
 (; wet3D, N) = indices
@@ -100,9 +100,8 @@ isglobal(lat, lon, o) = trues(size(lat))
 basin_functions = (isatlnoSO, isindopacific, isglobal, isSO)
 basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
 basins = (; (basin_keys .=> basin_values)...)
-basin_latlims_values = [clamp.(0 .* (-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims_values = [clamp.(0 .* (-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
 basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
-
 
 
 # Compute MOC as max or min of stream function
@@ -138,13 +137,13 @@ for (time_window, experiment) in zip(time_windows, experiments)
         mean_days_in_month = umo_ds.mean_days_in_month |> Array
         w = Weights(mean_days_in_month)
 
-        umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims=:month), dims=:month)
-        vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims=:month), dims=:month)
+        umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims = :month), dims = :month)
+        vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims = :month), dims = :month)
 
-        ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims=:month), dims=:month)
-        ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims=:month), dims=:month)
-        ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims=:month), dims=:month)
-        ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims=:month), dims=:month)
+        ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims = :month), dims = :month)
+        ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims = :month), dims = :month)
+        ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims = :month), dims = :month)
+        ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims = :month), dims = :month)
 
         # Replace missing values and convert to arrays
         # I think latest YAXArrays converts _FillValues to missing
@@ -159,10 +158,10 @@ for (time_window, experiment) in zip(time_windows, experiments)
 
         # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
         (nx, ny, _) = size(ψᵢGM)
-        ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
-        ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
-        ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
-        ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+        ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims = 3)
+        ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims = 3)
+        ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims = 3)
+        ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims = 3)
 
         # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
         ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
@@ -171,32 +170,35 @@ for (time_window, experiment) in zip(time_windows, experiments)
 
         # AMOC
         basin = basins.ATL
-        x2D = dropdims(reverse(nancumsum(reverse(nansum(basin .* ϕ.north, dims = 1), dims=3), dims = 3), dims=3), dims = 1) # kg/s
+        x2D = dropdims(reverse(nancumsum(reverse(nansum(basin .* ϕ.north, dims = 1), dims = 3), dims = 3), dims = 3), dims = 1) # kg/s
         x2Dmask = zonalaverage(1, gridmetrics; mask = basin) .> 0
         x2D[.!x2Dmask] .= 0
         x2D[:, 1:10] .= 0
         # convert to Sv
-        x2D = x2D / 1e6 / ρ # Sv
+        x2D = x2D / 1.0e6 / ρ # Sv
         AMOCval, AMOCidx = findmin(x2D)
 
         # USMOC
         basin = basins.SO
-        x2D = dropdims(reverse(nancumsum(reverse(nansum(basin .* ϕ.north, dims = 1), dims=3), dims = 3), dims=3), dims = 1) # kg/s
+        x2D = dropdims(reverse(nancumsum(reverse(nansum(basin .* ϕ.north, dims = 1), dims = 3), dims = 3), dims = 3), dims = 1) # kg/s
         x2Dmask = zonalaverage(1, gridmetrics; mask = basin) .> 0
         x2D[.!x2Dmask] .= 0
         x2D[:, 1:10] .= 0
         x2D[maxlat .≥ -30, :] .= 0
 
         # convert to Sv
-        x2D = x2D / 1e6 / ρ # Sv
+        x2D = x2D / 1.0e6 / ρ # Sv
         USMOCval, USMOCidx = findmin(x2D)
         LSMOCval, LSMOCidx = findmax(x2D)
 
-        push!(MOCdf, (time_window, experiment, member,
-            AMOCval, zt[AMOCidx[2]], maxlat[AMOCidx[1]],
-            USMOCval, zt[USMOCidx[2]], maxlat[USMOCidx[1]],
-            LSMOCval, zt[LSMOCidx[2]], maxlat[LSMOCidx[1]]
-        ))
+        push!(
+            MOCdf, (
+                time_window, experiment, member,
+                AMOCval, zt[AMOCidx[2]], maxlat[AMOCidx[1]],
+                USMOCval, zt[USMOCidx[2]], maxlat[USMOCidx[1]],
+                LSMOCval, zt[LSMOCidx[2]], maxlat[LSMOCidx[1]],
+            )
+        )
     end
 
 end
@@ -224,7 +226,7 @@ axisoptions = (
     # limits = (12, 24, 0.5, 3.5),
     limits = (6, 34, 0.5, 3.5),
     yticks = (1:length(time_windows), ["$e\n$(t[4:7])s" for (e, t) in zip(reverse(experiments2), reverse(time_windows))]),
-    yticklabelrotation = pi/2,
+    yticklabelrotation = pi / 2,
     yticksvisible = false,
     # yticklabelsvisible = false,
     ygridvisible = false,
@@ -237,7 +239,7 @@ axisoptions = (
 textoptions = (
     align = (:center, :top),
     offset = (0, -25),
-    fontsize = 12
+    fontsize = 12,
 )
 
 textoptions2 = (
@@ -277,7 +279,6 @@ sp = rp.plots[findfirst(x -> x isa Makie.Scatter, rp.plots)]
 text!(ax, mean(MOCdf.LSMOC[MOCdf.time_window .== time_windows[1]]), 3; text = "lower-cell\nSMOC", textoptions2..., color = sp.color, offset = (-50, 20))
 
 
-
 fig
 
 outputdir = "output/plots"
@@ -289,8 +290,3 @@ save(outputfile, fig)
 outputfile = joinpath(outputdir, "$(model)_MOC_variability_for_Reviewer2.pdf")
 @info "Saving MOC as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-
-
-

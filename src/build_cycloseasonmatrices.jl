@@ -40,7 +40,6 @@ areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
 volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
 
 
-
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
 volcello = readcubedata(volcello_ds.volcello)
@@ -65,20 +64,20 @@ indices = makeindices(gridmetrics.v3D)
 ρ = 1035.0    # kg/m^3
 κH = 500.0    # m^2/s
 κVML = 0.1    # m^2/s
-κVdeep = 1e-5 # m^2/s
+κVdeep = 1.0e-5 # m^2/s
 
 
 for season in seasons
 
     # Load variables in memory
-    mlotst = readcubedata(mlotst_ds.mlotst[season=At(season)])
-    umo = readcubedata(umo_ds.umo[season=At(season)])
-    vmo = readcubedata(vmo_ds.vmo[season=At(season)])
+    mlotst = readcubedata(mlotst_ds.mlotst[season = At(season)])
+    umo = readcubedata(umo_ds.umo[season = At(season)])
+    vmo = readcubedata(vmo_ds.vmo[season = At(season)])
 
-    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[season=At(season)])
-    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[season=At(season)])
-    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[season=At(season)])
-    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[season=At(season)])
+    ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[season = At(season)])
+    ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[season = At(season)])
+    ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[season = At(season)])
+    ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[season = At(season)])
 
     # Replace missing values and convert to arrays
     # I think latest YAXArrays converts _FillValues to missing
@@ -93,10 +92,10 @@ for season in seasons
 
     # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
     (nx, ny, _) = size(ψᵢGM)
-    ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
-    ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
-    ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
-    ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+    ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims = 3)
+    ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims = 3)
+    ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims = 3)
+    ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims = 3)
 
     # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
     ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
@@ -108,13 +107,11 @@ for season in seasons
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
     outputfile = joinpath(cycloinputdir, "cyclo_matrix_$season.jld2")
     @info "Saving matrix as $outputfile"
-    save(outputfile,
+    save(
+        outputfile,
         Dict(
             "T" => T,
         )
     )
 
 end
-
-
-

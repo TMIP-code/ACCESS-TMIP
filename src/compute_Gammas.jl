@@ -67,7 +67,7 @@ show(dataavailability; allrows = true)
 all(.!dataavailability.has_it_all) && @warn "Nothing to do: missing something for all members"
 
 for member in members[dataavailability.has_it_all]
-# for member in [first(members)]
+    # for member in [first(members)]
 
     inputdir = inputdirfun(member)
 
@@ -99,7 +99,7 @@ for member in members[dataavailability.has_it_all]
     ρ = 1035.0    # kg/m^3
     κH = 500.0    # m^2/s
     κVML = 0.1    # m^2/s
-    κVdeep = 1e-5 # m^2/s
+    κVdeep = 1.0e-5 # m^2/s
 
     # Make makegridmetrics
     gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
@@ -115,7 +115,7 @@ for member in members[dataavailability.has_it_all]
     (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
     # unpack model grid
-    (; lon, lat, zt, v3D,) = gridmetrics
+    (; lon, lat, zt, v3D) = gridmetrics
     lev = zt
     # unpack indices
     (; wet3D, N) = indices
@@ -124,7 +124,7 @@ for member in members[dataavailability.has_it_all]
 
     # surface mask
     issrf3D = copy(wet3D)
-    issrf3D[:,:,2:end] .= false
+    issrf3D[:, :, 2:end] .= false
     issrf = issrf3D[wet3D]
     # Ideal mean age Γ↓ is governed by
     # 	∂Γ↓/∂t + T Γ↓ = 1 - M Γ↓
@@ -157,7 +157,8 @@ for member in members[dataavailability.has_it_all]
     (v' * Γout) / sum(v)
 
     # Turn Γin into a YAXArray by rebuilding from volcello
-    Γinyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γinyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γinyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -169,7 +170,8 @@ for member in members[dataavailability.has_it_all]
     Γin_ds = Dataset(; volcello_ds.properties, arrays...)
 
     # Turn Γout into a YAXArray by rebuilding from volcello
-    Γoutyr_YAXArray = rebuild(volcello_ds["volcello"];
+    Γoutyr_YAXArray = rebuild(
+        volcello_ds["volcello"];
         data = Γoutyr3D,
         dims = dims(volcello_ds["volcello"]),
         metadata = Dict(
@@ -191,5 +193,3 @@ for member in members[dataavailability.has_it_all]
     savedataset(Γout_ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 end
-
-

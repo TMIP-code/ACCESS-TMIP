@@ -33,7 +33,6 @@ include("plotting_functions.jl")
 model = "ACCESS-ESM1-5"
 
 
-
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
@@ -68,7 +67,7 @@ basin_strs = ("Atlantic", "Pacific", "Indian")
 basin_functions = (isatlantic, ispacific, isindian)
 basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
 basins = (; (basin_keys .=> basin_values)...)
-basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
 basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
 
@@ -107,7 +106,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
 
     Γoutyr3D_argmin[.!wet3D] .= NaN
     Γoutyr3D_argmax[.!wet3D] .= NaN
-
 
 
     # # Plot zonal averages
@@ -205,10 +203,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # # save(outputfile, fig)
 
 
-
-
-
-
     # # Plot Γ↑ zonal averages
 
 
@@ -283,7 +277,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # end
 
 
-
     # for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
     #     Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
     #     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
@@ -299,13 +292,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_v4_$(time_window).png")
     # @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
     # save(outputfile, fig)
-
-
-
-
-
-
-
 
 
     # # fig = Figure(size = (1200, 1200), fontsize = 18)
@@ -344,19 +330,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # # outputfile = joinpath(outputdir, "mean_age_at_seafloor_v4_$(time_window).png")
     # # @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
     # # save(outputfile, fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     # fig = Figure(size = (1200, 1200), fontsize = 18)
@@ -400,15 +373,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_v4_$(time_window).png")
     # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
     # save(outputfile, fig)
-
-
-
-
-
-
-
-
-
 
 
     # # Redo the same for max minus min
@@ -507,10 +471,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # # save(outputfile, fig)
 
 
-
-
-
-
     # Plot Γ↑ zonal averages
 
 
@@ -585,7 +545,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # end
 
 
-
     # for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
     #     Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
     #     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
@@ -601,13 +560,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # outputfile = joinpath(outputdir, "reemergence_time_ZAVGs_vsmaxdiff_$(time_window).png")
     # @info "Saving reemergence time ZAVGs as image file:\n  $(outputfile)"
     # save(outputfile, fig)
-
-
-
-
-
-
-
 
 
     # # fig = Figure(size = (1200, 1200), fontsize = 18)
@@ -646,19 +598,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # # outputfile = joinpath(outputdir, "mean_age_at_seafloor_vsmaxdiff_$(time_window).png")
     # # @info "Saving ideal mean age at sea floor as image file:\n  $(outputfile)"
     # # save(outputfile, fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     # fig = Figure(size = (800, 800), fontsize = 18)
@@ -722,12 +661,9 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # save(outputfile, fig)
 
 
-
-
-
     # Same but with elevation plot as well
-    axs = Array{Any,2}(undef, (3, 1))
-    contours = Array{Any,2}(undef, (3, 1))
+    axs = Array{Any, 2}(undef, (3, 1))
+    contours = Array{Any, 2}(undef, (3, 1))
     fig = Figure(size = (800, size(axs, 1) * 300), fontsize = 18)
     yticks = -60:30:60
     xticks = -180:60:180
@@ -740,8 +676,8 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # ]
 
     for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
-    # for (irow, x3D) in enumerate((cumsum(thkcello, dims=3), Γoutyr3D_mean, Γoutyr3D_maxdiff, Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
-    # for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean, mlotst_yearmax_ensemblemean))
+        # for (irow, x3D) in enumerate((cumsum(thkcello, dims=3), Γoutyr3D_mean, Γoutyr3D_maxdiff, Γoutyr3D_maxdiff ./ Γoutyr3D_mean))
+        # for (irow, x3D) in enumerate((Γoutyr3D_mean, Γoutyr3D_maxdiff, 100 * Γoutyr3D_maxdiff ./ Γoutyr3D_mean, mlotst_yearmax_ensemblemean))
 
         # if irow == 1 # bathy
         #     levels = [0, 6000] # Note levels seems unused here (except for colorrange)
@@ -771,7 +707,7 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
             label = rich("max − min (m)")
         end
 
-        axs[irow, 1] = ax = Axis(fig[irow,1]; yticks, xticks, xtickformat, ytickformat)
+        axs[irow, 1] = ax = Axis(fig[irow, 1]; yticks, xticks, xtickformat, ytickformat)
 
         # plot
         if irow == 4
@@ -788,15 +724,15 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
         # poly!(ax, reverse.(OCEANS[OceanBasins.east_pacific()].polygon))
         # poly!(ax, reverse.(OCEANS[OceanBasins.west_pacific()].polygon))
 
-        cb = Colorbar(fig[irow,2], plt; label)
-        cb.height = Relative(2/3)
+        cb = Colorbar(fig[irow, 2], plt; label)
+        cb.height = Relative(2 / 3)
 
         # text = strs[irow]
         # Label(fig[irow, 0]; text, rotation = π/2, tellheight = false, fontsize = 24)
     end
 
-    Label(fig[1, 0]; text = "Ensemble Mean", rotation = π/2, tellheight = false, fontsize = 24)
-    Label(fig[2:3, 0]; text = "Internal Variability", rotation = π/2, tellheight = false, fontsize = 24)
+    Label(fig[1, 0]; text = "Ensemble Mean", rotation = π / 2, tellheight = false, fontsize = 24)
+    Label(fig[2:3, 0]; text = "Internal Variability", rotation = π / 2, tellheight = false, fontsize = 24)
     # Label(fig[4, 0]; text = "Mixed layer depth", rotation = π/2, tellheight = false, fontsize = 24)
 
     for (ax, label) in zip(axs, ["a", "b", "c"])
@@ -816,8 +752,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     save(outputfile, fig)
 
 
-
-
     # Quick plot of joint PDF of max−min vs mean
     fig = Figure()
     # x = seafloorvalue(Γoutyr3D_mean, wet3D, gridmetrics)
@@ -829,17 +763,17 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     ikeep = findall(x -> !isnan(x) & !iszero(x), x)
     x = x[ikeep]
     y = y[ikeep]
-    ax = Axis(fig[1,1], xlabel = "ensemble mean", ylabel = "count", limits = (0, nothing, 0, nothing))
+    ax = Axis(fig[1, 1], xlabel = "ensemble mean", ylabel = "count", limits = (0, nothing, 0, nothing))
     hist!(ax, x)
     xquantiles = quantile(x, [0, 0.1, 0.2, 0.5, 0.8, 0.9, 1])
     vlines!(ax, xquantiles)
     for (i, x) in enumerate(xquantiles)
         text!(ax, x, 500i; text = string(round(Int, x)))
     end
-    ax = Axis(fig[2,2], xlabel = "count", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
+    ax = Axis(fig[2, 2], xlabel = "count", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
     hist!(ax, y; direction = :x)
     hlines!(ax, quantile(y, [0, 0.1, 0.2, 0.5, 0.8, 0.9, 1]))
-    ax = Axis(fig[2,1], xlabel = "ensemble mean", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
+    ax = Axis(fig[2, 1], xlabel = "ensemble mean", ylabel = "max minus min", limits = (0, nothing, 0, nothing))
     points = Makie.StructArray{Point2f}((x, y))
     ds = datashader!(ax, points; colormap = :binary, async = false)
     for slope in [0.1, 0.2, 0.5, 1]
@@ -848,13 +782,13 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     slopes = y ./ x
     ablines!(ax, 0, mean(slopes), linestyle = :dash)
     ablines!(ax, 0, median(slopes), linestyle = :dash)
-    ax = Axis(fig[1,2], xlabel = "slope", ylabel = "count", limits = (-1, 2, 0, nothing))
-    hist!(ax, slopes, bins = -1:0.05:2, color=:red)
+    ax = Axis(fig[1, 2], xlabel = "slope", ylabel = "count", limits = (-1, 2, 0, nothing))
+    hist!(ax, slopes, bins = -1:0.05:2, color = :red)
     for slope in [0.1, 0.2, 0.5, 1]
         vlines!(ax, slope)
     end
     vlines!(ax, mean(slopes), label = "mean slope", linestyle = :dash)
-    vspan!(ax, (mean(slopes) .+ std(slopes) * [-1, 1])..., color=(:blue, 0.1))
+    vspan!(ax, (mean(slopes) .+ std(slopes) * [-1, 1])..., color = (:blue, 0.1))
     vlines!(ax, median(slopes), label = "median slope", linestyle = :dash)
     # save plot
     outputfile = joinpath(outputdir, "jointPDF_mean_vs_maxminusmin_adjointage_$(time_window).png")
@@ -862,10 +796,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     save(outputfile, fig)
     @show mean(slopes)
     @show median(slopes)
-
-
-
-
 
 
     # # Plot argmin and argmax to see which members
@@ -926,12 +856,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # save(outputfile, fig)
 
 
-
-
-
-
-
-
     # # # Same but show min and max separately
 
     # # axs = Array{Any,2}(undef, (3, 1))
@@ -977,11 +901,6 @@ for time_window in ["Jan1850-Dec1859", "Jan1990-Dec1999", "Jan2030-Dec2039", "Ja
     # # outputfile = joinpath(outputdir, "reemergence_time_at_seafloor_meanmaxmin_$(time_window).png")
     # # @info "Saving mean reemergence time at sea floor as image file:\n  $(outputfile)"
     # # save(outputfile, fig)
-
-
-
-
-
 
 
     # # Same but show min and max separately

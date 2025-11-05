@@ -69,8 +69,6 @@
 # (; wet3D, N) = indices
 
 
-
-
 # # # Matrix ages for varied diffusivities
 # # @info "Loading age computed from matrices with different diffusivities"
 # κVdeeps = [1e-9, 1e-8, 1e-7, 1e-6, 1e-5] # m^2/s
@@ -97,7 +95,6 @@
 # AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0035.nc"
 # obs_ds = open_dataset(AAfile)
 # obs_data = obs_ds.age_global[Time=1].data[wet3D]
-
 
 
 # # Taylor diagram function that returns all the required values
@@ -139,8 +136,6 @@
 # TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
 # σr = TDvals[1].σr
 # σmax = 1.2TDvals[1].σr
-
-
 
 
 # # Do the actual plotting now
@@ -279,9 +274,7 @@
 # save(outputfile, fig)
 
 
-
-
-fig = Figure(size=(1200, 1200))
+fig = Figure(size = (1200, 1200))
 
 options = (
     xlabel = "κVML",
@@ -290,8 +283,7 @@ options = (
     yticks = (1:length(κHs), format.(κHs, conversion = "e")),
 )
 
-colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
-
+colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π / 2 * (1 - x)), limits = (0.001, 0.999))
 
 
 for irow in 1:5
@@ -308,7 +300,7 @@ for irow in 1:5
     # STD - STDref
     ax = Axis(fig[irow, 2]; options...)
     kwargs = (
-        colorrange = (-σr/2, σr/2),
+        colorrange = (-σr / 2, σr / 2),
         colormap = cgrad(:RdBu, rev = true),
     )
     hm2 = heatmap!(ax, σfs[irow, :, :] .- σr; kwargs...)
@@ -319,7 +311,7 @@ for irow in 1:5
     # RMS
     ax = Axis(fig[irow, 3]; options...)
     kwargs = (
-        colorrange = (0, σr/2),
+        colorrange = (0, σr / 2),
         colormap = :plasma,
     )
     hm3 = heatmap!(ax, E′s[irow, :, :]; kwargs...)
@@ -347,7 +339,7 @@ for irow in 1:5
     hideydecorations!(ax)
     (irow ≠ 5) && hidexdecorations!(ax)
 
-    Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π / 2, tellheight = false)
 
     if irow == 5
         cbopt = (
@@ -366,15 +358,12 @@ for irow in 1:5
 end
 
 
-
-Label(fig[0,1]; text = "correlation", tellwidth = false)
-Label(fig[0,2]; text = "STD - STDref", tellwidth = false)
-Label(fig[0,3]; text = "RMS", tellwidth = false)
-Label(fig[0,4]; text = "bias", tellwidth = false)
-Label(fig[0,5]; text = "skill score", tellwidth = false)
+Label(fig[0, 1]; text = "correlation", tellwidth = false)
+Label(fig[0, 2]; text = "STD - STDref", tellwidth = false)
+Label(fig[0, 3]; text = "RMS", tellwidth = false)
+Label(fig[0, 4]; text = "bias", tellwidth = false)
+Label(fig[0, 5]; text = "skill score", tellwidth = false)
 
 outputfile = joinpath(outputdir, "Taylor_diagram_3D_heatmaps.png")
 @info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-

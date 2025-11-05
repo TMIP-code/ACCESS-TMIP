@@ -70,8 +70,6 @@ include("plotting_functions.jl")
 #
 
 
-
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -98,9 +96,9 @@ WRITEDATA = parse(Bool, WRITEDATA)
 @show κVdeep
 @show κVML
 @show κH
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 upwind = false
 @show upwind
@@ -146,7 +144,7 @@ V⁻¹ = sparse(Diagonal(1 ./ v3D[wet3D]))
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -177,9 +175,7 @@ matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
 
 prob = LinearProblem(I + Δt * M̃̄, ones(N))
-yearprob = init(prob, solver, rtol = 1e-10)
-
-
+yearprob = init(prob, solver, rtol = 1.0e-10)
 
 
 function stepbackoneyear!(ℊ̃, ∫ℊ̃dt, yearprob, t)
@@ -191,13 +187,12 @@ function stepbackoneyear!(ℊ̃, ∫ℊ̃dt, yearprob, t)
         # data4D[:,:,:,t] .= OceanTransportMatrixBuilder.as3D(ℊ̃, wet3D)
         # Save yearly data at seafloor
         x3D[wet3D] .= ℊ̃
-        ℊ̃_seafloor[:,:,t] .= seafloorvalue(x3D, wet3D)
+        ℊ̃_seafloor[:, :, t] .= seafloorvalue(x3D, wet3D)
         x3D[wet3D] .= 1 .- ∫ℊ̃dt # sequestration efficiency, ℰ
-        ℰ_seafloor[:,:,t] .= seafloorvalue(x3D, wet3D)
+        ℰ_seafloor[:, :, t] .= seafloorvalue(x3D, wet3D)
     end
     return ℊ̃
 end
-
 
 
 Nyears = 3000
@@ -212,17 +207,15 @@ nx, ny, nz = size(wet3D)
 ℰ_seafloor = fill(NaN, nx, ny, Nyears)
 x3D = fill(NaN, nx, ny, nz)
 
-@showprogress dt=600 "Time-stepping loop" for t in 1:Nyears
+@showprogress dt = 600 "Time-stepping loop" for t in 1:Nyears
     stepbackoneyear!(ℊ̃, ∫ℊ̃dt, yearprob, t)
 end
 
 
-
-
-
 # save yearly values of ℊ̃
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℊ̃cube = DimensionalData.rebuild(volcello_ds["volcello"];
+ℊ̃cube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ℊ̃_seafloor,
     dims = axlist,
     metadata = Dict(
@@ -246,7 +239,8 @@ savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
 # save yearly values of ℰ
 axlist = (dims(volcello_ds["volcello"])[1:2]..., dims(DimArray(ones(Nyears), Ti(1:Nyears)))[1])
-ℰcube = DimensionalData.rebuild(volcello_ds["volcello"];
+ℰcube = DimensionalData.rebuild(
+    volcello_ds["volcello"];
     data = ℰ_seafloor,
     dims = axlist,
     metadata = Dict(
@@ -266,4 +260,3 @@ outputfile = joinpath(inputdir, "seqeff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$
 
 @info "Saving adjoint propagrator as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-

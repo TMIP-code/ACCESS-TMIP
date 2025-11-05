@@ -44,7 +44,6 @@ using NonlinearSolve
 # So the δt that multiplies Mₘ is δ(m..m+1).
 
 
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -69,9 +68,9 @@ end
 @show κH
 @show κVML
 
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-κVML_str = "kVML" * format(κVML, conversion="e")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+κVML_str = "kVML" * format(κVML, conversion = "e")
 
 lumpby = "month"
 months = 1:12
@@ -110,7 +109,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -125,8 +124,6 @@ end
 δts = map(eachindex(months)) do m
     ustrip(s, (mean_days_in_months[mod1(m - 1, 12)] + mean_days_in_months[m]) / 2 * d)
 end
-
-
 
 
 # Build matrices
@@ -161,23 +158,23 @@ M̄ = mean(Ms) #
 Δt = sum(δts)
 
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+Plprob = init(Plprob, MKLPardisoIterate(; nprocs), rtol = 1.0e-10)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
-@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1e-10).u
+@time "initial state solve" u0 = solve(LinearProblem(M̄, ones(N)), MKLPardisoIterate(; nprocs), rtol = 1.0e-10).u
 @show norm(M̄ * u0 - ones(N)) / norm(ones(N))
 
 function initstepprob(A)
     prob = LinearProblem(A, ones(N))
-    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs), rtol = 1.0e-10)
 end
 
 p = (;
     months,
     δts,
-    stepprob = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)]
+    stepprob = [initstepprob(I + δt * M) for (δt, M) in zip(δts, Ms)],
 )
 function stepforwardonemonth!(du, u, p, m)
     prob = p.stepprob[m]
@@ -220,7 +217,7 @@ nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve cyclo-stationary state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol = 1.0e-12)); show_trace = Val(true), reltol = Inf, abstol = 1.0e-10norm(u0, Inf));
 
 
 @info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
@@ -230,7 +227,8 @@ du = deepcopy(u0)
 
 # Save cyclo-stationary age
 du = sol!.u # The last month solved for is December (m = 12, implicit in forward time)
-data4D = reduce((a, b) -> cat(a, b, dims=4),
+data4D = reduce(
+    (a, b) -> cat(a, b, dims = 4),
     map(months) do m
         stepforwardonemonth!(du, du, p, m)
         Γinyr = ustrip.(yr, du .* s)
@@ -239,7 +237,8 @@ data4D = reduce((a, b) -> cat(a, b, dims=4),
     end
 )
 axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nmonths), Ti(months)))[1])
-cube4D = rebuild(volcello_ds["volcello"];
+cube4D = rebuild(
+    volcello_ds["volcello"];
     data = data4D,
     dims = axlist,
     metadata = Dict(
@@ -255,4 +254,3 @@ ds = Dataset(; volcello_ds.properties, arrays...)
 outputfile = joinpath(cycloinputdir, "ideal_mean_age_$(κVdeep_str)_$(κH_str)_$(κVML_str).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-

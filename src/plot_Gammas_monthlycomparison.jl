@@ -57,7 +57,7 @@ gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices
 indices = makeindices(gridmetrics.v3D)
 
 # unpack model grid
-(; lon, lat, zt, v3D,) = gridmetrics
+(; lon, lat, zt, v3D) = gridmetrics
 lev = zt
 # unpack indices
 (; wet3D, N) = indices
@@ -77,49 +77,52 @@ basin_strs = ("Atlantic", "Pacific", "Indian")
 basin_functions = (isatlantic, ispacific, isindian)
 basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
 basins = (; (basin_keys .=> basin_values)...)
-basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:,:,1]) .& basin[:,:,1]]), -80, 80) for basin in basins]
+basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
 basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
 
 levels = 0:100:2500
-colormap = cgrad(:viridis, length(levels); categorical=true)
+colormap = cgrad(:viridis, length(levels); categorical = true)
 extendlow = nothing
 extendhigh = colormap[end]
-colormap = cgrad(colormap[1:end-1]; categorical=true)
+colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
 
 Δlevels = -1000:100:1000
-Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical=true, rev=true)
+Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical = true, rev = true)
 Δextendlow = Δcolormap[1]
 Δextendhigh = Δcolormap[end]
-Δcolormap = cgrad(Δcolormap[2:end-1]; categorical=true)
+Δcolormap = cgrad(Δcolormap[2:(end - 1)]; categorical = true)
 
 Δflevels = -100:10:100
-Δfcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical=true, rev=true)
+Δfcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical = true, rev = true)
 Δfextendlow = Δcolormap[1]
 Δfextendhigh = Δcolormap[end]
-Δfcolormap = cgrad(Δcolormap[2:end-1]; categorical=true)
+Δfcolormap = cgrad(Δcolormap[2:(end - 1)]; categorical = true)
 
 # Plot Γ↓ zonal averages
 
 Nrows = length(strs)
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
     for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
 
         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -140,12 +143,16 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
@@ -153,12 +160,13 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 end
 
 Γdown = rich("Γ", superscript("↓"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γdown, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -168,16 +176,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(x3D - Γinyr3D[1], gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels = Δlevels,
             colormap = Δcolormap,
             nan_color = :lightgray,
@@ -198,35 +209,40 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
     end
 end
 
-cb = Colorbar(fig[Nrows+1:2Nrows-1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γdown, " (yr)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 title = "$model $experiment $member $(time_window) ideal age"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
 # Label(f[-1, :]; text, fontsize=20)
@@ -255,21 +271,18 @@ outputfile = joinpath(inputdir, "ideal_age_ZAVGs_$(strs[1])_vs_$(strs[2]).png")
 save(outputfile, fig)
 
 
-
-
-
 Δlevels = -1000:100:1000
-Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical=true, rev=true)
+Δcolormap = cgrad(:RdBu, length(Δlevels) + 1; categorical = true, rev = true)
 Δextendlow = Δcolormap[1]
 Δextendhigh = Δcolormap[end]
-Δcolormap = cgrad(Δcolormap[2:end-1]; categorical=true)
+Δcolormap = cgrad(Δcolormap[2:(end - 1)]; categorical = true)
 
 
 # Plot Γ↑ zonal averages
 
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -277,16 +290,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -306,23 +322,28 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
         axs[irow, icol] = ax
     end
 end
 Γup = rich("Γ", superscript("↑"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γup, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -332,16 +353,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(x3D - Γoutyr3D[1], gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels = Δlevels,
             colormap = Δcolormap,
             nan_color = :lightgray,
@@ -362,37 +386,42 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
     end
 end
 
-cb = Colorbar(fig[Nrows + 1: 2Nrows - 1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γup, " (yr)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) reemergence time"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -403,9 +432,6 @@ outputfile = joinpath(inputdir, "reemergence_time_ZAVGs_$(strs[1])_vs_$(strs[2])
 save(outputfile, fig)
 
 
-
-
-
 # Plot mean age at the seafloor level
 title = "$model $experiment $member $(time_window) mean age at seafloor"
 # plot options
@@ -414,8 +440,8 @@ colorrange = extrema(levels)
 Δfcolorrange = extrema(Δflevels)
 # plot
 fig = Figure(size = (800, 1400), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 1))
-hms = Array{Any,2}(undef, (2Nrows - 1, 1))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 1))
+hms = Array{Any, 2}(undef, (2Nrows - 1, 1))
 for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
 
     icol = 1
@@ -425,17 +451,21 @@ for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
     hms[irow, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
 
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-        ticks = irow < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 
 end
-cb = Colorbar(fig[1:Nrows,2], hms[1,1], label=rich(Γdown, " at seafloor (yr)"))
-cb.height = Relative(Nrows/(Nrows + 1))
+cb = Colorbar(fig[1:Nrows, 2], hms[1, 1], label = rich(Γdown, " at seafloor (yr)"))
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (irow, (x3D, str)) in enumerate(zip(Γinyr3D[2:end], strs[2:end]))
 
@@ -443,28 +473,34 @@ for (irow, (x3D, str)) in enumerate(zip(Γinyr3D[2:end], strs[2:end]))
     irow2 = irow + Nrows
     ax = Axis(fig[irow2, icol]; xtickformat, ytickformat)
     Γinyrseafloor = seafloorvalue(x3D - Γinyr3D[1], wet3D)
-    hms[irow2, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics;
+    hms[irow2, icol] = plotmap!(
+        ax, Γinyrseafloor, gridmetrics;
         colorrange = Δcolorrange,
-        colormap = Δcolormap)
+        colormap = Δcolormap
+    )
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow2 < 2Nrows - 1, ticklabels = irow2 < 2Nrows - 1,
-        ticks = irow2 < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow2 < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 end
-cb = Colorbar(fig[Nrows + 1:2Nrows - 1,2], hms[Nrows + 1,1], label = rich("Δ", Γdown, " at seafloor (yr)"))
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+cb = Colorbar(fig[(Nrows + 1):(2Nrows - 1), 2], hms[Nrows + 1, 1], label = rich("Δ", Γdown, " at seafloor (yr)"))
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) mean age at seafloor"
-Label(fig[0, 1], text = title, fontsize=20, tellwidth=false)
+Label(fig[0, 1], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -476,18 +512,10 @@ outputfile = joinpath(inputdir, "mean_age_at_seafloor_$(strs[1])_vs_$(strs[2]).p
 save(outputfile, fig)
 
 
-
-
-
-
-
-
-
-
 # Plot reemergence time at the seafloor level
 fig = Figure(size = (800, 1400), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 1))
-hms = Array{Any,2}(undef, (2Nrows - 1, 1))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 1))
+hms = Array{Any, 2}(undef, (2Nrows - 1, 1))
 for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D, strs))
 
     icol = 1
@@ -497,17 +525,21 @@ for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D, strs))
     hms[irow, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
 
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-        ticks = irow < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 
 end
-cb = Colorbar(fig[1:3,2], hms[1,1], label=rich(Γup, " at seafloor (yr)"))
-cb.height = Relative(Nrows/(Nrows + 1))
+cb = Colorbar(fig[1:3, 2], hms[1, 1], label = rich(Γup, " at seafloor (yr)"))
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D[2:end], strs[2:end]))
 
@@ -515,28 +547,34 @@ for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D[2:end], strs[2:end]))
     irow2 = irow + Nrows
     ax = Axis(fig[irow2, icol]; xtickformat, ytickformat)
     Γinyrseafloor = seafloorvalue(x3D - Γoutyr3D[1], wet3D)
-    hms[irow2, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics;
+    hms[irow2, icol] = plotmap!(
+        ax, Γinyrseafloor, gridmetrics;
         colorrange = Δcolorrange,
-        colormap = Δcolormap)
+        colormap = Δcolormap
+    )
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow2 < 2Nrows - 1, ticklabels = irow2 < 2Nrows - 1,
-        ticks = irow2 < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow2 < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 end
-cb = Colorbar(fig[Nrows + 1:2Nrows - 1,2], hms[Nrows + 1,1], label = rich("Δ", Γup, " at seafloor (yr)"))
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+cb = Colorbar(fig[(Nrows + 1):(2Nrows - 1), 2], hms[Nrows + 1, 1], label = rich("Δ", Γup, " at seafloor (yr)"))
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) reemergence time at seafloor"
-Label(fig[0, 1], text = title, fontsize=20, tellwidth=false)
+Label(fig[0, 1], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -548,42 +586,31 @@ outputfile = joinpath(inputdir, "reemergence_time_at_seafloor_$(strs[1])_vs_$(st
 save(outputfile, fig)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Plot Γ↓ zonal averages
 
 Nrows = length(strs)
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
     for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
 
         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -604,12 +631,16 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
@@ -617,12 +648,13 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 end
 
 Γdown = rich("Γ", superscript("↓"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γdown, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -633,16 +665,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         x2D = zonalaverage(x3D - Γinyr3D[1], gridmetrics; mask = basin)
         x2D = 100x2D ./ zonalaverage(Γinyr3D[1], gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels = Δflevels,
             colormap = Δfcolormap,
             nan_color = :lightgray,
@@ -663,35 +698,40 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
     end
 end
 
-cb = Colorbar(fig[Nrows+1:2Nrows-1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γdown, "/", Γdown, " (%)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 title = "$model $experiment $member $(time_window) ideal age"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 # text = rich("Upstream sweeping time, ", ΓupΩ, ", for Ω = $(LONGTEXT[Ωz]) $(LONGTEXT[Ωbasin])")
 # Label(f[-1, :]; text, fontsize=20)
@@ -720,16 +760,11 @@ outputfile = joinpath(inputdir, "ideal_age_ZAVGs_$(strs[1])_vs_$(strs[2])_fracti
 save(outputfile, fig)
 
 
-
-
-
-
-
 # Plot Γ↑ zonal averages
 
 fig = Figure(size = (1200, 250 * (2Nrows - 1)), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 3))
-contours = Array{Any,2}(undef, (2Nrows - 1, 3))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 3))
+contours = Array{Any, 2}(undef, (2Nrows - 1, 3))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -737,16 +772,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
         x2D = zonalaverage(x3D, gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels,
             colormap,
             nan_color = :lightgray,
@@ -766,23 +804,28 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         # xlims!(ax, (-90, 90))
         xlims!(ax, xlim)
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
         axs[irow, icol] = ax
     end
 end
 Γup = rich("Γ", superscript("↑"))
-cb = Colorbar(fig[1:Nrows, 4], contours[1, 1];
+cb = Colorbar(
+    fig[1:Nrows, 4], contours[1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich(Γup, " (yr)"),
-    )
-cb.height = Relative(Nrows/(Nrows + 1))
+)
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (icol, (basin_key, basin)) in enumerate(pairs(basins))
 
@@ -793,16 +836,19 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         x2D = zonalaverage(x3D - Γoutyr3D[1], gridmetrics; mask = basin)
         x2D = 100x2D ./ zonalaverage(Γoutyr3D[1], gridmetrics; mask = basin)
 
-        local ax = Axis(fig[irow, icol],
-            backgroundcolor=:lightgray,
-            xgridvisible=true, ygridvisible=true,
-            xgridcolor=(:black, 0.05), ygridcolor=(:black, 0.05),
-            ylabel = "depth (m)")
+        local ax = Axis(
+            fig[irow, icol],
+            backgroundcolor = :lightgray,
+            xgridvisible = true, ygridvisible = true,
+            xgridcolor = (:black, 0.05), ygridcolor = (:black, 0.05),
+            ylabel = "depth (m)"
+        )
 
-        X = dropdims(maximum(lat, dims=1), dims=1)
+        X = dropdims(maximum(lat, dims = 1), dims = 1)
         Y = zt
         Z = x2D
-        co = contourf!(ax, X, Y, Z;
+        co = contourf!(
+            ax, X, Y, Z;
             levels = Δflevels,
             colormap = Δfcolormap,
             nan_color = :lightgray,
@@ -823,37 +869,42 @@ for (icol, (basin_key, basin)) in enumerate(pairs(basins))
         xlims!(ax, xlim)
 
 
-        hidexdecorations!(ax,
+        hidexdecorations!(
+            ax,
             label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-            ticks = irow < 2Nrows - 1, grid = false)
-        hideydecorations!(ax,
+            ticks = irow < 2Nrows - 1, grid = false
+        )
+        hideydecorations!(
+            ax,
             label = icol > 1, ticklabels = icol > 1,
-            ticks = icol > 1, grid = false)
+            ticks = icol > 1, grid = false
+        )
 
 
         axs[irow, icol] = ax
     end
 end
 
-cb = Colorbar(fig[Nrows + 1: 2Nrows - 1, 4], contours[Nrows + 1, 1];
+cb = Colorbar(
+    fig[(Nrows + 1):(2Nrows - 1), 4], contours[Nrows + 1, 1];
     vertical = true, flipaxis = true,
     # ticks = (, cbarticklabelformat.(levels)),
     label = rich("Δ", Γup, "/", Γup, " (%)"),
-    )
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+)
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
 for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-    Label(fig[0, icol], basin_str, fontsize=20, tellwidth=false)
+    Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
     colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
 end
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) reemergence time"
-Label(fig[-1, 1:3], text = title, fontsize=20, tellwidth=false)
+Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -864,9 +915,6 @@ outputfile = joinpath(inputdir, "reemergence_time_ZAVGs_$(strs[1])_vs_$(strs[2])
 save(outputfile, fig)
 
 
-
-
-
 # Plot mean age at the seafloor level
 title = "$model $experiment $member $(time_window) mean age at seafloor"
 # plot options
@@ -874,8 +922,8 @@ colorrange = extrema(levels)
 Δcolorrange = extrema(Δlevels)
 # plot
 fig = Figure(size = (800, 1400), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 1))
-hms = Array{Any,2}(undef, (2Nrows - 1, 1))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 1))
+hms = Array{Any, 2}(undef, (2Nrows - 1, 1))
 for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
 
     icol = 1
@@ -885,17 +933,21 @@ for (irow, (x3D, str)) in enumerate(zip(Γinyr3D, strs))
     hms[irow, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
 
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-        ticks = irow < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 
 end
-cb = Colorbar(fig[1:Nrows,2], hms[1,1], label=rich(Γdown, " at seafloor (yr)"))
-cb.height = Relative(Nrows/(Nrows + 1))
+cb = Colorbar(fig[1:Nrows, 2], hms[1, 1], label = rich(Γdown, " at seafloor (yr)"))
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (irow, (x3D, str)) in enumerate(zip(Γinyr3D[2:end], strs[2:end]))
 
@@ -904,28 +956,34 @@ for (irow, (x3D, str)) in enumerate(zip(Γinyr3D[2:end], strs[2:end]))
     ax = Axis(fig[irow2, icol]; xtickformat, ytickformat)
     Γinyrseafloor = seafloorvalue(x3D - Γinyr3D[1], wet3D)
     Γinyrseafloor = 100Γinyrseafloor ./ seafloorvalue(Γinyr3D[1], wet3D)
-    hms[irow2, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics;
+    hms[irow2, icol] = plotmap!(
+        ax, Γinyrseafloor, gridmetrics;
         colorrange = Δfcolorrange,
-        colormap = Δfcolormap)
+        colormap = Δfcolormap
+    )
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow2 < 2Nrows - 1, ticklabels = irow2 < 2Nrows - 1,
-        ticks = irow2 < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow2 < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 end
-cb = Colorbar(fig[Nrows + 1:2Nrows - 1,2], hms[Nrows + 1,1], label = rich("Δ", Γdown, "/", Γdown, " at seafloor (%)"))
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+cb = Colorbar(fig[(Nrows + 1):(2Nrows - 1), 2], hms[Nrows + 1, 1], label = rich("Δ", Γdown, "/", Γdown, " at seafloor (%)"))
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) mean age at seafloor"
-Label(fig[0, 1], text = title, fontsize=20, tellwidth=false)
+Label(fig[0, 1], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -937,18 +995,10 @@ outputfile = joinpath(inputdir, "mean_age_at_seafloor_$(strs[1])_vs_$(strs[2])_f
 save(outputfile, fig)
 
 
-
-
-
-
-
-
-
-
 # Plot reemergence time at the seafloor level
 fig = Figure(size = (800, 1400), fontsize = 18)
-axs = Array{Any,2}(undef, (2Nrows - 1, 1))
-hms = Array{Any,2}(undef, (2Nrows - 1, 1))
+axs = Array{Any, 2}(undef, (2Nrows - 1, 1))
+hms = Array{Any, 2}(undef, (2Nrows - 1, 1))
 for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D, strs))
 
     icol = 1
@@ -958,17 +1008,21 @@ for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D, strs))
     hms[irow, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics; colorrange, colormap)
 
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow < 2Nrows - 1, ticklabels = irow < 2Nrows - 1,
-        ticks = irow < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 
 end
-cb = Colorbar(fig[1:Nrows + 1,2], hms[1,1], label=rich(Γup, " at seafloor (yr)"))
-cb.height = Relative(Nrows/(Nrows + 1))
+cb = Colorbar(fig[1:(Nrows + 1), 2], hms[1, 1], label = rich(Γup, " at seafloor (yr)"))
+cb.height = Relative(Nrows / (Nrows + 1))
 
 for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D[2:end], strs[2:end]))
 
@@ -977,28 +1031,34 @@ for (irow, (x3D, str)) in enumerate(zip(Γoutyr3D[2:end], strs[2:end]))
     ax = Axis(fig[irow2, icol]; xtickformat, ytickformat)
     Γinyrseafloor = seafloorvalue(x3D - Γoutyr3D[1], wet3D)
     Γinyrseafloor = 100Γinyrseafloor ./ seafloorvalue(Γoutyr3D[1], wet3D)
-    hms[irow2, icol] = plotmap!(ax, Γinyrseafloor, gridmetrics;
+    hms[irow2, icol] = plotmap!(
+        ax, Γinyrseafloor, gridmetrics;
         colorrange = Δcolorrange,
-        colormap = Δcolormap)
+        colormap = Δcolormap
+    )
 
-    hidexdecorations!(ax,
+    hidexdecorations!(
+        ax,
         label = irow2 < 2Nrows - 1, ticklabels = irow2 < 2Nrows - 1,
-        ticks = irow2 < 2Nrows - 1, grid = false)
-    hideydecorations!(ax,
+        ticks = irow2 < 2Nrows - 1, grid = false
+    )
+    hideydecorations!(
+        ax,
         label = icol > 1, ticklabels = icol > 1,
-        ticks = icol > 1, grid = false)
+        ticks = icol > 1, grid = false
+    )
 
 end
-cb = Colorbar(fig[Nrows + 1:2Nrows - 1,2], hms[Nrows + 1,1], label = rich("Δ", Γup, "/", Γup, " at seafloor (%)"))
-cb.height = Relative((2Nrows - 2)/(2Nrows - 1))
+cb = Colorbar(fig[(Nrows + 1):(2Nrows - 1), 2], hms[Nrows + 1, 1], label = rich("Δ", Γup, "/", Γup, " at seafloor (%)"))
+cb.height = Relative((2Nrows - 2) / (2Nrows - 1))
 
-Label(fig[1, 0], text = "T(mean)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[2, 0], text = "mean(T)", fontsize=20, tellheight=false, rotation=π/2)
-Label(fig[3, 0], text = "diff", fontsize=20, tellheight=false, rotation=π/2)
+Label(fig[1, 0], text = "T(mean)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[2, 0], text = "mean(T)", fontsize = 20, tellheight = false, rotation = π / 2)
+Label(fig[3, 0], text = "diff", fontsize = 20, tellheight = false, rotation = π / 2)
 
 
 title = "$model $experiment $member $(time_window) reemergence time at seafloor"
-Label(fig[0, 1], text = title, fontsize=20, tellwidth=false)
+Label(fig[0, 1], text = title, fontsize = 20, tellwidth = false)
 
 rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
@@ -1008,7 +1068,3 @@ colgap!(fig.layout, 10)
 outputfile = joinpath(inputdir, "reemergence_time_at_seafloor_$(strs[1])_vs_$(strs[2])_fraction.png")
 @info "Saving mean reemergence time at seafloor as image file:\n  $(outputfile)"
 save(outputfile, fig)
-
-
-
-

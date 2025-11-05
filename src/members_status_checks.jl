@@ -14,7 +14,6 @@ experiment = "historical"
 # experiment = "piControl"
 
 
-
 scratchdir = "/scratch/xv83/TMIP/data"
 @assert isdir(scratchdir)
 
@@ -34,14 +33,11 @@ for member in members
     numTODO = sum(.!membersdone)
     decadesTODO = decades[.!membersdone]
     numdecadeTODOmax = 10
-    postfix = reduce((x,y) -> x * " " * y, string.(decadesTODO[1:min(end,numdecadeTODOmax)]), init="")
+    postfix = reduce((x, y) -> x * " " * y, string.(decadesTODO[1:min(end, numdecadeTODOmax)]), init = "")
     postfix = all(membersdone) ? "" : all(.!membersdone) ? " missing all!" : " missing:" * postfix * (numTODO > numdecadeTODOmax ? "..." : "")
     prefix = all(membersdone) ? "DONE" : "TODO"
     println("$prefix $CMIP6_member = r$(member)i1f1p1$postfix")
 end
-
-
-
 
 
 # Gadi directory for input files
@@ -71,7 +67,7 @@ all(.!dataavailability.has_it_all) && @warn "Nothing to do: missing something fo
 # Check gdata for decadally averaged GM outputs
 modeldir = joinpath(datadir, model)
 for member in members
-    CSIRO_member = "HI-$(format(member + 4, width=2, zeropadding=true))"
+    CSIRO_member = "HI-$(format(member + 4, width = 2, zeropadding = true))"
     memberdir = joinpath(modeldir, CSIRO_member)
     tx_trans_gm = [isfile(joinpath(memberdir, "month_tx_trans_gm_$(decade)s.nc")) for decade in decades]
     ty_trans_gm = [isfile(joinpath(memberdir, "month_ty_trans_gm_$(decade)s.nc")) for decade in decades]
@@ -81,7 +77,7 @@ for member in members
     numTODO = sum(.!membersdone)
     decadesTODO = decades[.!membersdone]
     numdecadeTODOmax = 10
-    postfix = reduce((x,y) -> x * " " * y, string.(decadesTODO[1:min(end,numdecadeTODOmax)]), init="")
+    postfix = reduce((x, y) -> x * " " * y, string.(decadesTODO[1:min(end, numdecadeTODOmax)]), init = "")
     postfix = all(membersdone) ? "" : all(.!membersdone) ? " missing all!" : " missing:" * postfix * (numTODO > numdecadeTODOmax ? "..." : "")
     prefix = all(membersdone) ? "DONE" : "TODO"
     println("$prefix $CSIRO_member = r$(member)i1f1p1$postfix")

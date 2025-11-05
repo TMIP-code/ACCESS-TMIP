@@ -91,8 +91,7 @@ indices = makeindices(gridmetrics.v3D)
 ρ = 1035.0    # kg/m^3
 κH = 500.0    # m^2/s
 κVML = 0.1    # m^2/s
-κVdeep = 1e-5 # m^2/s
-
+κVdeep = 1.0e-5 # m^2/s
 
 
 yearly_T = Dict{Int64, SparseMatrixCSC{Float64, Int64}}()
@@ -121,14 +120,14 @@ for YEAR in YEARS
         println("  MONTH $MONTH")
 
         # Load variables in memory
-        mlotst = readcubedata(mlotst_ds.mlotst[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        umo = readcubedata(umo_ds.umo[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        vmo = readcubedata(vmo_ds.vmo[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        mlotst = readcubedata(mlotst_ds.mlotst[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        umo = readcubedata(umo_ds.umo[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        vmo = readcubedata(vmo_ds.vmo[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
 
-        ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
-        ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti=Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        ψᵢsubmeso = readcubedata(ψᵢsubmeso_ds.tx_trans_submeso[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
+        ψⱼsubmeso = readcubedata(ψⱼsubmeso_ds.ty_trans_submeso[Ti = Where(x -> month(x) == MONTH && year(x) == YEAR)])
 
         # Replace missing values and convert to arrays
         # I think latest YAXArrays converts _FillValues to missing
@@ -143,10 +142,10 @@ for YEAR in YEARS
 
         # Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
         (nx, ny, _) = size(ψᵢGM)
-        ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims=3)
-        ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims=3)
-        ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
-        ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+        ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims = 3)
+        ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims = 3)
+        ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims = 3)
+        ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims = 3)
 
         # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
         ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
@@ -219,7 +218,8 @@ end
 # Save matrices
 outputfile = joinpath(CMIP6outputdir, "transportmatrix_frommonthlymatrices.jld2")
 @info "Saving matrices + metrics as $outputfile"
-save(outputfile,
+save(
+    outputfile,
     Dict(
         "T" => T,
         "Tadv" => Tadv,

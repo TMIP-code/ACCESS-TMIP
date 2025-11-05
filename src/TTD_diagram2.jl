@@ -58,9 +58,6 @@
 # g0 = Ω / τ₀
 
 
-
-
-
 # Tsim = 13yr
 
 # resolution = 48
@@ -102,12 +99,6 @@
 # end
 
 
-
-
-
-
-
-
 fig = Figure(size = (400, 450))
 𝓉 = rich("t", font = :italic)
 𝓉i = rich(𝓉, subscript("i", offset = (0.1, 0)))
@@ -121,7 +112,8 @@ yticks = 0:1:ustrip(yr, Tsim + 1yr)
 # limits = (0, ustrip(yr, Tsim + 1yr), 0, ustrip(yr, Tsim + 1yr))
 limits = (0, 7, 0, 7)
 
-ax = Axis(fig[1, 1];
+ax = Axis(
+    fig[1, 1];
     xlabel = rich("injection time, ", 𝓉i, " (year)"),
     ylabel = rich("reemergence time, ", 𝓉f, " (year)"),
     # limits = (nothing, nothing, nothing, nothing),
@@ -136,8 +128,9 @@ ax = Axis(fig[1, 1];
     backgroundcolor = :lightgray,
 )
 
-ctrf = contourf!(ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃;
-    colormap = cgrad(:devon, rev=true),
+ctrf = contourf!(
+    ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃;
+    colormap = cgrad(:devon, rev = true),
 )
 # ctrf = heatmap!(ax, ustrip.(yr, ts), ustrip.(yr, ts), map𝒢̃)
 
@@ -149,8 +142,8 @@ translate!(ctrf, 0, 0, -100)
 
 τ = 3.3
 τ0 = 3
-ti = τ0 - τ/2 - 0.7
-tf = τ0 + τ/2 + 0.7
+ti = τ0 - τ / 2 - 0.7
+tf = τ0 + τ / 2 + 0.7
 
 
 # draw ti = tf line
@@ -160,7 +153,7 @@ lines!(ax, τ0line, τ0line, color = :black, linestyle = :dash)
 # lines!(ax, [, t0 - 0.7], [t0 - 1.3, t0 - 0.7], color = :white)
 # text!(ax, t0 - 1, t0 - 1, text = rich(𝓉i, " = ", 𝓉f), rotation = π/4, align = (:center, :center), color = :black)
 # lines!(ax, [t0 + 1.7, t0 + 2.3], [t0 + 1.7, t0 + 2.3], color = :white)
-text!(ax, τ0, τ0, text = "τ = 0", rotation = π/4, align = (:center, :center), color = :black)
+text!(ax, τ0, τ0, text = "τ = 0", rotation = π / 4, align = (:center, :center), color = :black)
 
 # colors of polygons and labels
 colors = cgrad(:Egypt, categorical = true)[[3, 1]]
@@ -192,8 +185,8 @@ scatterlines!(ax, [tf - τ, tf + 1 - τ], [tf, tf + 1], color = colors[2], marke
 # Plot arrows for each matching simulation
 offset = 0.1
 arrowheadoffset = 0.05
-for t = range(start = 0.5/12, step = 1/12, length = 12)
-# for (i, t) = enumerate(range(start = 1/12, step = 2/12, length = 6))
+for t in range(start = 0.5 / 12, step = 1 / 12, length = 12)
+    # for (i, t) = enumerate(range(start = 1/12, step = 2/12, length = 6))
     # i > 2 && i < 5 && continue
     # arrowlines!(ax, [tf + t - offset, tf + t - τ + offset], [tf + t, tf + t], color = colors[2], markersize = 3, linewidth = 1)
     # # arrowlines!(ax, [ti + t, ti + t], [ti + t + offset, ti + t + τ - offset], color = colors[1], markersize = 3, linewidth = 1, arrowstyle="--|>")
@@ -204,11 +197,11 @@ for t = range(start = 0.5/12, step = 1/12, length = 12)
     arrows!(ax, [tf + t - offset], [tf + t], [-τ + 2offset + arrowheadoffset], [0], color = colors[2], linewidth = 1, arrowsize = 6)
     arrows!(ax, [ti + t], [ti + t + offset], [0], [τ - 2offset - arrowheadoffset], color = colors[1], linewidth = 1, arrowsize = 6, linestyle = :dot)
 end
-text!(ax, tf + 1 - τ/2, tf + 1; text = "12 BIR simulations", align = (:center, :bottom), offset = (0, 2), color = colors[2])
-text!(ax, tf + 0.5 - τ, tf + 0.5; text = "mean BIR", align = (:center, :bottom), offset = (-2, 2), color = colors[2], rotation = π/4)
-text!(ax, ti + 0.5, ti + τ + 0.5; text = "mean TTD", align = (:center, :bottom), offset = (-2, 2), color = colors[1], rotation = π/4)
+text!(ax, tf + 1 - τ / 2, tf + 1; text = "12 BIR simulations", align = (:center, :bottom), offset = (0, 2), color = colors[2])
+text!(ax, tf + 0.5 - τ, tf + 0.5; text = "mean BIR", align = (:center, :bottom), offset = (-2, 2), color = colors[2], rotation = π / 4)
+text!(ax, ti + 0.5, ti + τ + 0.5; text = "mean TTD", align = (:center, :bottom), offset = (-2, 2), color = colors[1], rotation = π / 4)
 tc = (ti + 0.5 + tf + 0.5 - τ) / 2
-text!(ax, tc, tc + τ; text = "=", align = (:center, :bottom), offset = (-2, 2), color = :white, rotation = π/4)
+text!(ax, tc, tc + τ; text = "=", align = (:center, :bottom), offset = (-2, 2), color = :white, rotation = π / 4)
 
 # 𝒢̃ = 0
 # 𝒢̃str = rich("𝒢", superscript("~", offset=(-0.5, 0.2)))
@@ -235,10 +228,11 @@ text!(ax, τ0 + 1.5, τ0 - 1.5; text = rich(𝒢̃str, " = 0"), align = (:cent
 # text!(ax, t0 - 2.5, t0 + 1.2; text, align = (:center, :bottom), color = colors[2], fontsize = 20)
 
 # Colorbar
-cb = Colorbar(fig[2, 1], ctrf;
+cb = Colorbar(
+    fig[2, 1], ctrf;
     label = rich("adjoint boundary propagator, ", 𝒢̃funstr),
     # label = L"$\tilde{\mathcal{G}}(t_\mathrm{i}, t_\mathrm{f})$",
-    width = Relative(3/4),
+    width = Relative(3 / 4),
     vertical = false,
     flipaxis = false,
     ticklabelsvisible = false,

@@ -69,17 +69,15 @@ indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
 
-
-
 # Matrix ages for varied diffusivities
 @info "Loading age computed from matrices with different diffusivities"
-κVMLs = [1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e-0]
+κVMLs = [1.0e-7, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1, 1.0e-0]
 model_data = map(κVMLs) do κVML
-    κVML_str = "kVML" * format(κVML, conversion="e")
+    κVML_str = "kVML" * format(κVML, conversion = "e")
     f = "ideal_mean_age_$(κVML_str).nc"
     age_ds = open_dataset(joinpath(inputdir, f))
     # age3D = (age_ds.age[Ti=1].data + age_ds.age[Ti=12].data) / 2
-    age3D = age_ds.age[Ti=6].data
+    age3D = age_ds.age[Ti = 6].data
     age3D[wet3D]
 end
 
@@ -88,8 +86,7 @@ end
 # Anderson Accelerated age
 AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0035.nc"
 obs_ds = open_dataset(AAfile)
-obs_data = obs_ds.age_global[Time=1].data[wet3D]
-
+obs_data = obs_ds.age_global[Time = 1].data[wet3D]
 
 
 # Taylor diagram function that returns all the required values
@@ -134,7 +131,7 @@ TDvals = [taylordiagramvalues(data, obs_data, w) for data in model_data]
 
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
-fig = Figure(size=(800, 400))
+fig = Figure(size = (800, 400))
 
 # Corrticks for Taylor diagram
 # corrticks = [-1; -0.99; -0.95; -0.9:0.1:-0.7; -0.6:0.2:0.6; 0.7:0.1:0.9; 0.95; 0.99; 1.0]
@@ -145,8 +142,9 @@ function myformat(corrtick)
     return replace(str, "-" => "−")
 end
 
-ax = PolarAxis(fig[1, 1];
-    thetalimits = (0, π/2), # first quadrant only
+ax = PolarAxis(
+    fig[1, 1];
+    thetalimits = (0, π / 2), # first quadrant only
     thetagridcolor = (:black, 0.5),
     thetagridstyle = :dot,
     thetaticks = (acos.(corrticks), myformat.(corrticks)),
@@ -166,8 +164,9 @@ E′fun(σf, σr, R) = sqrt(σf^2 + σr^2 - 2 * σf * σr * R)
 # E′grid = [sqrt(r^2 + σr^2 - 2 * σr * r * cos(θ)) for θ in θgrid, r in rgrid]
 E′grid = [E′fun(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
 # labelformatter(E′s) = map(E′ -> rich("$(E′/σr)", rich(" σ", subscript("ref"))), E′s)
-labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σr)/10, stripzeros = true))σᵣ", E′s)
-contour!(ax, θgrid, rgrid, E′grid;
+labelformatter(E′s) = map(E′ -> "$(format(round(10E′ / σr) / 10, stripzeros = true))σᵣ", E′s)
+contour!(
+    ax, θgrid, rgrid, E′grid;
     levels,
     labels = true,
     labelformatter,
@@ -176,11 +175,12 @@ contour!(ax, θgrid, rgrid, E′grid;
 
 # skill score isolines
 R₀ = 1 # maximum correlation obtainable. Don't think I'll need this but may be useful
-S(σf, σr, R) = 4 * (1 + R) / ((σf/σr + σr/σf)^2 * (1 + R₀))
+S(σf, σr, R) = 4 * (1 + R) / ((σf / σr + σr / σf)^2 * (1 + R₀))
 # S(σf, σr, R) = 4 * (1 + R)^4 / ((σf/σr + σr/σf)^2 * (1 + R₀)^4)
 Sgrid = [S(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
 Slevels = [0:0.1:0.9; 0.95; 0.99]
-contour!(ax, θgrid, rgrid, Sgrid;
+contour!(
+    ax, θgrid, rgrid, Sgrid;
     levels = Slevels,
     labels = true,
     color = cgrad(:Archambault, categorical = true)[4]
@@ -197,7 +197,8 @@ x, y = collect.(zip(xy_from_R_and_σ.(Rs, σfs)...) |> collect)
 
 # Plot all matrix ages
 transformation = Transformation(ax.scene.transformation; transform_func = identity)
-lines!(ax, x, y;
+lines!(
+    ax, x, y;
     color = :red,
     linewidth = 1,
     transformation,
@@ -211,7 +212,8 @@ text!(ax, x[end], y[end]; text = "max", transformation, align = (:center, :cente
 # )
 
 # Plot reference (AA age)
-scatter!(ax, Point2(xy_from_R_and_σ(1, σr));
+scatter!(
+    ax, Point2(xy_from_R_and_σ(1, σr));
     color = :black,
     transformation,
 )

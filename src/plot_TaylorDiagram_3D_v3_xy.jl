@@ -74,8 +74,6 @@ indices = makeindices(gridmetrics.v3D)
 (; wet3D, N) = indices
 
 
-
-
 # # Matrix ages for varied diffusivities
 # @info "Loading age computed from matrices with different diffusivities"
 # κVdeeps = [3e-8, 1e-7, 3e-7, 1e-6, 3e-6] # m^2/s
@@ -121,7 +119,7 @@ end
 # Anderson Accelerated age
 AAfile = "/scratch/xv83/bp3051/access-esm/archive/andersonacceleration_test-n10-5415f621/age_output/ocean_age.res_0040.nc"
 obs_ds = open_dataset(AAfile)
-obs_data = obs_ds.age_global[Time=1].data[wet3D]
+obs_data = obs_ds.age_global[Time = 1].data[wet3D]
 # TODO this is the Jan 1 age. Since I'm comparing to steady-state. Should I get the mean age of the last decade of the AA output instead?
 # obs_data = mean(obs_ds.age_global, dims = Time).data[wet3D]
 
@@ -135,7 +133,7 @@ obs_data = obs_ds.age_global[Time=1].data[wet3D]
 # end
 
 
-κs_Matt = (κVdeep = 3e-05, κH = 500, κVML = 0.1)
+κs_Matt = (κVdeep = 3.0e-5, κH = 500, κVML = 0.1)
 
 
 # Taylor diagram function that returns all the required values
@@ -186,19 +184,19 @@ Es = [vals.E for vals in TDvals]
 # taken from MakieExtra (not using Pkg because it has outdated Makie dep)
 using Makie.IntervalSets
 Makie.project(s, r::HyperRectangle) = HyperRectangle(Makie.project(s, r.origin), Makie.project(s, r.origin + r.widths) - Makie.project(s, r.origin))
-corner(r::HyperRectangle{2}, which::NTuple{2,Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
+corner(r::HyperRectangle{2}, which::NTuple{2, Integer}) = Makie.Point(extrema(r)[_which_to_ix(which[1])][1], extrema(r)[_which_to_ix(which[2])][2])
 _which_to_ix(which::Integer) = which == -1 ? 1 : which == 1 ? 2 : error("which must be -1 or 1, got $which")
 fullproject(ax, p) = Makie.project(Makie.get_scene(ax), Makie.apply_transform(Makie.transform_func(ax), p)) + viewport(ax)[].origin
 Base.:(⊆)(a::HyperRectangle, b::HyperRectangle) = all(map(⊆, intervals(a), intervals(b)))
 intervals(r::HyperRectangle) = Interval.(r.origin, r.origin + r.widths)
-function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:black, 0), rectattrs=(;), lineattrs=(;))
+function zoom_lines!(ax1, ax2; strokewidth = 1.5, strokecolor = :black, color = (:black, 0), rectattrs = (;), lineattrs = (;))
     pscene = parent(parent(Makie.parent_scene(ax1)))
     @assert parent(parent(Makie.parent_scene(ax2))) === pscene
     obs = lift(ax1.finallimits, ax2.finallimits, ax1.scene.viewport, ax2.scene.viewport, ax1.scene.camera.projectionview, ax2.scene.camera.projectionview, Makie.transform_func(ax1), Makie.transform_func(ax2)) do _...
         lims = [ax1.finallimits[], ax2.finallimits[]]
         axs = lims[1] ⊆ lims[2] ? (ax1, ax2) :
-              lims[2] ⊆ lims[1] ? (ax2, ax1) :
-              nothing
+            lims[2] ⊆ lims[1] ? (ax2, ax1) :
+            nothing
         slines = if isnothing(axs)
             nothing
         else
@@ -222,29 +220,29 @@ function zoom_lines!(ax1, ax2; strokewidth=1.5, strokecolor=:black, color=(:blac
             #     max(norm(a1-a2), norm(b1-b2))
             # end
             [
-                corner(r1, (1,1)), corner(r2, (1,1)),
-                corner(r1, (-1,-1)), corner(r2, (-1,-1)),
-                corner(r1, (1,-1)), corner(r2, (1,-1)),
-                corner(r1, (-1,1)), corner(r2, (-1,1)),
+                corner(r1, (1, 1)), corner(r2, (1, 1)),
+                corner(r1, (-1, -1)), corner(r2, (-1, -1)),
+                corner(r1, (1, -1)), corner(r2, (1, -1)),
+                corner(r1, (-1, 1)), corner(r2, (-1, 1)),
             ]
             # BP: below is my zoom lines that does not work in general
             # (corner(r1, (1,-1)), corner(r2, (1,-1))), (corner(r1, (-1,1)), corner(r2, (-1,1)))
             # (corner(r1, (1,1)), corner(r2, (1,1))), (corner(r1, (-1,-1)), corner(r2, (-1,-1)))
         end
         (
-            rect1=ax2.finallimits[],
-            rect2=ax1.finallimits[],
+            rect1 = ax2.finallimits[],
+            rect2 = ax1.finallimits[],
             # slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines[1]..., slines[2]...],
-            slines=isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
+            slines = isnothing(slines) ? Point2{Float32}[] : Point2{Float32}[slines...],
         )
     end
 
-    rectattrs = (; strokewidth, strokecolor, color, xautolimits=false, yautolimits=false, rectattrs...)
+    rectattrs = (; strokewidth, strokecolor, color, xautolimits = false, yautolimits = false, rectattrs...)
     p1 = poly!(ax1, (@lift $obs.rect1); rectattrs...)
     p2 = poly!(ax2, (@lift $obs.rect2); rectattrs...)
     translate!(p1, 0, 0, 200)
     translate!(p2, 0, 0, 200)
-    plt = linesegments!(pscene, (@lift $obs.slines); color=strokecolor, linewidth=strokewidth, linestyle=:dot, lineattrs...)
+    plt = linesegments!(pscene, (@lift $obs.slines); color = strokecolor, linewidth = strokewidth, linestyle = :dot, lineattrs...)
     translate!(plt, 0, 0, 200)
     return nothing
 end
@@ -265,26 +263,17 @@ end
 #   y = √(σ² - x²)
 function xy_from_Rσ(R, σ)
     x = R * σ
-    Point2(x, sqrt(σ^2 - x^2))
+    return Point2(x, sqrt(σ^2 - x^2))
 end
 function Rσ_from_xy(x, y)
     σ = √(x^2 + y^2)
-    Point2(x / σ, σ)
+    return Point2(x / σ, σ)
 end
-
-
-
-
-
-
-
-
-
 
 
 # Do the actual plotting now
 # First, construct the figure and a polar axis on the first quadrant
-fig = Figure(size=(1000, 600))
+fig = Figure(size = (1000, 600))
 
 σr = TDvals[1].σr
 σmax = 1.5TDvals[1].σr
@@ -296,10 +285,10 @@ fig = Figure(size=(1000, 600))
 # corrticks = [0:0.2:0.6; 0.7:0.1:0.9; 0.95; 0.99; 1.0]
 corrticks = [0.2:0.2:0.6; 0.7:0.1:0.9; 0.95; 0.99]
 # corrticks = [0.7:0.1:0.9; 0.95; 0.99; 1.0]
-function myformat(corrtick; printat=0)
+function myformat(corrtick; printat = 0)
     if corrtick == printat
-    # if corrtick == 0.7
-        return rich(rich("R", font=:italic), " = $corrtick")
+        # if corrtick == 0.7
+        return rich(rich("R", font = :italic), " = $corrtick")
     else
         isinteger(corrtick) && (corrtick = Int(corrtick))
         str = string(corrtick)
@@ -308,16 +297,17 @@ function myformat(corrtick; printat=0)
 end
 
 σref = "σ"
-rticks = 0:σr/4:σmax
+rticks = 0:(σr / 4):σmax
 
 Rlimits = (0, 1)
-thetalimits = acos.(Rlimits[[2,1]]) # zoom in
+thetalimits = acos.(Rlimits[[2, 1]]) # zoom in
 rlimits = (0, σmax)
 
-thetaticks = (acos.(corrticks), myformat.(corrticks; printat=0))
+thetaticks = (acos.(corrticks), myformat.(corrticks; printat = 0))
 xlow, ylow = xy_from_Rσ(Rlimits[2], rlimits[1])
 xhigh, yhigh = xy_from_Rσ(Rlimits[1], rlimits[2])
-axa = Axis(fig[1, 1];
+axa = Axis(
+    fig[1, 1];
     spinewidth = 1,
     aspect = DataAspect(),
     limits = (0, σmax2, 0, σmax2),
@@ -334,9 +324,6 @@ axa = Axis(fig[1, 1];
 )
 
 
-
-
-
 # Plot polar axis grid
 for (θ, text) in zip(thetaticks...)
     lines!(axa, σmax * cos(θ) * [0, 1], σmax * sin(θ) * [0, 1]; color = (:black, 0.2), linewidth = 1)
@@ -345,9 +332,9 @@ for (θ, text) in zip(thetaticks...)
     text!(axa, 1.02σmax * cos(θ), 1.02σmax * sin(θ); text, color = :black, rotation = θ, align = (:left, :center))
 end
 
-text!(axa, σmax2 * cos(π/4), σmax2 * sin(π/4); text = "correlation", color = :black, rotation = -π/4, align = (:center, :bottom))
+text!(axa, σmax2 * cos(π / 4), σmax2 * sin(π / 4); text = "correlation", color = :black, rotation = -π / 4, align = (:center, :bottom))
 # θs = acos(Rlimits[2]):0.01:acos(Rlimits[1])
-θs = 0:0.01:π/2
+θs = 0:0.01:(π / 2)
 for r in rticks
     lines!(axa, r * cos.(θs), r * sin.(θs); color = (:black, 0.2), linewidth = 1)
 end
@@ -364,20 +351,21 @@ E′grid = [E′fun(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
 
 # labelformatter(E′s) = map(E′ -> rich("$(E′/σr)", rich(" σ", subscript("ref"))), E′s)
 # labelformatter(E′s) = map(E′ -> "$(format(round(10E′/σr)/10, stripzeros = true)) $σref", E′s)
-function labelformatterfun(E′; printat=0.5)
-    if isapprox(E′, printat * σr; rtol = 1e-4)
+function labelformatterfun(E′; printat = 0.5)
+    return if isapprox(E′, printat * σr; rtol = 1.0e-4)
         # "E′ = 0.5$σref"
         "RMSD = $printat$σref"
-    elseif (mod(E′/σr, 1) ≈ 0) || (mod(E′/σr, 1) ≈ 1)
-        format(round(E′/σr), stripzeros = true) * "$σref"
-    elseif (mod(E′/σr, 0.5) ≈ 0) || (mod(E′/σr, 0.5) ≈ 1)
-        format(round(10E′/σr)/10, stripzeros = true) * "$σref"
+    elseif (mod(E′ / σr, 1) ≈ 0) || (mod(E′ / σr, 1) ≈ 1)
+        format(round(E′ / σr), stripzeros = true) * "$σref"
+    elseif (mod(E′ / σr, 0.5) ≈ 0) || (mod(E′ / σr, 0.5) ≈ 1)
+        format(round(10E′ / σr) / 10, stripzeros = true) * "$σref"
     else
-        format(round(100E′/σr)/100, stripzeros = true) * "$σref"
+        format(round(100E′ / σr) / 100, stripzeros = true) * "$σref"
     end
 end
 labelformatter1(E′s) = map(labelformatterfun, E′s)
-contour!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), E′grid;
+contour!(
+    axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), E′grid;
     levels,
     linestyle = :dot,
     labels = true,
@@ -391,12 +379,13 @@ contour!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), E′grid;
 
 # skill score isolines
 R₀ = 0.9940801590730742 # maximum correlation obtainable from ensemble
-S(σf, σr, R) = 4 * (1 + R) / ((σf/σr + σr/σf)^2 * (1 + R₀))
+S(σf, σr, R) = 4 * (1 + R) / ((σf / σr + σr / σf)^2 * (1 + R₀))
 # S(σf, σr, R) = 4 * (1 + R)^4 / ((σf/σr + σr/σf)^2 * (1 + R₀)^4)
 Sgrid = [S(r, σr, cos(θ)) for θ in θgrid, r in rgrid]
 Slevels = [0:0.1:0.9; 0.95; 0.99]
 # labelformatter2(v) = map(x -> (x ≈ 0.99) ? " score = $x" : "$x", v)
-contour!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
+contour!(
+    axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
     levels = Slevels,
     labels = true,
     linewidth = 1,
@@ -407,8 +396,9 @@ contour!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
 )
 # Slevels2 = [0:0.1:0.5; 0.6:0.05:0.85; 0.9:0.01:0.99]
 Slevels2 = [0.7:0.05:0.85; 0.9:0.01:0.99]
-colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
-ctrf = contourf!(axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
+colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π / 2 * (1 - x)), limits = (0.001, 0.999))
+ctrf = contourf!(
+    axa, rgrid' .* cos.(θgrid), rgrid' .* sin.(θgrid), Sgrid;
     levels = Slevels2,
     # colormap = :nuuk,
     colormap = cgrad(:Anemone, rev = true),
@@ -421,8 +411,6 @@ translate!(ctrf, 0, 0, -100)
 
 
 # Now, plot the actual data
-
-
 
 
 Ps = xy_from_Rσ.(Rs, σfs)
@@ -440,14 +428,11 @@ offset = 20
 txtline = [offset, 0]
 fontsize = 12
 lines!(axa, xAA .+ txtline, yAA .+ txtline; linewidth = 1, color = :black)
-scatter!(axa, xAA, yAA;
+scatter!(
+    axa, xAA, yAA;
     color = :black,
 )
 text!(axa, xAA + offset, yAA + offset; text = "AA age", align = (:left, :bottom), offset = (0, 0), fontsize)
-
-
-
-
 
 
 # Plot Age with Matt's constants
@@ -467,7 +452,8 @@ end
 
 ikeep = σfs .< σmax
 markersize = 5
-scatter!(axa, Ps[ikeep];
+scatter!(
+    axa, Ps[ikeep];
     color = Ēs[ikeep],
     colorrange = (-200, 200),
     colormap = cgrad(:tableau_red_blue_white, rev = true),
@@ -476,12 +462,13 @@ scatter!(axa, Ps[ikeep];
     strokewidth = 2,
     strokecolor = :black,
 )
-sc = scatter!(axa, Ps[ikeep];
+sc = scatter!(
+    axa, Ps[ikeep];
     color = Ēs[ikeep],
     colorrange = (-200, 200),
     colormap = cgrad(:tableau_red_blue_white, rev = true),
     highclip = cgrad(:tableau_red_blue_white, rev = true)[end],
-    lowclip =  cgrad(:tableau_red_blue_white, rev = true)[1],
+    lowclip = cgrad(:tableau_red_blue_white, rev = true)[1],
     # marker = :cross,
     markersize,
 )
@@ -553,7 +540,7 @@ translate!(txt1, 0, 0, 100)
 translate!(txt2, 0, 0, 100)
 
 Rlimits = (0.95, 0.995)
-thetalimits = acos.(Rlimits[[2,1]]) # zoom in
+thetalimits = acos.(Rlimits[[2, 1]]) # zoom in
 rlimits = (0.85σr, 1.15σr)
 corrtickszoom = Rlimits[1]:0.01:Rlimits[2]
 
@@ -561,7 +548,8 @@ corrtickszoom = Rlimits[1]:0.01:Rlimits[2]
 xlow, ylow = xy_from_Rσ(Rlimits[2], rlimits[1])
 xhigh, yhigh = xy_from_Rσ(Rlimits[1], rlimits[2])
 limits = (xlow, xhigh, ylow, yhigh)
-axb = Axis(fig[1, 2];
+axb = Axis(
+    fig[1, 2];
     spinewidth = 1,
     aspect = DataAspect(),
     limits,
@@ -581,19 +569,19 @@ for (θ, text) in zip(thetaticks...)
     text!(axb, σr * cos(θ) * rtext, σr * sin(θ) * rtext; text = "correlation = $text", color = (:black, 0.2), align = (:center, :center), rotation = θ, fontsize)
 end
 # θs = acos(Rlimits[2]):0.01:acos(Rlimits[1])
-θs = 0:0.01:π/2
+θs = 0:0.01:(π / 2)
 for r in rticks
     lines!(axb, r * cos.(θs), r * sin.(θs); color = (:black, 0.2), linewidth = 1)
 end
-
 
 
 xgrid = range(xlow, xhigh, length = 200)
 ygrid = range(ylow, yhigh, length = 200)
 E′gridxy = [E′fun(σf, σr, R) for (R, σf) in Rσ_from_xy.(xgrid, ygrid')]
 
-labelformatter1bis(E′s) = map(x -> labelformatterfun(x; printat=0.25), E′s)
-contour!(axb, xgrid, ygrid, E′gridxy;
+labelformatter1bis(E′s) = map(x -> labelformatterfun(x; printat = 0.25), E′s)
+contour!(
+    axb, xgrid, ygrid, E′gridxy;
     levels,
     linestyle = :dot,
     labels = true,
@@ -603,7 +591,8 @@ contour!(axb, xgrid, ygrid, E′gridxy;
 )
 
 Sgridxy = [S(σf, σr, R) for (R, σf) in Rσ_from_xy.(xgrid, ygrid')]
-contour!(axb, xgrid, ygrid, Sgridxy;
+contour!(
+    axb, xgrid, ygrid, Sgridxy;
     levels = Slevels,
     labels = true,
     linewidth = 1,
@@ -611,7 +600,8 @@ contour!(axb, xgrid, ygrid, Sgridxy;
     linestyle = :dash,
     color = :black
 )
-ctrf = contourf!(axb, xgrid, ygrid, Sgridxy;
+ctrf = contourf!(
+    axb, xgrid, ygrid, Sgridxy;
     levels = Slevels2,
     # colormap = :nuuk,
     colormap = cgrad(:Anemone, rev = true),
@@ -622,7 +612,8 @@ ctrf = contourf!(axb, xgrid, ygrid, Sgridxy;
 translate!(ctrf, 0, 0, -100)
 
 markersize = 10
-scatter!(axb, Ps[ikeep];
+scatter!(
+    axb, Ps[ikeep];
     color = Ēs[ikeep],
     colorrange = (-200, 200),
     colormap = cgrad(:tableau_red_blue_white, rev = true),
@@ -631,12 +622,13 @@ scatter!(axb, Ps[ikeep];
     strokewidth = 2,
     strokecolor = :black,
 )
-sc = scatter!(axb, Ps[ikeep];
+sc = scatter!(
+    axb, Ps[ikeep];
     color = Ēs[ikeep],
     colorrange = (-200, 200),
     colormap = cgrad(:tableau_red_blue_white, rev = true),
     highclip = cgrad(:tableau_red_blue_white, rev = true)[end],
-    lowclip =  cgrad(:tableau_red_blue_white, rev = true)[1],
+    lowclip = cgrad(:tableau_red_blue_white, rev = true)[1],
     # marker = :cross,
     markersize,
 )
@@ -665,9 +657,8 @@ sc = scatter!(axb, Ps[ikeep];
 # translate!(sc2, 0, 0, 100)
 
 
-
-
-cb = Colorbar(fig[2, 1], ctrf;
+cb = Colorbar(
+    fig[2, 1], ctrf;
     vertical = false,
     flipaxis = false,
     tellheight = true,
@@ -678,7 +669,8 @@ cb = Colorbar(fig[2, 1], ctrf;
 )
 cb.width = Relative(0.6)
 
-cb = Colorbar(fig[2, 2], sc;
+cb = Colorbar(
+    fig[2, 2], sc;
     vertical = false,
     flipaxis = false,
     tellheight = true,
@@ -712,9 +704,7 @@ outputfile = joinpath(outputdir, "Taylor_diagram_3D_v3_xy_noclamp.pdf")
 save(outputfile, fig)
 
 
-
-
-fig = Figure(size=(1200, 1200))
+fig = Figure(size = (1200, 1200))
 
 options = (
     xlabel = "κVML",
@@ -723,8 +713,7 @@ options = (
     yticks = (1:length(κHs), format.(κHs, conversion = "e")),
 )
 
-colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π/2 * (1 - x)), limits = (0.001, 0.999))
-
+colorscale = ReversibleScale(x -> 1 - 2acos(x) / π, x -> cos(π / 2 * (1 - x)), limits = (0.001, 0.999))
 
 
 for irow in 1:5
@@ -741,7 +730,7 @@ for irow in 1:5
     # STD - STDref
     ax = Axis(fig[irow, 2]; options...)
     kwargs = (
-        colorrange = (-σr/2, σr/2),
+        colorrange = (-σr / 2, σr / 2),
         colormap = cgrad(:RdBu, rev = true),
     )
     hm2 = heatmap!(ax, σfs[irow, :, :] .- σr; kwargs...)
@@ -752,7 +741,7 @@ for irow in 1:5
     # RMS
     ax = Axis(fig[irow, 3]; options...)
     kwargs = (
-        colorrange = (0, σr/2),
+        colorrange = (0, σr / 2),
         colormap = :plasma,
     )
     hm3 = heatmap!(ax, E′s[irow, :, :]; kwargs...)
@@ -780,7 +769,7 @@ for irow in 1:5
     hideydecorations!(ax)
     (irow ≠ 5) && hidexdecorations!(ax)
 
-    Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text = "κVDeep = " * format.(κVdeeps[irow], conversion = "e"), rotation = π / 2, tellheight = false)
 
     if irow == 5
         cbopt = (
@@ -799,27 +788,19 @@ for irow in 1:5
 end
 
 
-
-Label(fig[0,1]; text = "correlation", tellwidth = false)
-Label(fig[0,2]; text = "STD - STDref", tellwidth = false)
-Label(fig[0,3]; text = "RMS", tellwidth = false)
-Label(fig[0,4]; text = "bias", tellwidth = false)
-Label(fig[0,5]; text = "skill score", tellwidth = false)
+Label(fig[0, 1]; text = "correlation", tellwidth = false)
+Label(fig[0, 2]; text = "STD - STDref", tellwidth = false)
+Label(fig[0, 3]; text = "RMS", tellwidth = false)
+Label(fig[0, 4]; text = "bias", tellwidth = false)
+Label(fig[0, 5]; text = "skill score", tellwidth = false)
 
 outputfile = joinpath(outputdir, "Taylor_diagram_3D_heatmaps_v2_noclamp.png")
 @info "Saving image file:\n  $(outputfile)"
 save(outputfile, fig)
 
 
-
-
-
-
 @show sort(df, :skillscore, rev = true)
 @show sort(df, :RMSD)
-
-
-
 
 
 fig = Figure()
@@ -842,13 +823,14 @@ D = kde((x, y))
 # Dcum[idx] .= 100cumsum(Q_sorted)
 
 
-
-ax = fig[1, 1] = Axis(fig;
+ax = fig[1, 1] = Axis(
+    fig;
     aspect = DataAspect(),
     limits = (boundary..., boundary...),
 )
 
-co = hexbin!(ax, x, y;
+co = hexbin!(
+    ax, x, y;
     weights = w,
     colormap = :viridis,
     highclip = cgrad(:viridis)[end],
@@ -866,9 +848,10 @@ co = hexbin!(ax, x, y;
 # )
 
 # 1:1 line
-ablines!(ax, 0, 1, linestyle=:dash, color=:black)
+ablines!(ax, 0, 1, linestyle = :dash, color = :black)
 
-cb = Colorbar(fig[1, 2], co;
+cb = Colorbar(
+    fig[1, 2], co;
     vertical = true,
     flipaxis = true,
     tellwidth = true,
@@ -884,7 +867,6 @@ save(outputfile, fig)
 
 # points = Makie.StructArray{Point2f}((x, y))
 # ds = datashader!(ax, points; colormap = :binary, async = false)
-
 
 
 fig, plt, ax = hist(x, bins = 1850:0.1:1870)

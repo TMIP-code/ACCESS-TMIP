@@ -24,9 +24,6 @@ import Pardiso # import Pardiso instead of using (to avoid name clash?)
 using NonlinearSolve
 
 
-
-
-
 # Load matrix and grid metrics
 model = "ACCESS-ESM1-5"
 member = "r1i1p1f1"
@@ -78,7 +75,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -87,12 +84,12 @@ end
 # Build matrices
 @time "building Ms" Ms = [
     begin
-        inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
-        @info "Loading matrices + metrics as $inputfile"
-        T = load(inputfile)["T"]
-        T + Ω
-    end
-    for step in steps
+            inputfile = joinpath(cycloinputdir, "cyclo_matrix_$step.jld2")
+            @info "Loading matrices + metrics as $inputfile"
+            T = load(inputfile)["T"]
+            T + Ω
+        end
+        for step in steps
 ]
 
 
@@ -120,18 +117,18 @@ M̄ = mean(Ms) #
 Δt = sum(δt for _ in steps)
 
 Plprob = LinearProblem(-Δt * M̄, ones(N))  # following Bardin et al. (M -> -M though)
-Plprob = init(Plprob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+Plprob = init(Plprob, MKLPardisoIterate(; nprocs = 48), rtol = 1.0e-10)
 Pl = CycloPreconditioner(Plprob)
 Pr = I
 precs = Returns((Pl, Pr))
 
 src = Ω * so[wet3D]
-@time "initial state solve" u0 = solve(LinearProblem(M̄, src), MKLPardisoIterate(; nprocs = 48), rtol = 1e-10).u
+@time "initial state solve" u0 = solve(LinearProblem(M̄, src), MKLPardisoIterate(; nprocs = 48), rtol = 1.0e-10).u
 @show norm(M̄ * u0 - src) / norm(src)
 
 function initstepprob(A)
     prob = LinearProblem(A, δt * src)
-    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1e-10)
+    return init(prob, MKLPardisoIterate(; nprocs = 48), rtol = 1.0e-10)
 end
 
 
@@ -176,13 +173,13 @@ f! = NonlinearFunction(G!; jvp = jvp!)
 p = (;
     δt,
     stepprob = [initstepprob(I + δt * M) for M in Ms],
-    src
+    src,
 )
 nonlinearprob! = NonlinearProblem(f!, u0, p)
 
 @info "solve cyclo-stationary state"
 # @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
-@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol=1e-12)); show_trace = Val(true), reltol=Inf, abstol=1e-10norm(u0, Inf));
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol = 1.0e-12)); show_trace = Val(true), reltol = Inf, abstol = 1.0e-10norm(u0, Inf));
 
 
 @info "Check the RMS drift, should be order 10⁻¹¹‰ (1e-11 per thousands)"
@@ -192,26 +189,28 @@ du = deepcopy(u0)
 
 # Save mean salinity
 du = sol!.u
-cube4D = reduce((a, b) -> cat(a, b, dims=Ti),
+cube4D = reduce(
+    (a, b) -> cat(a, b, dims = Ti),
     (
         begin
-            (m > 1) && mystep!(du, du, p, m)
-            salt3D = OceanTransportMatrixBuilder.as3D(du, wet3D)
-            salt4D = reshape(salt3D, (size(wet3D)..., 1))
-            axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
-            salt_YAXArray = rebuild(volcello_ds["volcello"];
-                data = salt4D,
-                dims = axlist,
-                metadata = Dict(
-                    "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
+                (m > 1) && mystep!(du, du, p, m)
+                salt3D = OceanTransportMatrixBuilder.as3D(du, wet3D)
+                salt4D = reshape(salt3D, (size(wet3D)..., 1))
+                axlist = (dims(volcello_ds["volcello"])..., dims(DimArray(ones(Nsteps), Ti(steps)))[1][m:m])
+                salt_YAXArray = rebuild(
+                    volcello_ds["volcello"];
+                    data = salt4D,
+                    dims = axlist,
+                    metadata = Dict(
+                        "origin" => "cyclo-stationary ideal age (by $lumpby) computed from $model $experiment $member $(time_window)",
+                    )
                 )
-            )
-        end
-        for m in eachindex(steps)
+            end
+            for m in eachindex(steps)
     )
 )
 
-saltmean3D = mean(cube4D, dims=Ti)
+saltmean3D = mean(cube4D, dims = Ti)
 
 arrays = Dict(:so => saltmean3D, :lat => volcello_ds.lat, :lon => volcello_ds.lon)
 ds = Dataset(; volcello_ds.properties, arrays...)

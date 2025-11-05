@@ -49,7 +49,6 @@ using MPI
 # So the δt that multiplies Mₘ is δ(m..m+1).
 
 
-
 # script options
 @show model = "ACCESS-ESM1-5"
 if isempty(ARGS)
@@ -62,7 +61,7 @@ if isempty(ARGS)
     # time_window = "Jan2030-Dec2039"
     # time_window = "Jan2090-Dec2099"
     average_over = "monthlymatrices"
-    κVdeep = 1e-5 # m^2/s
+    κVdeep = 1.0e-5 # m^2/s
     κVML = 0.01 # m^2/s for centered
     # κVML = 0.001 # m^2/s for upwind
     κH = 100 # m^2/s
@@ -85,9 +84,9 @@ upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
 
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 
 lumpby = "month"
 months = 1:12
@@ -126,7 +125,7 @@ indices = makeindices(v3D)
 
 issrf = let
     issrf3D = falses(size(wet3D))
-    issrf3D[:,:,1] .= true
+    issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
 Ω = sparse(Diagonal(Float64.(issrf)))
@@ -158,7 +157,8 @@ MPI.Finalize()
 Γinyr = ustrip.(yr, u0 .* s)
 Γinyr3D = OceanTransportMatrixBuilder.as3D(Γinyr, wet3D)
 
-cube3D = rebuild(volcello_ds["volcello"];
+cube3D = rebuild(
+    volcello_ds["volcello"];
     data = Γinyr3D,
     dims = dims(volcello_ds["volcello"]),
     metadata = Dict(
@@ -179,4 +179,3 @@ ds = Dataset(; volcello_ds.properties, arrays...)
 outputfile = joinpath(cycloinputdir, "steady_state_ideal_mean_age_$(upwind_str2)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_mean$(average_over).nc")
 @info "Saving ideal mean age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-

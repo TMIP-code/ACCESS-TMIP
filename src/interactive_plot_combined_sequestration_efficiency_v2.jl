@@ -1,4 +1,3 @@
-
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
@@ -62,7 +61,6 @@ inputdir = "/Users/benoitpasquier/Data/TMIP/data/$model/$experiment/$member/$(ti
 cycloinputdir = joinpath(inputdir, "cyclo$lumpby")
 
 
-
 # Load fixed variables in memory
 areacello = readcubedata(areacello_ds.areacello)
 volcello = readcubedata(volcello_ds.volcello)
@@ -94,7 +92,6 @@ ds = open_dataset(inputfile)
 years = ds.Ti |> Array
 
 
-
 # Figure
 fig = Figure(size = (1200, 800))
 
@@ -105,10 +102,11 @@ sg = SliderGrid(
     ga[1, 1],
     (label = "Year", range = [y for y in years if mod(y, 10) == 0], format = "{:1d}", startvalue = 100),
     (label = "Efficiency", range = ℰlevels, format = "{:.1f}", startvalue = 0.5),
-    (label = "Longitude", range = 80:80+360, format = "{:.1f}°E", startvalue = 80 + 180),
+    (label = "Longitude", range = 80:(80 + 360), format = "{:.1f}°E", startvalue = 80 + 180),
     (label = "Latitude", range = -90:90, format = "{:.1f}°N", startvalue = 0),
     tellwidth = false,
-    tellheight = false)
+    tellheight = false
+)
 
 check_injection_timeseries = Observable(false)
 
@@ -116,7 +114,6 @@ subga = ga[2, 1] = GridLayout(tellheight = false, tellwidth = false)
 btn = Checkbox(subga[1, 1], checked = false, tellheight = false)
 Label(subga[1, 2], "Toggle injection time series check", halign = :left)
 alpha = @lift($(btn.checked) ? 1.0 : 0)
-
 
 
 sliderobservables = [s.value for s in sg.sliders]
@@ -139,10 +136,12 @@ end
 
 # time series
 titled = @lift("$($(sliderP)): $($(sliderij)) level $($(ℰk))")
-ax = Axis(fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
+ax = Axis(
+    fig[2, 2], xlabel = "years", ylabel = "sequestration efficiency",
     limits = (0, years[end], 0, 1),
     yticks = 0:0.2:1,
-    title = titled)
+    title = titled
+)
 Makie.deactivate_interaction!(ax, :rectanglezoom)
 yearℰpoint = select_point(ax; marker = :circle, markersize = 10, color = :red)
 on(yearℰpoint) do yearℰpoint
@@ -162,8 +161,8 @@ lines!(ax, years, ℰij; color = :blue)
 
 # plot the time series of the injection locations as a check
 src_Ps = (
-    Karratha = (115.45849390000001,-16.56466979999999), # Carnarvon Basin?" North West of Australia
-    Portland = (141.73529860000008,-38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
+    Karratha = (115.45849390000001, -16.56466979999999), # Carnarvon Basin?" North West of Australia
+    Portland = (141.73529860000008, -38.93477809999996), # Otway Basin" South West of Melbourne (West of Tas)
     Marlo = (149.05333500000006, -38.25798499999996), # "Shark 1" Gippsland Basin" South East (East of Tas)
 )
 map(keys(src_Ps), values(src_Ps)) do srcname, src_P
@@ -175,16 +174,18 @@ map(keys(src_Ps), values(src_Ps)) do srcname, src_P
     @info "Loading injection time series file:\n  $(outputfile)"
     umass = load(outputfile, "umass")
     src_mass = load(outputfile, "src_mass")
-    lines!(ax, years[1:length(umass) - 4], umass[5:length(umass)] / src_mass; color = :black, linestyle = :dash, alpha)
+    lines!(ax, years[1:(length(umass) - 4)], umass[5:length(umass)] / src_mass; color = :black, linestyle = :dash, alpha)
 end
 
 
 # map of sequestration efficiency gievn a year
 gb = fig[2, 1] = GridLayout()
 titleb = @lift("Fraction of C sequestered after $($(sliderobservables[1])) years")
-axb = Axis(gb[1, 1], xlabel = "lon", ylabel = "lat",
+axb = Axis(
+    gb[1, 1], xlabel = "lon", ylabel = "lat",
     limits = (80, 80 + 360, -90, 90),
-    title = titleb)
+    title = titleb
+)
 Makie.deactivate_interaction!(axb, :rectanglezoom)
 lonlatPb = select_point(axb; marker = :circle, markersize = 10, color = :red)
 on(lonlatPb) do lonlatPb
@@ -205,9 +206,11 @@ translate!(scb, 0, 0, 10)
 # map of duration given sequestration quantile
 gc = fig[1, 2] = GridLayout()
 titlec = @lift("Duration of sequestration at $($(sliderobservables[2])) efficiency")
-axc = Axis(gc[1, 1], xlabel = "lon", ylabel = "lat",
+axc = Axis(
+    gc[1, 1], xlabel = "lon", ylabel = "lat",
     limits = (80, 80 + 360, -90, 90),
-    title = titlec)
+    title = titlec
+)
 Makie.deactivate_interaction!(axc, :rectanglezoom)
 lonlatPc = select_point(axc; marker = :circle, markersize = 10, color = :red)
 on(lonlatPc) do lonlatPc
@@ -218,13 +221,13 @@ end
 function yearatquantile(ℰ, ℰlevel)
     isnan(ℰ[1]) && return NaN
     out = findfirst(ℰ .< ℰlevel)
-    isnothing(out) ? maximum(years) : Float64(out)
+    return isnothing(out) ? maximum(years) : Float64(out)
 end
-gcdata2 = Array{Float64}(undef, size(ℰ,1), size(ℰ,2), length(ℰlevels))
+gcdata2 = Array{Float64}(undef, size(ℰ, 1), size(ℰ, 2), length(ℰlevels))
 for (ilevel, ℰlevel) in enumerate(ℰlevels)
     gcdata2[:, :, ilevel] .= map(
         ts -> yearatquantile(ts, ℰlevel),
-		view(ℰ, i, j, :) for i in 1:size(ℰ,1), j in 1:size(ℰ,2)
+        view(ℰ, i, j, :) for i in 1:size(ℰ, 1), j in 1:size(ℰ, 2)
     )
 end
 gcdata = lift(sg.sliders[2].selected_index) do ilevel
@@ -237,8 +240,3 @@ translate!(scc, 0, 0, 1100)
 cc = Colorbar(gc[1, 2], imgc, label = "years of sequestration")
 
 fig
-
-
-
-
-

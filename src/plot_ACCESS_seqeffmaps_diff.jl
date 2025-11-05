@@ -51,7 +51,6 @@ outputdir = inputdir2
 mkpath(inputdir2)
 
 
-
 # Load areacello and volcello for grid geometry
 fixedvarsinputdir = "/scratch/xv83/TMIP/data/$model"
 volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc"))
@@ -81,9 +80,9 @@ indices = makeindices(gridmetrics.v3D)
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κVML_str = "kVML" * format(κVML, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κVML_str = "kVML" * format(κVML, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
 upwind = false
 upwind_str = upwind ? "" : "_centered"
 upwind_str2 = upwind ? "upwind" : "centered"
@@ -125,21 +124,18 @@ else
 end
 
 
-
-
-
 include("plotting_functions.jl")
 
 usecontourf = false
 
-axs = Array{Any,2}(undef, (3, 2))
-contours = Array{Any,2}(undef, (3, 2))
+axs = Array{Any, 2}(undef, (3, 2))
+contours = Array{Any, 2}(undef, (3, 2))
 nrows, ncols = size(axs)
 
 fig = Figure(size = (ncols * 500, nrows * 250 + 100), fontsize = 18)
 
 yticks = -60:30:60
-xticks = -120:60:120 + 360
+xticks = -120:60:(120 + 360)
 
 for (irow, year) in enumerate([100, 300, 1000])
 
@@ -166,10 +162,10 @@ for (irow, year) in enumerate([100, 300, 1000])
     # Plot difference
     icol = 2
     levels = -50:10:50
-    colormap = cgrad(cgrad(:tol_bu_rd, length(levels), categorical = true)[[1:end÷2+1; end÷2+1:end]], categorical = true)
+    colormap = cgrad(cgrad(:tol_bu_rd, length(levels), categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]], categorical = true)
     highclip = colormap[end]
     lowclip = colormap[1]
-    colormap = cgrad(colormap[2:end-1], categorical = true)
+    colormap = cgrad(colormap[2:(end - 1)], categorical = true)
     colorrange = extrema(levels)
 
     axs[irow, icol] = ax = Axis(fig[irow, icol]; yticks, xticks, xtickformat, ytickformat)
@@ -183,7 +179,7 @@ for (irow, year) in enumerate([100, 300, 1000])
     myhidexdecorations!(ax, irow < nrows)
     myhideydecorations!(ax, icol > 1)
 
-    Label(fig[irow, 0]; text = "τ = $year years", rotation = π/2, tellheight = false)
+    Label(fig[irow, 0]; text = "τ = $year years", rotation = π / 2, tellheight = false)
 
 end
 
@@ -194,11 +190,11 @@ end
 ℰfun = rich(ℰstr, "(", 𝒓, ", τ)")
 label = rich("ensemble mean ", ℰfun, " (%)")
 cb = Colorbar(fig[nrows + 1, 1], contours[1, 1]; label, vertical = false, flipaxis = false, ticks = 0:20:100)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 label = rich("mean 2090s ", ℰfun, " − mean 2030s ", ℰfun, " (%)")
 cb = Colorbar(fig[nrows + 1, 2], contours[1, 2]; label, vertical = false, flipaxis = false, ticks = -50:20:50, tickformat = divergingcbarticklabelformat)
-cb.width = Relative(2/3)
+cb.width = Relative(2 / 3)
 
 # column labels
 # Label(fig[0, 1]; text = "ensemble mean", tellwidth = false)
@@ -230,4 +226,3 @@ save(outputfile, fig)
 outputfile = joinpath(outputdir, "seqeff_diff$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)$(yearly_str)_$(time_window2)$(suffix).pdf")
 @info "Saving seqeff on sea floor as image file:\n  $(outputfile)"
 save(outputfile, fig)
-

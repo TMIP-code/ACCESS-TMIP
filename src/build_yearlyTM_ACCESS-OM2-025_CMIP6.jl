@@ -187,20 +187,16 @@ vmo = replace(vmo, missing => 0)
 (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
 # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
-κVdeep_str = "kVdeep" * format(κVdeep, conversion="e")
-κH_str = "kH" * format(κH, conversion="d")
-κVML_str = "kVML" * format(κVML, conversion="e")
+κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
+κH_str = "kH" * format(κH, conversion = "d")
+κVML_str = "kVML" * format(κVML, conversion = "e")
 # outputfile = joinpath(inputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
 outputfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Saving matrix as $outputfile"
-save(outputfile,
+save(
+    outputfile,
     Dict(
         "T" => T,
         "note" => "Test 0.25-degree transport matrix built from averaging the all the transport variables umo and vmo (no GM nor subeso terms) + mlotst."
     )
 )
-
-
-
-
-
