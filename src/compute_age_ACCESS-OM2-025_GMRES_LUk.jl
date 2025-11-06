@@ -1,4 +1,4 @@
-# qsub -I -P y99 -q hugemem -l mem=735GB -l storage=scratch/gh0+scratch/y99+gdata/xp65 -l walltime=06:00:00 -l ncpus=24
+# qsub -I -P y99 -q hugemem -l mem=735GB -l storage=scratch/gh0+scratch/y99+gdata/xp65 -l walltime=24:00:00 -l ncpus=24
 
 using Pkg
 Pkg.activate(".")
@@ -128,13 +128,35 @@ T = load(TMfile, "T")
 
 M = T + Ω
 
-matrix_type = Pardiso.REAL_SYM
-@show solver = MKLPardisoIterate(; nprocs, matrix_type)
+@info "Solve full problem but with GMRES + LU-by-layer preconditioner"
+maxindexinlayer = [sum(wet3D[:, :, 1:k]) for k in axes(wet3D, 3)]
+minindexinlayer = [1; maxindexinlayer[1:(end - 1)] .+ 1]
+indices = [min:max for (min, max) in zip(minindexinlayer, maxindexinlayer)]
+# Define Preconditioner
+struct LayerPreconditioner
+    indices
+    factors
+end
+Base.eltype(::LayerPreconditioner) = Float64
+@views function LinearAlgebra.ldiv!(Pl::LayerPreconditioner, x::AbstractVector)
+    for (idx, fact) in zip(Pl.indices, Pl.factors)
+        LinearAlgebra.ldiv!(x[idx], fact)
+    end
+    return x
+end
+@views function LinearAlgebra.ldiv!(y::AbstractVector, Pl::LayerPreconditioner, x::AbstractVector)
+    for (idx, fact) in zip(Pl.indices, Pl.factors)
+        LinearAlgebra.ldiv!(y[idx], fact, x[idx])
+    end
+    return y
+end
+@time "LU factorizations" Pl_layer = LayerPreconditioner(
+    indices,
+    [factorize(M[idx, idx]) for idx in indices],
+)
 
-@info "Solve full problem but with MLKPardisoIterate"
-
-prob = init(LinearProblem(M, ones(N)), solver, rtol = 1.0e-10)
-@time "Pardiso solve" sol = solve!(prob).u
+prob = LinearProblem(M, ones(N), u0 = ustrip(s, 1000yr) * ones(N))
+@time "GMRES + LU(k) solve" sol = solve(prob, KrylovJL_GMRES(); Pl = Pl_layer, maxiters = 500, restarts = 40, verbose = true, reltol = 1.0e-12).u
 
 @show sol_error = norm(M * sol - ones(N)) / norm(ones(N))
 
@@ -144,7 +166,8 @@ agecube = YAXArray(
     ustrip.(yr, OceanTransportMatrixBuilder.as3D(sol, wet3D) * s),
     Dict(
         "description" => "steady-state mean age",
-        "solver" => "MKLPardisoIterate",
+        "solver" => "GMRES + LU-by-layer",
+        "error" => string(sol_error),
         # "model" => model,
         # "experiment" => experiment,
         # "member" => member,
@@ -156,8 +179,7 @@ agecube = YAXArray(
 arrays = Dict(:age => agecube, :lat => lat, :lon => lon)
 ds = Dataset(; properties = Dict(), arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_GMRES_LUk.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
-@show norm(M * sol - ones(N)) / norm(ones(N))
