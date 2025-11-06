@@ -31,13 +31,7 @@ dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
 # TODO: caputre correlations between transport and dht
 # z* coordinate varies with time in ACCESS-OM2
 # volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dht * area
-umo_ds = open_dataset(joinpath(inputdir, "tx_trans.nc"))
-vmo_ds = open_dataset(joinpath(inputdir, "ty_trans.nc"))
-ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
-ψⱼGM_ds = open_dataset(joinpath(inputdir, "ty_trans_gm.nc"))
-# ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
-# ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
-mlotst_ds = open_dataset(joinpath(inputdir, "mld.nc"))
+
 
 # Load fixed variables in memory
 areacello_OM2 = replace(readcubedata(areacello_ds.area_t), missing => NaN) # This is required for later multiplication
@@ -99,6 +93,60 @@ gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices
 # Make indices
 indices = makeindices(gridmetrics.v3D)
 
+# Load transport and mixed layer depth data
+umo_ds = open_dataset(joinpath(inputdir, "tx_trans.nc"))
+vmo_ds = open_dataset(joinpath(inputdir, "ty_trans.nc"))
+ψᵢGM_ds = open_dataset(joinpath(inputdir, "tx_trans_gm.nc"))
+ψⱼGM_ds = open_dataset(joinpath(inputdir, "ty_trans_gm.nc"))
+# ψᵢsubmeso_ds = open_dataset(joinpath(inputdir, "tx_trans_submeso.nc"))
+# ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
+mlotst_ds = open_dataset(joinpath(inputdir, "mld.nc"))
+
+# FIXME no need to average over time for now as the input is already averaged
+# FIXME first build monthly climatologies and then average matrices
+# mean_days_in_month = umo_ds.mean_days_in_month |> Array
+# w = Weights(mean_days_in_month)
+
+# mlotst = dropdims(mean(readcubedata(mlotst_ds.mlotst), w; dims=:month), dims=:month)
+# umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims=:month), dims=:month)
+# vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims=:month), dims=:month)
+umo = readcubedata(umo_ds.tx_trans)
+vmo = readcubedata(vmo_ds.ty_trans)
+mlotst = readcubedata(mlotst_ds.mld)
+
+# ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims=:month), dims=:month)
+# ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims=:month), dims=:month)
+ψᵢGM = readcubedata(ψᵢGM_ds.tx_trans_gm)
+ψⱼGM = readcubedata(ψⱼGM_ds.ty_trans_gm)
+# ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims=:month), dims=:month)
+# ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims=:month), dims=:month)
+
+# Replace missing values and convert to arrays
+# I think latest YAXArrays converts _FillValues to missing
+umo = replace(umo, missing => 0)
+vmo = replace(vmo, missing => 0)
+ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
+ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
+# ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
+# ψⱼsubmeso = replace(ψⱼsubmeso |> Array, missing => 0) .|> Float64
+
+# Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
+(nx, ny, _) = size(ψᵢGM)
+ϕᵢGM = YAXArray(dims(umo), diff([fill(0.0, nx, ny, 1);;; ψᵢGM], dims = 3), umo.properties)
+ϕⱼGM = YAXArray(dims(vmo), diff([fill(0.0, nx, ny, 1);;; ψⱼGM], dims = 3), vmo.properties)
+# ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims=3)
+# ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims=3)
+
+# TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
+# ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
+"""
+sum YAXArrays a and b, preserving metadata from a
+"""
+yaxasum(a, b; axlist = dims(a), metadata = a.properties) = YAXArray(axlist, a.data + b.data, metadata)
+ϕ = let umo = yaxasum(umo, ϕᵢGM), vmo = yaxasum(vmo, ϕⱼGM)
+    facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
+end
+
 # Some parameter values
 ρ = 1035.0    # kg/m^3
 # ACCESS-ESM1.5 preferred values
@@ -107,53 +155,22 @@ upwind = false
 κVML = 1.0      # m^2/s
 κH = 300.0      # m^2/s
 
-WIP
-
-mlotst = dropdims(mean(readcubedata(mlotst_ds.mlotst), w; dims = :month), dims = :month)
-umo = dropdims(mean(readcubedata(umo_ds.umo), w; dims = :month), dims = :month)
-vmo = dropdims(mean(readcubedata(vmo_ds.vmo), w; dims = :month), dims = :month)
-
-ψᵢGM = dropdims(mean(readcubedata(ψᵢGM_ds.tx_trans_gm), w; dims = :month), dims = :month)
-ψⱼGM = dropdims(mean(readcubedata(ψⱼGM_ds.ty_trans_gm), w; dims = :month), dims = :month)
-ψᵢsubmeso = dropdims(mean(readcubedata(ψᵢsubmeso_ds.tx_trans_submeso), w; dims = :month), dims = :month)
-ψⱼsubmeso = dropdims(mean(readcubedata(ψⱼsubmeso_ds.ty_trans_submeso), w; dims = :month), dims = :month)
-
-# Replace missing values and convert to arrays
-# I think latest YAXArrays converts _FillValues to missing
-ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
-ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
-ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
-ψⱼsubmeso = replace(ψⱼsubmeso |> Array, missing => 0) .|> Float64
-
-# Also remove missings in umo and vmo
-umo = replace(umo, missing => 0)
-vmo = replace(vmo, missing => 0)
-
-# Take the vertical diff of zonal/meridional transport diagnostics to get their mass transport
-(nx, ny, _) = size(ψᵢGM)
-ϕᵢGM = diff([fill(0.0, nx, ny, 1);;; ψᵢGM |> Array], dims = 3)
-ϕⱼGM = diff([fill(0.0, nx, ny, 1);;; ψⱼGM |> Array], dims = 3)
-ϕᵢsubmeso = diff([fill(0.0, nx, ny, 1);;; ψᵢsubmeso |> Array], dims = 3)
-ϕⱼsubmeso = diff([fill(0.0, nx, ny, 1);;; ψⱼsubmeso |> Array], dims = 3)
-
-# TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
-ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
-    facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
-end
-
-
+# Build the matrix
 (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
 
 # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
 κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
 κH_str = "kH" * format(κH, conversion = "d")
 κVML_str = "kVML" * format(κVML, conversion = "e")
-outputfile = joinpath(cycloinputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
+# outputfile = joinpath(inputdir, "cyclo_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str)_meanflow.jld2")
+outputfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Saving matrix as $outputfile"
 save(
     outputfile,
     Dict(
         "T" => T,
-        "note" => "Test matrix built from averaging the all the transport variables umo and vmo + GM + subeso + mlotst."
+        "note" => """Test 1-degree transport matrix built from averaging
+            all the transport variables umo and vmo (+GM but no subeso terms) + mlotst.
+            """,
     )
 )
