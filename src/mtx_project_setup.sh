@@ -1,0 +1,1 @@
+julia --project=@mtx --startup-file=no -e 'using Pkg; Pkg.add("FileIO"); Pkg.add("MatrixMarket"); Pkg.add("JLD2"); Pkg.add("Format"); Pkg.instantiate()'
