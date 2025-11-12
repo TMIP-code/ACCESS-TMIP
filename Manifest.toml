@@ -2,7 +2,7 @@
 
 julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "13ce3d1faa2f9051def9f7bd07aec2d9cfaf4208"
+project_hash = "288fe57ee7980bc22e1e19e604837fa370b016bc"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "27cecae79e5cc9935255f90c53bb831cc3c870d7"
@@ -2456,6 +2456,16 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "58cdd8fb2201a6267e1db87ff148dd6c1dbd8ad8"
 uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
 version = "0.5.1+0"
+
+[[deps.RollingWindowArrays]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "4519cc00b0075c068426d9681b2064fe747b04b5"
+uuid = "d191faf8-5603-4116-bb4f-9585dee8559b"
+version = "1.0.1"
+weakdeps = ["DimensionalData"]
+
+    [deps.RollingWindowArrays.extensions]
+    DimensionalDataExt = "DimensionalData"
 
 [[deps.RoundingEmulator]]
 git-tree-sha1 = "40b9edad2e5287e05bd413a38f61a8ff55b9557b"

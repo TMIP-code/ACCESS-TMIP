@@ -7,6 +7,7 @@
 # using OceanTransportMatrixBuilder
 # using NetCDF
 # using YAXArrays
+# using YAXArrayBase
 # using DataFrames
 # using DimensionalData
 # # using SparseArrays
@@ -32,6 +33,9 @@
 # # using LaTeXStrings
 # using Format
 # using KernelDensity
+# using RollingWindowArrays
+# using Dates
+# using DataStructures
 
 # include("plotting_functions.jl")
 
@@ -39,349 +43,147 @@
 # # Load data #
 # #############
 
-# inputdirs = [
-#     "/scratch/y99/TMIP/data/ACCESS-OM2-025/025deg_jra55_iaf_omip2_cycle6/" # 0.25 degree
-#     ]
-
-# @info "Loading yearly overturning streamfunction for OM2-1"
-# psi_1_file = "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/psi_tot_year.nc"
-# psi_1_ds = open_dataset(psi_1_file)
-
-# # Kiss et al. 2020
-# # minimum value at 40°S, integrated zonally for ρ ≥ 1036 kg m−3
-# psi_1 = readcubedata(psi_1_ds.psi_tot)
-# lat_1 = psi_1_ds.grid_yu_ocean
-# time_1 = psi_1_ds.year |> Array
-# ρ_1 = psi_1_ds.potrho
-# # index of 40°S
-# vlat_1, ilat_1 = findmin(lat -> abs.(lat + 40), lat_1 |> Array)
-# println("ilat_1 = $ilat_1, lat = $vlat_1")
+# files = OrderedDict(
+#     "1" => "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/psi_tot.nc", # 1 degree
+#     "025" => "/scratch/y99/TMIP/data/ACCESS-OM2-025/025deg_jra55_iaf_omip2_cycle6/psi_tot.nc", # 0.25 degree
+#     # "01" => "/scratch/y99/TMIP/data/ACCESS-OM2-01/01deg_jra55v140_iaf_cycle4/psi_tot.nc", # 0.1 degree
+# )
 
 
-# AABW_1 = minimum(psi_1[ilat_1, ρ_1 .≥ 1036, :] |> Array, dims = 1) |> vec
-# imagefile = "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/AABW_K20_timeseries_1deg.png"
+# psis = OrderedDict{String, Any}()
+# ρs = OrderedDict{String, Any}()
+# lats = OrderedDict{String, Any}()
+# times = OrderedDict{String, Any}()
+# AABWs = OrderedDict{String, Any}()
+# idxs = OrderedDict{String, Any}()
+# meanpsis = OrderedDict{String, Any}()
+# latselectors = OrderedDict(
+#     # "any lat" => Colon(),
+#     "lat ≤ 50°S" => Where(≤(-50)),
+#     "lat ≤ 40°S" => Where(≤(-40)),
+#     "50°S ≤ lat ≤ 40°S" => -50 .. -40,
+#     "lat ≈ 40°S" => Near(-40),
+# )
+# ρselectors = OrderedDict(
+#     # "any ρ" => Colon(),
+#     "ρ ≥ 1036 kg/m³" => Where(≥(1036.0)),
+#     "ρ ≥ 1036.8 kg/m³" => Where(≥(1036.8)),
+# )
 
-fig, plt, ax = CairoMakie.lines(time_1, -AABW_1 / 1e9) # Sv
-ax.xlabel = "Time (years)"
-ax.ylabel = "AABW transport (Sv)"
-ax.title = "ACCESS-OM2-1 AABW transport at 40°S (Kiss et al. 2020)"
+
+
+# for (res, file) in pairs(files)
+#     @info """Loading OM2-$res overturning streamfunction
+#       file: $file"""
+#     ds = open_dataset(file)
+#     psis[res] = set(readcubedata(ds.psi_tot), :time => Ti)
+#     meanpsis[res] = dropdims(mean(psis[res]; dims = Ti); dims = Ti)
+#     ρs[res] = ds.potrho
+#     lats[res] = ds.grid_yu_ocean
+#     times[res] = ds.time
+#     println("  Computing AABW transport metrics:")
+#     AABW = OrderedDict{String, Any}()
+#     idx = OrderedDict{String, Any}()
+#     psi = psis[res]
+#     (grid_yu_ocean, potrho) = otherdims(psi, (Ti,))
+#     for (latstr, latselector) in pairs(latselectors)
+#         println(" - $latstr:")
+#         AABW_sub = OrderedDict{String, Any}()
+#         idx_sub = OrderedDict{String, Any}()
+#         for (ρstr, ρselector) in pairs(ρselectors)
+#             # AABW_sub[ρstr] = minimum(psi[latselector(lats[res]), ρselector(ρs[res]), :], dims = (:grid_yu_ocean, :potrho)) |> vec
+#             psi_subdomain = psi[DimensionalData.rebuild(grid_yu_ocean, latselector), DimensionalData.rebuild(potrho, ρselector)]
+#             AABW_sub[ρstr] = minimum(psi_subdomain, dims = (grid_yu_ocean, potrho))
+#             idx_sub[ρstr] = argmin(psi_subdomain.data, dims = 1:(length(size(psi_subdomain)) - 1))
+#             println("   - $ρstr (size: $(size(AABW_sub[ρstr]))")
+#         end
+#         AABW[latstr] = AABW_sub
+#         idx[latstr] = idx_sub
+#     end
+#     AABWs[res] = AABW
+#     idxs[res] = idx
+# end
+
+colors = Makie.wong_colors()
+
+fig = Figure(size = (2000, 1000))
+axs = Array{Any, 2}(undef, (length(ρselectors), length(latselectors)))
+
+for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
+    for (irow, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
+        local ax = Axis(
+            fig[irow, icol];
+            ylabel = "AABW transport (Sv)",
+            # limits = (DateTime(1900), DateTime(2030), nothing, nothing),
+            # xticks = DateTime.(1900:20:2030),
+            # xticks = 1900:20:2030,
+        )
+        # ax, plt =
+        # ax, plt = CairoMakie.lines(fig[irow, icol], [DateTime(1990)], [10.0]; axis=(; xticks = DateTime.(1900:20:2030), ylabel = "AABW transport (Sv)"))
+
+        for (ires, res) in enumerate(keys(files))
+            AABW = AABWs[res][latstr][ρstr].data |> vec
+            time = times[res].val
+            # rolling averages
+            AABW_decade = fill(NaN, size(AABW))
+            AABW_rolling = mean.(rolling(AABW, 120; center = true))
+            offset = AABW_rolling.offsets[1]
+            AABW_decade[offset .+ (0:(length(AABW_rolling.parent) - 1))] = AABW_rolling.parent
+            AABW_year = fill(NaN, size(AABW))
+            AABW_rolling = mean.(rolling(AABW, 12; center = true))
+            offset = AABW_rolling.offsets[1]
+            AABW_year[offset .+ (0:(length(AABW_rolling.parent) - 1))] = AABW_rolling.parent
+            lines!(ax, DateTime.(time), -AABW / 1.0e9; color = colors[ires], alpha = 0.1) # Sv
+            lines!(ax, DateTime.(time), -AABW_year / 1.0e9; color = colors[ires], alpha = 0.3) # Sv
+            lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color = colors[ires]) # Sv
+        end
+        myhidexdecorations!(ax, irow < length(ρselectors))
+        myhideydecorations!(ax, icol > 1)
+
+        # ax.xticks = DateTime.(1900:20:2030)
+        # ax.xticks = 1900:20:2030
+        axs[irow, icol] = ax
+        (icol == 1) && Label(fig[irow, 0], ρstr, tellheight = false, rotation = π / 2)
+
+        # Add inset plot of mean overturning streamfunction + AABW box for minimum
+        res = "025"
+        ρmin, ρmax = extrema(ρs["025"].val)
+        ρmin -= eps(ρmin)
+        # yscale = ReversibleScale(ρ -> exp(ρ - ρmin), x -> log(x) + ρmin, limits = (ρmin, ρmax))
+        yscale = ReversibleScale(ρ -> (ρ - ρmin)^4, x -> x^(1/4) + ρmin, limits = (ρmin, ρmax))
+        # yscale = ReversibleScale(ρ -> (ρ - ρmin)^2, x -> sqrt(x) + ρmin, limits = (ρmin, ρmax))
+        ax_inset = Axis(fig[irow, icol];
+            width = Relative(0.4),
+            height = Relative(0.2),
+            halign = 0.9,
+            valign = 0.9,
+            yreversed = true,
+            limits = (extrema(lats[res].val)..., ρmin, ρmax),
+            yscale = yscale,
+            yticks = [1030, 1033, 1035, 1036, 1037],
+        )
+        contourf!(ax_inset, lats[res].val, ρs[res].val, meanpsis[res].data / 1e9; # Sv
+            levels = -24:2:24,
+            colormap = :delta,
+            extendlow = :auto,
+            extendhigh = :auto,
+        )
+        (grid_yu_ocean, potrho) = dims(meanpsis[res])
+        latbox = grid_yu_ocean[collect(extrema(DimensionalData.selectindices(grid_yu_ocean, latselector)))].val
+        ρbox = potrho[collect(extrema(DimensionalData.selectindices(potrho, ρselector)))].val
+        lines!(ax_inset, latbox[[1, 2, 2, 1, 1]], ρbox[[1, 1, 2, 2, 1]]; color = :red)
+    end
+    Label(fig[0, icol], latstr, tellwidth = false)
+end
+
+linkaxes!(axs[:, :]...)
+
+imagefile = "/scratch/y99/TMIP/data/AABW_timeseries.png"
+save(imagefile, fig)
+@info "Saved AABW timeseries plot to $imagefile"
+imagefile = "/scratch/y99/TMIP/data/AABW_timeseries.pdf"
 save(imagefile, fig)
 @info "Saved AABW timeseries plot to $imagefile"
 
-foo
 
 
-# Load areacello and volcello for grid geometry
-inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/omip2/r1i1p1f1/Jan0200-Dec0209/"
-areacello_ds = open_dataset(joinpath(inputdir, "areacello.nc"))
-volcello_ds = open_dataset(joinpath(inputdir, "volcello.nc"))
-
-# Load fixed variables in memory
-areacello = readcubedata(areacello_ds.areacello)
-volcello = readcubedata(volcello_ds.volcello)
-lon = readcubedata(volcello_ds.lon)
-lat = readcubedata(volcello_ds.lat)
-lev = volcello_ds.lev
-# Identify the vertices keys (vary across CMIPs / models)
-# FIXME using test CMORized data for vertices. Hopefully they match!
-CMORtestfile = "/scratch/p66/yz9299/OM2_CMORised/umo_Omon_ACCESS-OM2-025_omip1_r1i1p1f1_gn_190001-190112.nc"
-CMORtest_ds = open_dataset(CMORtestfile)
-volcello_keys = propertynames(CMORtest_ds)
-lon_vertices_key = volcello_keys[findfirst(x -> occursin("lon", x) & occursin("vert", x), string.(volcello_keys))]
-lat_vertices_key = volcello_keys[findfirst(x -> occursin("lat", x) & occursin("vert", x), string.(volcello_keys))]
-lon_vertices = readcubedata(getproperty(CMORtest_ds, lon_vertices_key))
-lat_vertices = readcubedata(getproperty(CMORtest_ds, lat_vertices_key))
-
-
-# Make makegridmetrics
-gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D) = gridmetrics
-
-# Make indices
-indices = makeindices(v3D)
-(; N, wet3D) = indices
-
-commonfilename = "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)"
-
-agefile1 = joinpath(inputdir, "$commonfilename.nc")
-age1 = readcubedata(open_dataset(joinpath(inputdir, agefile1)).age)
-
-OCEANS = OceanBasins.oceanpolygons()
-
-zt = lev |> Array
-
-# Redo same plot with different files
-suffixes = [
-    "OM2-025-2x2_gridscaled"
-    "OM2-025-2x2_gridscaled_PETSc"
-    "OM2-025-2x2"
-    "OM2-025_PETSc"
-]
-notes = [
-    "coarsened + grid-scaling"
-    "coarsened + grid-scaled + PETSc"
-    "coarsened"
-    "PETSc"
-]
-files2 = ["$(commonfilename)_$(suffix)" for suffix in suffixes]
-
-for (file2, note, suffix) in zip(files2, notes, suffixes)
-
-    @show agefile2 = joinpath(inputdir, "$file2.nc")
-    age2 = readcubedata(open_dataset(agefile2).age)
-
-    ##################
-    # Zonal averages #
-    ##################
-
-
-    basin_keys = (:ATL, :PAC, :IND)
-    basin_strs = ("Atlantic", "Pacific", "Indian")
-    basin_functions = (isatlantic, ispacific, isindian)
-    basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
-    basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
-    basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
-    basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
-
-    contouroptions1 = let
-        levels = 0:100:1600
-        colormap = cgrad(:viridis, length(levels); categorical = true)
-        extendlow = nothing
-        extendhigh = colormap[end]
-        colormap = cgrad(colormap[1:(end - 1)]; categorical = true)
-        nan_color = :lightgray
-        (; levels, colormap, extendlow, extendhigh, nan_color)
-    end
-    contouroptionsdiff = let
-        levels = -100:10:100
-        colormap = cgrad(:balance, length(levels); categorical = true)[[1:(end ÷ 2 + 1); (end ÷ 2 + 1):end]]
-        extendlow = colormap[1]
-        extendhigh = colormap[end]
-        colormap = cgrad(colormap[2:(end - 1)]; categorical = true)
-        nan_color = :lightgray
-        (; levels, colormap, extendlow, extendhigh, nan_color)
-    end
-    yticks = 0:1000:6000
-    yticks = (yticks, [t < 6000 ? string(t) : "" for t in yticks])
-    axisoptions = (;
-        backgroundcolor = :lightgray,
-        xgridvisible = true,
-        ygridvisible = true,
-        ylabel = "depth (m)",
-        yticks,
-    )
-
-
-    data = (age1, age2, age2 - age1)
-    strs = [model, "$model\n$note", "Difference"]
-    Nrows = length(strs)
-    Ncols = length(basins)
-    fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-    axs = Array{Any, 2}(undef, (Nrows, Ncols))
-    contours = Array{Any, 2}(undef, (Nrows, Ncols))
-
-    lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
-
-    for (irow, (x3D, str)) in enumerate(zip(data, strs))
-
-        for (icol, (basin_key, basin)) in enumerate(pairs(basins))
-
-            x2D = zonalaverage(x3D |> Array, gridmetrics; mask = basin)
-
-            local ax = Axis(fig[irow, icol]; axisoptions...)
-
-            contouroptions = irow < 3 ? contouroptions1 : contouroptionsdiff
-            local co = contourf!(ax, lat2, zt, x2D; contouroptions...)
-
-            translate!(co, 0, 0, -100)
-            contours[irow, icol] = co
-
-            xlim = basin_latlims[basin_key]
-            # basin2 = LONGTEXT[basin]
-
-            ax.yticks = (ztick, zticklabel)
-            xticks = -90:30:90
-            ax.xticks = (xticks, latticklabel.(xticks))
-            ylims!(ax, zlim)
-            # xlims!(ax, (-90, 90))
-            xlims!(ax, xlim)
-
-            myhidexdecorations!(ax, irow < Nrows)
-            myhideydecorations!(ax, icol > 1)
-
-            axs[irow, icol] = ax
-        end
-
-        Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
-
-    end
-
-    cb1 = Colorbar(
-        fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
-        vertical = true, flipaxis = true,
-        # ticks = (, cbarticklabelformat.(levels)),
-        label = rich("age (years)"),
-    )
-    cb1.height = Relative(0.6)
-
-    cbdiff = Colorbar(
-        fig[Nrows, Ncols + 1], contours[Nrows, 1];
-        vertical = true, flipaxis = true,
-        # ticks = (, cbarticklabelformat.(levels)),
-        label = rich("Δage (years)"),
-        tickformat = x -> divergingcbarticklabel.(x),
-    )
-    cbdiff.height = Relative(0.8)
-
-    for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
-        colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
-    end
-
-    title = "$model Pardiso (0.25°) solve vs $note"
-
-    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
-    labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
-    labeloptions = (
-        font = :bold,
-        align = (:left, :bottom),
-        offset = (5, 2),
-        space = :relative,
-        fontsize = 24,
-    )
-    for (ax, label) in zip(axs, labels)
-        text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
-        text!(ax, 0, 0; text = label, labeloptions...)
-    end
-
-
-    rowgap!(fig.layout, 20)
-    colgap!(fig.layout, 20)
-    rowgap!(fig.layout, 1, 10)
-    colgap!(fig.layout, 1, 10)
-
-    # save plot
-    outputfile = joinpath(inputdir, "Pardiso_$(model)_vs_$(suffix)_ZAVGs.png")
-    @info "Saving as image file:\n  $(outputfile)"
-    save(outputfile, fig)
-
-
-    #####################
-    # Meridional slices #
-    #####################
-
-    # Redo the lon bands from Chamberlain et al. 2019
-    basin_keys = (:ATL, :PAC)
-    basin_strs = ("Atlantic 30–40°W", "Pacific 170–180°W")
-    isatlanticband(lat, lon, OCEANS) = isatlantic(lat, lon, OCEANS) .& (320 .≤ mod.(lon, 360) .≤ 330)
-    ispacificband(lat, lon, OCEANS) = ispacific(lat, lon, OCEANS) .& (180 .≤ mod.(lon, 360) .≤ 190)
-    basin_functions = (isatlanticband, ispacificband)
-    basin_values = (reshape(f(lat[:], lon[:], OCEANS), size(lat)) for f in basin_functions)
-    basins = (; (basin_keys .=> basin_values)...)
-    basin_latlims_values = [clamp.((-5, +5) .+ extrema(lat[.!isnan.(v3D[:, :, 1]) .& basin[:, :, 1]]), -80, 80) for basin in basins]
-    basin_latlims = (; (basin_keys .=> basin_latlims_values)...)
-    basin_sumlatranges = sum(x[2] - x[1] for x in basin_latlims_values)
-
-
-    axisoptions = (
-        backgroundcolor = :lightgray,
-        xgridvisible = true,
-        ygridvisible = true,
-        ylabel = "depth (m)",
-        yticks,
-    )
-
-
-    Nrows = length(strs)
-    Ncols = length(basins)
-    fig = Figure(size = (3 * basin_sumlatranges, 250 * Nrows), fontsize = 18)
-    axs = Array{Any, 2}(undef, (Nrows, Ncols))
-    contours = Array{Any, 2}(undef, (Nrows, Ncols))
-
-    lat2 = dropdims(maximum(lat, dims = 1), dims = 1) |> Array # <- for plotting ZAVG (inexact)
-
-    for (irow, (x3D, str)) in enumerate(zip(data, strs))
-
-        for (icol, (basin_key, basin)) in enumerate(pairs(basins))
-
-            x2D = zonalaverage(x3D |> Array, gridmetrics; mask = basin)
-
-            local ax = Axis(fig[irow, icol]; axisoptions...)
-
-            contouroptions = irow < 3 ? contouroptions1 : contouroptionsdiff
-            local co = contourf!(ax, lat2, zt, x2D; contouroptions...)
-
-            translate!(co, 0, 0, -100)
-            contours[irow, icol] = co
-
-            xlim = basin_latlims[basin_key]
-            # basin2 = LONGTEXT[basin]
-
-            ax.yticks = (ztick, zticklabel)
-            xticks = -90:30:90
-            ax.xticks = (xticks, latticklabel.(xticks))
-            ylims!(ax, zlim)
-            # xlims!(ax, (-90, 90))
-            xlims!(ax, xlim)
-
-            myhidexdecorations!(ax, irow < Nrows)
-            myhideydecorations!(ax, icol > 1)
-
-            axs[irow, icol] = ax
-        end
-
-        Label(fig[irow, 0], text = str, fontsize = 20, tellheight = false, rotation = π / 2)
-
-    end
-
-    cb1 = Colorbar(
-        fig[1:(Nrows - 1), Ncols + 1], contours[1, 1];
-        vertical = true, flipaxis = true,
-        # ticks = (, cbarticklabelformat.(levels)),
-        label = rich("age (years)"),
-    )
-    cb1.height = Relative(0.6)
-
-    cbdiff = Colorbar(
-        fig[Nrows, Ncols + 1], contours[Nrows, 1];
-        vertical = true, flipaxis = true,
-        # ticks = (, cbarticklabelformat.(levels)),
-        label = rich("Δage (years)"),
-        tickformat = x -> divergingcbarticklabel.(x),
-    )
-    cbdiff.height = Relative(0.8)
-
-    for (icol, (basin_str, xlims)) in enumerate(zip(basin_strs, basin_latlims))
-        Label(fig[0, icol], basin_str, fontsize = 20, tellwidth = false)
-        colsize!(fig.layout, icol, Auto(xlims[2] - xlims[1]))
-    end
-
-    title = "$model Pardiso (0.25°) solve vs $note"
-    Label(fig[-1, 1:3], text = title, fontsize = 20, tellwidth = false)
-
-    labels = permutedims(reshape(string.('a':('a' + length(axs) - 1)), size(axs')))
-    labeloptions = (
-        font = :bold,
-        align = (:left, :bottom),
-        offset = (5, 2),
-        space = :relative,
-        fontsize = 24,
-    )
-    for (ax, label) in zip(axs, labels)
-        text!(ax, 0, 0; text = label, labeloptions..., strokecolor = :white, strokewidth = 3)
-        text!(ax, 0, 0; text = label, labeloptions...)
-    end
-
-
-    rowgap!(fig.layout, 20)
-    colgap!(fig.layout, 20)
-    rowgap!(fig.layout, 1, 10)
-    colgap!(fig.layout, 1, 10)
-
-    # save plot
-    outputfile = joinpath(inputdir, "Pardiso_$(model)_vs_$(suffix)_meridionalslices.png")
-    @info "Saving as image file:\n  $(outputfile)"
-    save(outputfile, fig)
-
-end
