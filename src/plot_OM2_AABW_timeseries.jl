@@ -63,6 +63,8 @@ latselectors = OrderedDict(
     "lat ≤ 40°S" => Where(≤(-40)),
     "50°S ≤ lat ≤ 40°S" => -50 .. -40,
     "lat ≈ 40°S" => Near(-40),
+    "lat ≈ 0°" => Near(0),
+    "lat ≈ 20°N" => Near(20),
 )
 ρselectors = OrderedDict(
     # "any ρ" => Colon(),
@@ -106,7 +108,10 @@ end
 # colors = Makie.wong_colors()
 colors = cgrad(:tab10, categorical = true)
 
-fig = Figure(size = (1500, 750))
+fig = Figure(;
+    size = (300 * length(latselectors), 300 * length(ρselectors)),
+    fonts = (; regular = "Dejavu"),
+)
 g = fig[1,1] = GridLayout(length(ρselectors), length(latselectors))
 axs = Array{Any, 2}(undef, (length(ρselectors), length(latselectors)))
 
@@ -119,6 +124,7 @@ for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
             # xticks = DateTime.(1900:20:2030),
             # xticks = 1900:20:2030,
         )
+        ylims!(ax, (0, 60))
         # ax, plt =
         # ax, plt = CairoMakie.lines(fig[irow, icol], [DateTime(1990)], [10.0]; axis=(; xticks = DateTime.(1900:20:2030), ylabel = "AABW transport (Sv)"))
         plts = Vector{Any}(undef, length(files))
@@ -141,27 +147,35 @@ for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
         (icol == irow == 1) && axislegend(ax, position = :lt)
         ax.xticks = DateTimeTicks(6)
         myhidexdecorations!(ax, irow < length(ρselectors))
-        # myhideydecorations!(ax, icol > 1)
+        myhideydecorations!(ax, icol > 1)
 
         (icol == 1) && Label(g[irow, 0], ρstr, tellheight = false, rotation = π / 2)
 
         # Add inset plot of mean overturning streamfunction + AABW box for minimum
         res = "025"
-        ρmin, ρmax = extrema(ρs["025"].val)
+        ρmin, ρmax = extrema(ρs[res].val)
+        latmin, latmax = extrema(lats[res].val)
         ρmin -= eps(ρmin)
         # yscale = ReversibleScale(ρ -> exp(ρ - ρmin), x -> log(x) + ρmin, limits = (ρmin, ρmax))
         yscale = ReversibleScale(ρ -> (ρ - ρmin)^4, x -> x^(1 / 4) + ρmin, limits = (ρmin, ρmax))
         # yscale = ReversibleScale(ρ -> (ρ - ρmin)^2, x -> sqrt(x) + ρmin, limits = (ρmin, ρmax))
+        (grid_yu_ocean, potrho) = dims(meanpsis[res])
+        latbox = grid_yu_ocean[collect(extrema(DimensionalData.selectindices(grid_yu_ocean, latselector)))].val
+        ρbox = potrho[collect(extrema(DimensionalData.selectindices(potrho, ρselector)))].val
         ax_inset = Axis(
             g[irow, icol];
-            width = Relative(0.4),
-            height = Relative(0.2),
-            halign = 0.9,
-            valign = 0.9,
+            width = Relative(0.6),
+            height = Relative(0.3),
+            halign = 0.95,
+            valign = 0.95,
             yreversed = true,
             limits = (extrema(lats[res].val)..., ρmin, ρmax),
             yscale = yscale,
-            yticks = [1030, 1033, 1035, 1036, 1037],
+            yticks = round.([ρ for ρ in ρbox if ρ ≉ ρmin], digits = 1),
+            xticks = round.(Int, [l for l in latbox if l ≉ latmin]),
+            alignmode = Outside(),
+            xticklabelsize = 8,
+            yticklabelsize = 8,
         )
         contourf!(
             ax_inset, lats[res].val, ρs[res].val, meanpsis[res].data / 1.0e9; # Sv
@@ -170,17 +184,17 @@ for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
             extendlow = :auto,
             extendhigh = :auto,
         )
-        (grid_yu_ocean, potrho) = dims(meanpsis[res])
-        latbox = grid_yu_ocean[collect(extrema(DimensionalData.selectindices(grid_yu_ocean, latselector)))].val
-        ρbox = potrho[collect(extrema(DimensionalData.selectindices(potrho, ρselector)))].val
         lines!(ax_inset, latbox[[1, 2, 2, 1, 1]], ρbox[[1, 1, 2, 2, 1]]; color = :red)
     end
     Label(g[0, icol], latstr, tellwidth = false)
 end
 
-# linkaxes!(axs[:]...)
-rowgap!(g, 0.0)
-colgap!(g, 0.0)
+linkaxes!(axs[:]...)
+# rowgap!(g, 0.0)
+# colgap!(g, 0.0)
+
+# box1 = Box(g[2, 2, Makie.GridLayoutBase.Outer()], cornerradius = 0, color = (:tomato, 0.5), strokecolor = :transparent)
+# box2 = Box(g[1, 1, Makie.GridLayoutBase.Outer()], cornerradius = 0, color = (:teal, 0.5), strokecolor = :transparent)
 
 fig
 
