@@ -1,12 +1,12 @@
 # qsub -I -P xv83 -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 # qsub -I -P xv83 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 # qsub -I -P y99 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
+# qsub -I -P y99 -q normal -l mem=47GB -l storage=scratch/gh0+scratch/xv83 -l walltime=02:00:00 -l ncpus=12
 # This is like Fig. 3 in Pasquier et al. (GRL, 2025) but for a different location
 
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-
 
 ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
 using OceanTransportMatrixBuilder
@@ -194,7 +194,7 @@ end
 # I should just save these time series and then load them separately.)
 quickload = false
 # TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
-fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/TTD_timeseries$(yearly_str).jld2"
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/TTD_timeseries$(yearly_str)_Gigablue.jld2"
 if isfile(fname) && quickload
     @time "Loading pre-computed 2030s TTDs at injection location" 𝒢s1 = load(fname, "𝒢s1")
 else
@@ -208,7 +208,7 @@ else
     save(fname, "𝒢s1", 𝒢s1)
 end
 
-fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/TTD_timeseries.jld2"
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/TTD_timeseries_Gigablue.jld2"
 if isfile(fname) && quickload
     @time "Loading pre-computed 2090s TTDs at injection location" 𝒢s2 = load(fname, "𝒢s2")
 else
@@ -226,7 +226,7 @@ end
 TTD_time = collect(axes(𝒢s1[1], 1)) # saved every year so index should be same as year
 varname = yearly ? "seqeff" : "calE"
 # TODO: if yearly like in plot_ACCESS_quantilesandmean.jl?
-fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/$(varname)_timeseries$(yearly_str).jld2"
+fname = "/scratch/xv83/TMIP/data/$model/$experiment1/all_members/$(time_window1)/$(varname)_timeseries$(yearly_str)_Gigablue.jld2"
 if isfile(fname) && quickload
     @time "Loading pre-computed 2030s seq. eff. at injection location" ℰs1 = load(fname, "ℰs1")
 else
@@ -241,7 +241,7 @@ else
 end
 
 # TTDs for 2090s circulation
-fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/$(varname)_timeseries$(yearly_str).jld2"
+fname = "/scratch/xv83/TMIP/data/$model/$experiment2/all_members/$(time_window2)/$(varname)_timeseries$(yearly_str)_Gigablue.jld2"
 if isfile(fname) && quickload
     @time "Loading pre-computed 2090s seq. eff. at injection location" ℰs2 = load(fname, "ℰs2")
 else
