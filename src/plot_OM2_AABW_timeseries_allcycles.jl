@@ -1,6 +1,12 @@
 # qsub -I -P y99 -q express -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/p66 -l walltime=01:00:00 -l ncpus=12
 # qsub -I -P y99 -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/p66 -l walltime=01:00:00 -l ncpus=12
 
+
+# TODO: Plot MOC overtutning for all files in a separate script
+# because I keep seeing some weird stuff (different \rho ranges, AABW min locations, etc.)
+# Probably a 3x6 panels for 3 resolutios and cycles* (4 + 2 for 0.1deg...)
+
+
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
