@@ -57,20 +57,7 @@ times = OrderedDict{String, Any}()
 AABWs = OrderedDict{String, Any}()
 idxs = OrderedDict{String, Any}()
 meanpsis = OrderedDict{String, Any}()
-latselectors = OrderedDict(
-    # "any lat" => Colon(),
-    "lat ≤ 50°S" => Where(≤(-50)),
-    "lat ≤ 40°S" => Where(≤(-40)),
-    "50°S ≤ lat ≤ 40°S" => -50 .. -40,
-    "lat ≈ 40°S" => Near(-40),
-    "lat ≈ 0°" => Near(0),
-    "lat ≈ 20°N" => Near(20),
-)
-ρselectors = OrderedDict(
-    # "any ρ" => Colon(),
-    "ρ ≥ 1036 kg/m³" => Where(≥(1036.0)),
-    "ρ ≥ 1036.8 kg/m³" => Where(≥(1036.8)),
-)
+
 
 
 for (res, file) in pairs(files)
@@ -105,11 +92,30 @@ for (res, file) in pairs(files)
     idxs[res] = idx
 end
 
+########
+# Plot #
+########
+
+latselectors = OrderedDict(
+    # "any lat" => Colon(),
+    "lat ≤ 50°S" => Where(≤(-50)),
+    # "lat ≤ 40°S" => Where(≤(-40)),
+    "50°S ≤ lat ≤ 40°S" => -50 .. -40,
+    "lat ≈ 40°S" => Near(-40),
+    "lat ≈ 0°" => Near(0),
+    "lat ≈ 20°N" => Near(20),
+)
+ρselectors = OrderedDict(
+    # "any ρ" => Colon(),
+    "ρ ≥ 1036 kg/m³" => Where(≥(1036.0)),
+    # "ρ ≥ 1036.8 kg/m³" => Where(≥(1036.8)),
+)
+
 # colors = Makie.wong_colors()
 colors = cgrad(:tab10, categorical = true)
 
 fig = Figure(;
-    size = (300 * length(latselectors), 300 * length(ρselectors)),
+    size = (400 * length(latselectors), 300 * length(ρselectors)),
     fonts = (; regular = "Dejavu"),
 )
 g = fig[1,1] = GridLayout(length(ρselectors), length(latselectors))
@@ -117,15 +123,12 @@ axs = Array{Any, 2}(undef, (length(ρselectors), length(latselectors)))
 
 for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
     for (irow, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
-        ax = axs[irow, icol] = Axis(
-            g[irow, icol];
+        axis = (
             ylabel = "AABW transport (Sv)",
-            # limits = (DateTime(1900), DateTime(2030), nothing, nothing),
-            # xticks = DateTime.(1900:20:2030),
-            # xticks = 1900:20:2030,
+            limits = (nothing, nothing, 0, 60),
+            xticks = DateTime.(1900:10:2030),
+            xtickformat = "yyyy",
         )
-        ylims!(ax, (0, 60))
-        # ax, plt =
         # ax, plt = CairoMakie.lines(fig[irow, icol], [DateTime(1990)], [10.0]; axis=(; xticks = DateTime.(1900:20:2030), ylabel = "AABW transport (Sv)"))
         plts = Vector{Any}(undef, length(files))
         for (ires, res) in enumerate(keys(files))
@@ -140,12 +143,21 @@ for (icol, (latstr, latselector)) in enumerate(pairs(latselectors))
             AABW_rolling = mean.(rolling(AABW, 12; center = true))
             offset = AABW_rolling.offsets[1]
             AABW_year[offset .+ (0:(length(AABW_rolling.parent) - 1))] = AABW_rolling.parent
-            plts[ires] = lines!(ax, DateTime.(time), -AABW / 1.0e9; color = colors[ires], alpha = 0.1) # Sv
-            lines!(ax, DateTime.(time), -AABW_year / 1.0e9; color = colors[ires], alpha = 0.3) # Sv
-            lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color = colors[ires], label = res) # Sv
+            # plts[ires] = lines!(ax, DateTime.(time), -AABW / 1.0e9; color = colors[ires], alpha = 0.1) # Sv
+            if ires == 1
+                ax, plts[ires] = CairoMakie.lines(g[irow, icol], DateTime.(time), -AABW_year / 1.0e9; color = colors[ires], alpha = 0.3, axis) # Sv
+                axs[irow, icol] = ax
+            else
+                ax = axs[irow, icol]
+                plts[ires] = lines!(ax, DateTime.(time), -AABW_year / 1.0e9; color = colors[ires], alpha = 0.3) # Sv
+            end
+            ax = axs[irow, icol]
+            plts[ires] = lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color = colors[ires], label = res) # Sv
         end
+        ax = axs[irow, icol]
         (icol == irow == 1) && axislegend(ax, position = :lt)
-        ax.xticks = DateTimeTicks(6)
+        # ax.xticks = DateTimeTicks(6)
+
         myhidexdecorations!(ax, irow < length(ρselectors))
         myhideydecorations!(ax, icol > 1)
 
