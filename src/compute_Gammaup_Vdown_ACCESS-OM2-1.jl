@@ -152,7 +152,7 @@ prob = init(LinearProblem(Tᵃᵢᵢ, onesᵢ), solver, rtol = 1.0e-10)
 @show sol_error = norm(Tᵃᵢᵢ * Γꜛᵢ - onesᵢ) / norm(onesᵢ)
 
 # turn the age solution vector back into a 3D yax
-@show Γꜛyax = YAXArray(
+Γꜛyax = YAXArray(
     dims(volcello),
     ustrip.(yr, OceanTransportMatrixBuilder.as3D([zeros(sum(issrf)); Γꜛᵢ], wet3D) * s),
     Dict(
@@ -192,7 +192,7 @@ Aₛ⁻¹ = sparse(Diagonal(1 ./ areacello.data[isurface2D]))
 # Save 𝒱↑ as netCDF file
 𝒱ꜜ2D = fill(NaN, size(wet2D))
 𝒱ꜜ2D[isurface2D] .= 𝒱ꜜ
-@show 𝒱ꜜyax = YAXArray(
+𝒱ꜜyax = YAXArray(
     dims(areacello),
     𝒱ꜜ2D,
     Dict(
