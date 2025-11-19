@@ -17,4 +17,5 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/compute_Gammaup_Vdown_ACCESS-OM2-1.jl &> output/compute_Gammaup_Vdown_ACCESS-OM2-1.$PBS_JOBID.out
+# julia src/compute_Gammaup_Vdown_ACCESS-OM2-1.jl &> output/compute_Gammaup_Vdown_ACCESS-OM2-1.$PBS_JOBID.out
+julia src/compute_Gammaup_Vdown_ACCESS-OM2-1_nosplit.jl &> output/compute_Gammaup_Vdown_ACCESS-OM2-1_nosplit.$PBS_JOBID.out
