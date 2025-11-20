@@ -172,6 +172,7 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
         # ax, plt = CairoMakie.lines(fig[irow, icol], [DateTime(1990)], [10.0]; axis=(; xticks = DateTime.(1900:20:2030), ylabel = "AABW transport (Sv)"))
         for row in eachrow(files_df)
             (; id, file, model, resolution, cycle, jra_version) = row
+            resolution == "01" || continue
             AABW = AABWs[id][latstr][ρstr].data |> vec
             time = times[id].val
             # rolling averages
@@ -196,9 +197,8 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
             lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color, label = resolution°[resolution]) # Sv
             inan = .!isnan.(AABW_year)
             textoptions = (; text = string(cycle), color, fontsize = 8)
-            # text!(ax, first(DateTime.(time[inan])), first(-AABW_year[inan] / 1.0e9); textoptions..., align = (:right, :center), offset = (-5, 0))
-            # text!(ax, last(DateTime.(time[inan])), last(-AABW_year[inan] / 1.0e9); textoptions..., align = (:center, :center), offset = (+5, 0))
-            # text!(ax, 0.5, 0.5; text = "foo", space = :relative)
+            text!(ax, first(DateTime.(time[inan])), first(-AABW_year[inan] / 1.0e9); textoptions..., align = (:right, :center), offset = (-5, 0))
+            text!(ax, last(DateTime.(time[inan])), last(-AABW_year[inan] / 1.0e9); textoptions..., align = (:center, :center), offset = (+5, 0))
         end
         ax = content(g[irow, icol])
         (icol == irow == 1) && axislegend(ax, position = :lb, merge = true)
@@ -210,9 +210,15 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
         (icol == 1) && Label(g[irow, 0], latstr, tellheight = false, rotation = π / 2)
 
         # Add mean overturning streamfunction + AABW box for minimum
-        res = "025"
-        idx = findfirst((files_df.resolution .== res) .& (files_df.cycle .== 6))
+        res = "01"
+        idx = findfirst((files_df.resolution .== res) .& (files_df.cycle .== 4))
         @show id = files_df.id[idx]
+        lat = lats[id].val
+        ρ = ρs[id].val
+        # Skim some of weirdness at large densities
+        iρ = ρ .<= 1037.3
+        ρ = ρ[iρ]
+        ψ = meanpsis[id].data[:, iρ] / 1.0e9 # convert to Sv
         ρmin, ρmax = extrema(ρs[id].val)
         latmin, latmax = extrema(lats[id].val)
         ρmin -= eps(ρmin)
@@ -229,16 +235,16 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
             halign = 0.95,
             valign = 0.95,
             yreversed = true,
-            limits = (extrema(lats[id].val)..., ρmin, ρmax),
+            limits = (-90, +90, 1035, 1037.3),
             yscale = yscale,
-            yticks = round.([ρ for ρ in ρbox if ρ ≉ ρmin], digits = 1),
+            # yticks = round.([ρ for ρ in ρbox if ρ ≉ ρmin], digits = 1),
             xticks = round.(Int, [l for l in latbox if l ≉ latmin]),
             alignmode = Outside(),
             xticklabelsize = 8,
             yticklabelsize = 8,
         )
         cf = contourf!(
-            ax_inset, lats[id].val, ρs[id].val, meanpsis[id].data / 1.0e9; # Sv
+            ax_inset, lat, ρ, ψ;
             levels = -24:2:24,
             colormap = :delta,
             extendlow = :auto,
@@ -262,9 +268,9 @@ end
 
 fig
 
-imagefile = "/scratch/y99/TMIP/data/AABW_timeseries_allcycles.png"
+imagefile = "/scratch/y99/TMIP/data/AABW_timeseries_allcycles_OM2-01.png"
 save(imagefile, fig)
 @info "Saved AABW timeseries plot to $imagefile"
-imagefile = "/scratch/y99/TMIP/data/AABW_timeseries_allcycles.pdf"
+imagefile = "/scratch/y99/TMIP/data/AABW_timeseries_allcycles_OM2-01.pdf"
 save(imagefile, fig)
 @info "Saved AABW timeseries plot to $imagefile"
