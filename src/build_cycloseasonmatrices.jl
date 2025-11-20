@@ -102,7 +102,7 @@ for season in seasons
         facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     end
 
-    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
     outputfile = joinpath(cycloinputdir, "cyclo_matrix_$season.jld2")

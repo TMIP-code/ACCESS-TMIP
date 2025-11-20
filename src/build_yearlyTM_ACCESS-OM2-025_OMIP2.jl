@@ -156,7 +156,7 @@ upwind = false
 κH = 300.0 / 4  # m^2/s (÷4 as simple grid scaling, from 1° to 0.25°)
 
 # Build the matrix
-(; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep)
+(; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
 # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
 κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
