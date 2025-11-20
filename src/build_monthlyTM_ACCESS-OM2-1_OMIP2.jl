@@ -58,7 +58,7 @@ ilat = .!ismissing.(lat_OM2.data)
 # See outputs/plots/area_error.png
 # TODO send email to ask around?
 areacello = YAXArray(
-    dims(dht)[1:2],
+    dims(areacello_OM2),
     [sum(superarea[i:(i + 1), j:(j + 1)]) for i in 1:2:size(superarea, 1) , j in 1:2:size(superarea, 2)],
     Dict("name" => "areacello", "units" => "m^2"),
 )
@@ -79,11 +79,10 @@ vertices(x) = [
     reshape(NE(x), (1, nx, ny))
     reshape(NW(x), (1, nx, ny))
 ]
-lon_vertices = vertices(supergrid_ds.x)
-lat_vertices = vertices(supergrid_ds.y)
+supergrid_lon_vertices = vertices(supergrid_ds.x)
+supergrid_lat_vertices = vertices(supergrid_ds.y)
 
-@show size(lon_vertices)
-
+@show size(supergrid_lon_vertices)
 
 
 # Load transport and mixed layer depth data
@@ -95,6 +94,8 @@ vmo_ds = open_dataset(joinpath(inputdir, "ty_trans_periodic.nc"))
 # ψⱼsubmeso_ds = open_dataset(joinpath(inputdir, "ty_trans_submeso.nc"))
 mlotst_ds = open_dataset(joinpath(inputdir, "mld_periodic.nc"))
 
+months = 1:12
+
 for month in months
 
     # Build monthly volcello from monthly dht
@@ -102,7 +103,10 @@ for month in months
     volcello = readcubedata(dht .* areacello)
 
     # Make makegridmetrics
-    gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
+    gridmetrics = makegridmetrics(;
+        areacello, volcello, lon, lat, lev,
+        lon_vertices = supergrid_lon_vertices, lat_vertices = supergrid_lat_vertices
+    )
     (; lon_vertices, lat_vertices) = gridmetrics
 
     # Make indices
@@ -167,15 +171,9 @@ for month in months
             "T" => T,
             "mean_days_in_month" => mean_days_in_month,
             "note" => """Test 1-degree transport matrix built from averaging
-            all the transport variables umo and vmo (+GM but no subeso terms) + mlotst.
-            """,
+                all the transport variables umo and vmo (+GM but no subeso terms) + mlotst.
+                """,
         )
     )
 
 end
-
-
-
-
-
-
