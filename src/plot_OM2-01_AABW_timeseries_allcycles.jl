@@ -96,11 +96,11 @@
 
 # latselectors = OrderedDict(
 #     # "any lat" => Colon(),
-#     "lat ≤ 50°S" => Where(≤(-50)),
+#     # "lat ≤ 50°S" => Where(≤(-50)),
 #     # "lat ≤ 40°S" => Where(≤(-40)),
-#     "50°S ≤ lat ≤ 40°S" => -50 .. -40,
+#     # "50°S ≤ lat ≤ 40°S" => -50 .. -40,
 #     "lat ≈ 40°S" => Near(-40),
-#     "lat ≈ 0°" => Near(0),
+#     # "lat ≈ 0°" => Near(0),
 #     "lat ≈ 20°N" => Near(20),
 # )
 # ρselectors = OrderedDict(
@@ -153,7 +153,8 @@ resolution° = Dict(
     "025" => "0.25°",
     "01" => "0.1°",
 )
-colors = Dict((res => c) for (res, c) in zip(resolutions, cgrad(:tab10, categorical = true)))
+# colors = Dict((res => c) for (res, c) in zip(resolutions, cgrad(:tab10, categorical = true)))
+colors = cgrad(:tab10, categorical = true)
 
 fig = Figure(;
     size = (400 * length(ρselectors), 300 * length(latselectors)),
@@ -184,7 +185,7 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
             AABW_rolling = mean.(rolling(AABW, 12; center = true))
             offset = AABW_rolling.offsets[1]
             AABW_year[offset .+ (0:(length(AABW_rolling.parent) - 1))] = AABW_rolling.parent
-            color = colors[resolution]
+            color = colors[cycle]
             panel = g[irow, icol]
             # @show l = ax.layout
             # @show contents(ax)
@@ -194,14 +195,15 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
                 lines!(panel, DateTime.(time), -AABW_year / 1.0e9; color, alpha = 0.15) # Sv
             end
             ax = content(panel)
-            lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color, label = resolution°[resolution]) # Sv
+            # lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color, label = resolution°[resolution]) # Sv
+            lines!(ax, DateTime.(time), -AABW_decade / 1.0e9; color, label = "cycle $cycle") # Sv
             inan = .!isnan.(AABW_year)
             textoptions = (; text = string(cycle), color, fontsize = 8)
             text!(ax, first(DateTime.(time[inan])), first(-AABW_year[inan] / 1.0e9); textoptions..., align = (:right, :center), offset = (-5, 0))
             text!(ax, last(DateTime.(time[inan])), last(-AABW_year[inan] / 1.0e9); textoptions..., align = (:center, :center), offset = (+5, 0))
         end
         ax = content(g[irow, icol])
-        (icol == irow == 1) && axislegend(ax, position = :lb, merge = true)
+        (icol == irow == 1) && axislegend(ax, position = :lb, merge = false)
         # ax.xticks = DateTimeTicks(6)
 
         myhidexdecorations!(ax, irow < length(latselectors))
@@ -256,7 +258,7 @@ for (icol, (ρstr, ρselector)) in enumerate(pairs(ρselectors))
         # )
         lines!(ax_inset, latbox[[1, 2, 2, 1, 1]], ρbox[[1, 1, 2, 2, 1]]; color = :red)
     end
-    Label(g[0, icol], ρstr, tellwidth = false)
+    # Label(g[0, icol], ρstr, tellwidth = false)
 end
 
 # linkxaxes!([panel.content for panel in g.content if panel.content isa Axis]...)
