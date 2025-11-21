@@ -48,41 +48,25 @@ upwind_str2 = upwind ? "upwind" : "centered"
 # Load areacello and volcello for grid geometry
 areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
 dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
+lev = dht_ds.st_ocean
+
 # TODO: caputre correlations between transport and dht
 # z* coordinate varies with time in ACCESS-OM2
 # volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2: must be built from dht * area
-
-# Load fixed variables in memory
-areacello_OM2 = replace(readcubedata(areacello_ds.area_t), missing => NaN) # This is required for later multiplication
-dht = readcubedata(dht_ds.dht)
-lon_OM2 = readcubedata(areacello_ds.geolon_t)
-lat_OM2 = readcubedata(areacello_ds.geolat_t)
-lev = dht_ds.st_ocean
 
 # Unfortunately ACCESS-OM2 raw data does not have coordinates of cell vertices
 # So instead I go back to the source: the supergrids
 gadi_supergrid_dir = "/g/data/xp65/public/apps/access_moppy_data/grids"
 gridfile = "mom1deg.nc"
-# CHECK that supergrid matches
 supergrid_ds = open_dataset(joinpath(gadi_supergrid_dir, gridfile))
 superarea = readcubedata(supergrid_ds.area)
 lon = readcubedata(supergrid_ds.x)[2:2:end, 2:2:end]
-ilon = .!ismissing.(lon_OM2.data) # Can't check full globe as area_t has missing values over some land
-@assert lon_OM2[ilon] ≈ lon[ilon]
 lat = readcubedata(supergrid_ds.y)[2:2:end, 2:2:end]
-ilat = .!ismissing.(lat_OM2.data)
-@assert lat_OM2[ilat] ≈ lat[ilat]
-# I am using the supergrid area because I assume it is the ground truth here.
-# I am not sure why the areas in the OM2 outputs and the supergrid files are different, by up to 6%!
-# See outputs/plots/area_error.png
-# TODO send email to ask around?
 areacello = YAXArray(
-    dims(dht)[1:2],
+    dims(areacello_ds.area_t)[1:2],
     [sum(superarea[i:(i + 1), j:(j + 1)]) for i in 1:2:size(superarea, 1) , j in 1:2:size(superarea, 2)],
     Dict("name" => "areacello", "units" => "m^2"),
 )
-iarea = .!isnan.(areacello_OM2.data) # isnan because I replaced missings with NaNs earlier
-@show areacello_OM2[iarea] ≈ areacello[iarea]
 
 # Build vertices from supergrid
 # Dimensions of vertices ar (vertex, x, y)
@@ -103,7 +87,9 @@ lat_vertices = vertices(supergrid_ds.y)
 
 @show size(lon_vertices)
 
-volcello = readcubedata(dht .* areacello)
+# First load
+
+
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)

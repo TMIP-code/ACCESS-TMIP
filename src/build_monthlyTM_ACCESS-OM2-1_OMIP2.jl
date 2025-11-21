@@ -20,10 +20,12 @@ using Statistics
 using StatsBase
 using FileIO
 
-# Making yearly matrices for ACCESS-OM2-1
+# Making monthly matrices for ACCESS-OM2-1
 
-# script options
-inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/Jan1960-Dec1979"
+model = "ACCESS-OM2-1"
+experiment = "1deg_jra55_iaf_omip2_cycle6"
+time_window = "Jan1960-Dec1979"
+@show inputdir = "/scratch/y99/TMIP/data/$model/$experiment/$time_window"
 
 # Load areacello and volcello for grid geometry
 areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
