@@ -50,99 +50,174 @@ areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
 dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
 lev = dht_ds.st_ocean
 
-# TODO: caputre correlations between transport and dht
-# z* coordinate varies with time in ACCESS-OM2
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2: must be built from dht * area
 
 # Unfortunately ACCESS-OM2 raw data does not have coordinates of cell vertices
 # So instead I go back to the source: the supergrids
-gadi_supergrid_dir = "/g/data/xp65/public/apps/access_moppy_data/grids"
-gridfile = "mom1deg.nc"
-supergrid_ds = open_dataset(joinpath(gadi_supergrid_dir, gridfile))
-superarea = readcubedata(supergrid_ds.area)
-lon = readcubedata(supergrid_ds.x)[2:2:end, 2:2:end]
-lat = readcubedata(supergrid_ds.y)[2:2:end, 2:2:end]
-areacello = YAXArray(
-    dims(areacello_ds.area_t)[1:2],
-    [sum(superarea[i:(i + 1), j:(j + 1)]) for i in 1:2:size(superarea, 1) , j in 1:2:size(superarea, 2)],
-    Dict("name" => "areacello", "units" => "m^2"),
+include("supergrid.jl")
+(; lon, lat, areacello, lon_vertices, lat_vertices) = supergrid(model; dims = dims(dht_ds.dht)[1:2])
+
+# Make indices (from yearly volcello)
+dht = readcubedata(dht_ds.dht)
+volcello = readcubedata(dht .* areacello)
+gridmetrics = makegridmetrics(;
+    areacello, volcello, lon, lat, lev,
+    lon_vertices, lat_vertices
 )
-
-# Build vertices from supergrid
-# Dimensions of vertices ar (vertex, x, y)
-# Note to self: NCO shows it as (y, x, vertex)
-SW(x) = x[1:2:(end - 2), 1:2:(end - 2)]
-SE(x) = x[3:2:end, 1:2:(end - 2)]
-NE(x) = x[3:2:end, 3:2:end]
-NW(x) = x[1:2:(end - 2), 3:2:end]
-(nx, ny) = size(lon)
-vertices(x) = [
-    reshape(SW(x), (1, nx, ny))
-    reshape(SE(x), (1, nx, ny))
-    reshape(NE(x), (1, nx, ny))
-    reshape(NW(x), (1, nx, ny))
-]
-lon_vertices = vertices(supergrid_ds.x)
-lat_vertices = vertices(supergrid_ds.y)
-
-@show size(lon_vertices)
-
-# First load
-
-
-
-# Make makegridmetrics
-gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
-(; lon_vertices, lat_vertices, v3D) = gridmetrics
-
 # Make indices
-indices = makeindices(v3D)
-(; wet3D) = indices
+indices = makeindices(gridmetrics.v3D)
 
-# Make V diagnoal matrix of volumes
-V = sparse(Diagonal(v3D[wet3D]))
-
+# surface/interior indices
 issrf = let
     issrf3D = falses(size(wet3D))
     issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
-
-TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
-@info "Loading matrix from $TMfile"
-T = load(TMfile, "T")
-@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
-
-# Following Holzer et al. (2020) or Pasquier et al. (2024),
-#     Γꜛᵢ = Tᵃᵢᵢ⁻¹ 1ᵢ
-# is the adjoint water age, the mean time until next surface contact.
-# The adjoint transport matrix is just
-#     Tᵃ = V⁻¹ * Tᵀ * V
-
+idx_surface = findall(issrf)
 idx_interior = findall(.!issrf)
-v = v3D[wet3D]
-V = sparse(Diagonal(v))
-V⁻¹ = sparse(Diagonal(1 ./ v))
-Tᵃ = V⁻¹ * transpose(T) * V
-Tᵃᵢᵢ = Tᵃ[idx_interior, idx_interior]
 Nᵢ = length(idx_interior)
-onesᵢ = ones(Nᵢ)
 
-@info "Solve full problem but with MLKPardisoIterate"
+months = 1:12
+
+# δts between climatological months
+# So the δt that multiplies M̃ₜ is δ(t..t+1)
+# which is 0.5 of the mean days in months t and t+1
+mean_days_in_month = dht_ds.mean_days_in_month[month = At(month)] |> Array
+δts = map(eachindex(months)) do m
+    ustrip(s, (mean_days_in_months[mod1(m + 1, 12)] + mean_days_in_months[m]) / 2 * d)
+end
+
+# TODO: Write matrices in separate scripts (to allow parallel computations)
+# TODO: Also read/write the solver cache to save on expensive factorizations/preconditioners
+# But for now, build all the matrices and store everything in memory like I have done before.
+# but first, load the monthly dht dataset
+dht_periodic_ds = open_dataset(joinpath(inputdir, "dht_peruidic.nc")) # <- (new) cell thickness?
+# Build matrices
+@time "building the monthly TMs" T_periodic = map(months) do m
+    inputfile = joinpath(inputdir, "monthly_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    @info "Loading TM from $inputfile"
+    load(inputfile, "T")
+end
+@time "building the monthly volume vectors" v_periodic = map(months) do m
+    dht = readcubedata(dht_periodic_ds.dht[month = At(month)])
+    volcello = readcubedata(dht .* areacello)
+    volcello.data[wet3D]
+end
+
+
+# Solve once the steady-state problem to get initial guess
+# TODO: Maybe remove this step if it's too slow at high res?
+oceanadjoint(T, v) = sparse(Diagonal(1 ./ v)) * transpose(T) * sparse(Diagonal(v))
+v_mean = mean(v_periodic)
+V_mean = sparse(Diagonal(v_mean))
+V⁻¹_mean = sparse(Diagonal(1 ./ v_mean))
+T_mean = mean(T_periodic)
+Tᵃ_mean = oceanadjoint(T_mean, v_mean)
+Tᵃᵢᵢ_mean = Tᵃ_mean[idx_interior, idx_interior] #
+Δt = sum(δts)
 matrix_type = Pardiso.REAL_SYM
 @show solver = MKLPardisoIterate(; nprocs, matrix_type)
-prob = init(LinearProblem(Tᵃᵢᵢ, onesᵢ), solver, rtol = 1.0e-10)
-@time "Pardiso solve" Γꜛᵢ = solve!(prob).u
+Plprob = LinearProblem(-Δt * Tᵃᵢᵢ_mean, ones(Nᵢ))  # following Bardin et al. (M -> -M though)
+Plprob = init(Plprob, solver, rtol = 1.0e-10)
+Pl = PeriodicPreconditioner(Plprob)
+Pr = I
+precs = Returns((Pl, Pr))
+@time "initial state solve" u0 = solve(LinearProblem(Tᵃᵢᵢ_mean, ones(Nᵢ)), solver, rtol = 1.0e-10, verbose = true).u
+@show norm(Tᵃᵢᵢ_mean * u0 - ones(Nᵢ)) / norm(ones(Nᵢ))
 
-# Check error magnitude
-@show sol_error = norm(Tᵃᵢᵢ * Γꜛᵢ - onesᵢ) / norm(onesᵢ)
 
-# turn the age solution vector back into a 3D yax
+############## START from periodic solver WIP #####################
+# Left Preconditioner needs a new type
+struct PeriodicPreconditioner
+    prob
+end
+Base.eltype(::PeriodicPreconditioner) = Float64
+function LinearAlgebra.ldiv!(Pl::PeriodicPreconditioner, x::AbstractVector)
+    @info "applying Pl"
+    Pl.prob.b = x
+    solve!(Pl.prob)
+    x .= Pl.prob.u .- x # Note the -x (following Bardin et al)
+    return x
+end
+function LinearAlgebra.ldiv!(y::AbstractVector, Pl::PeriodicPreconditioner, x::AbstractVector)
+    Pl.prob.b = x
+    solve!(Pl.prob)
+    y .= Pl.prob.u .- x # Note the -x (following Bardin et al)
+    return y
+end
+
+function initstepprob(A)
+    prob = LinearProblem(A, ones(size(A, 1)))
+    return init(prob, solver, rtol = 1.0e-10)
+end
+
+p = (;
+    months,
+    δts,
+    stepprob = [initstepprob(I + δt * oceanadjoint(T, v)[idx_interior, idx_interior]) for (δt, T, v) in zip(δts, T_periodic, v_periodic)],
+)
+function stepbackonemonth!(du, u, p, m)
+    prob = p.stepprob[m]
+    prob.b = u .+ p.δts[m] # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    du .= solve!(prob).u
+    return du
+end
+function jvpstep!(dv, v, p, m)
+    prob = p.stepprob[m]
+    prob.b = v # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    dv .= solve!(prob).u
+    return dv
+end
+function stepbackoneyear!(du, u, p)
+    du .= u
+    for m in reverse(p.months)
+        stepbackonemonth!(du, du, p, m)
+    end
+    return du
+end
+function jvponeyear!(dv, v, p)
+    dv .= v
+    for m in reverse(p.months)
+        jvpstep!(dv, dv, p, m)
+    end
+    return dv
+end
+function G!(du, u, p)
+    stepbackoneyear!(du, u, p)
+    du .-= u
+    return du
+end
+function jvp!(dv, v, u, p)
+    jvponeyear!(dv, v, p)
+    dv .-= v
+    return dv
+end
+f! = NonlinearFunction(G!; jvp = jvp!)
+nonlinearprob! = NonlinearProblem(f!, u0, p)
+
+@info "solve periodic state"
+# @time sol = solve(nonlinearprob, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs)), verbose = true, reltol=1e-10, abstol=Inf);
+@time sol! = solve(nonlinearprob!, NewtonRaphson(linsolve = KrylovJL_GMRES(precs = precs, rtol = 1.0e-12)); show_trace = Val(true), reltol = Inf, abstol = 1.0e-10norm(u0, Inf));
+
+
+@info "Check the RMS drift, should be order 10⁻⁹‰ (1e-9 per thousands)"
+du = deepcopy(u0)
+@show norm(G!(du, sol!.u, p), Inf) / norm(sol!.u, Inf) |> u"permille"
+
+# Save periodic reemergence time
+du = sol!.u # The last month solved for is January (m = 1, implicit in backward time)
+Γꜛ4D = reduce(
+    (a, b) -> cat(b, a, dims = 4), # <- note how the order is reversed here
+    map(reverse(months)) do m
+        stepbackonemonth!(du, du, p, m) # Starting from du = January
+        Γꜛ3D = OceanTransportMatrixBuilder.as3D([zeros(Nₛ); du], wet3D)
+        reshape(Γꜛ3D, (size(wet3D)..., 1))
+    end
+)
 Γꜛyax = YAXArray(
-    dims(volcello),
-    ustrip.(yr, OceanTransportMatrixBuilder.as3D([zeros(sum(issrf)); Γꜛᵢ], wet3D) * s),
+    dims(dht_periodic_ds.dht),
+    ustrip.(yr, Γꜛ4D * s),
     Dict(
-        "description" => "steady-state adjoint mean age (time until next surface contact)",
+        "description" => "periodic reemergence time (time until next surface contact)",
         "solver" => "MKLPardisoIterate",
         "model" => model,
         "experiment" => experiment,
@@ -151,10 +226,11 @@ prob = init(LinearProblem(Tᵃᵢᵢ, onesᵢ), solver, rtol = 1.0e-10)
         "units" => "yr",
     )
 )
-arrays = Dict(:Gammaup => Γꜛyax, :lat => lat, :lon => lon)
+
+arrays = Dict(:Gammaup => Γꜛyax, :lat => dht_ds.lat, :lon => dht_ds.lon)
 ds = Dataset(; properties = Dict(), arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
+outputfile = joinpath(inputdir, "periodic_Gup_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 
@@ -166,33 +242,51 @@ savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 # Unit is m⁻² m³ s⁻¹ s = interior volume (m³) / surface area (m²)
 # Note: In Pasquier et al. (2024) I plot this as %(interior volume) / 10,000km²
 
-idx_surface = findall(issrf)
-Tᵃₛᵢ = Tᵃ[idx_surface, idx_interior]
-Vₛ = sparse(Diagonal(v3D[wet3D][idx_surface]))
+
+
 wet2D = wet3D[:, :, 1]
 isurface2D = findall(wet2D)
 Aₛ⁻¹ = sparse(Diagonal(1 ./ areacello.data[isurface2D]))
+function as2D(xₛ)
+    x2D = fill(NaN, size(wet2D))
+    x2D[isurface2D] .= xₛ
+    return x2D
+end
 
-𝒱ꜜ = -Aₛ⁻¹ * Vₛ * Tᵃₛᵢ * Γꜛᵢ
+
+
+𝒱ꜜ3D = reduce(
+    (a, b) -> cat(a, b, dims = 4), # no need to reverse order here
+    map(months) do m
+        Γꜛ3D = Γꜛ4D[:,:,:,m]
+        Γꜛᵢ = Γꜛ3D[wet3D][idx_interior]
+        T = T_periodic[m]
+        v = v_periodic[m]
+        Tᵃ = oceanadjoint(T, v)
+        Tᵃₛᵢ = Tᵃ[idx_surface, idx_interior]
+        Vₛ = sparse(Diagonal(v[idx_surface]))
+        𝒱ꜜ = -Aₛ⁻¹ * Vₛ * Tᵃₛᵢ * Γꜛᵢ
+        reshape(as2D(𝒱ꜜ), (size(wet2D)..., 1))
+    end
+)
 
 # Save 𝒱↑ as netCDF file
-𝒱ꜜ2D = fill(NaN, size(wet2D))
-𝒱ꜜ2D[isurface2D] .= 𝒱ꜜ
 𝒱ꜜyax = YAXArray(
-    dims(areacello),
-    𝒱ꜜ2D,
+    dims(dht_periodic_ds.dht)[[1, 2, 4]],
+    𝒱ꜜ3D,
     Dict(
-        "description" => "steady-state ocean volume ventilated down by unit area",
+        "description" => "periodic ocean volume ventilated down by unit area",
+        "model" => model,
+        "experiment" => experiment,
+        "time window" => time_window,
         "units" => "m^3/m^2",
         "solver" => "MKLPardisoIterate",
         "upwind" => upwind_str2,
     )
 )
-arrays = Dict(:Vdown => 𝒱ꜜyax, :lat => lat, :lon => lon)
+arrays = Dict(:Vdown => 𝒱ꜜyax, :lat => dht_ds.lat, :lon => dht_ds.lon)
 ds = Dataset(; properties = Dict(), arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_Vdown_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
+outputfile = joinpath(inputdir, "periodic_Vdown_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
 @info "Saving Vdown as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-
