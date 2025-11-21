@@ -181,33 +181,31 @@ function initstepprob(A)
     return init(prob, solver, rtol = 1.0e-10)
 end
 
-p = (;
-    months,
-    δts,
-    stepprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)],
-)
+p = []
+stepprob = [initstepprob(I + δt * M̃) for (δt, M̃) in zip(δts, M̃s)]
+
 function stepbackonemonth!(du, u, p, m)
-    prob = p.stepprob[m]
-    prob.b = u .+ p.δts[m] # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
+    prob = stepprob[m]
+    prob.b = u .+ δts[m] # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
     du .= solve!(prob).u
     return du
 end
 function jvpstep!(dv, v, p, m)
-    prob = p.stepprob[m]
+    prob = stepprob[m]
     prob.b = v # xₘ₊₁ = Aₘ₊₁⁻¹ (xₘ + δt 1) # CHECK m index is not off by 1
     dv .= solve!(prob).u
     return dv
 end
 function stepbackoneyear!(du, u, p)
     du .= u
-    for m in reverse(p.months)
+    for m in reverse(months)
         stepbackonemonth!(du, du, p, m)
     end
     return du
 end
 function jvponeyear!(dv, v, p)
     dv .= v
-    for m in reverse(p.months)
+    for m in reverse(months)
         jvpstep!(dv, dv, p, m)
     end
     return dv
