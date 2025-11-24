@@ -11,6 +11,7 @@ GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 GeometryOps = "3251bfac-6a57-4b6d-aa61-ac1fef2975ab"
 GibbsSeaWater = "9a22fb26-0b63-4589-b28e-8f9d0b5c3d05"
+IncompleteLU = "40713840-3770-5561-ab4c-a76e7d0d7895"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
@@ -40,3 +41,8 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 YAXArrayBase = "90b8fcef-0c2d-428d-9c56-5f86629e9d14"
 YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
+
+[sources]
+CairoMakie = {rev = "master", subdir = "CairoMakie", url = "https://github.com/MakieOrg/Makie.jl.git"}
+Makie = {rev = "master", subdir = "Makie", url = "https://github.com/MakieOrg/Makie.jl.git"}
+OceanTransportMatrixBuilder = {rev = "main", url = "https://github.com/TMIP-code/OceanTransportMatrixBuilder.jl.git"}
