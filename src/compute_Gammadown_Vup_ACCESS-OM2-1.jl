@@ -61,45 +61,8 @@ lev = dht_ds.st_ocean
 
 # Unfortunately ACCESS-OM2 raw data does not have coordinates of cell vertices
 # So instead I go back to the source: the supergrids
-gadi_supergrid_dir = "/g/data/xp65/public/apps/access_moppy_data/grids"
-gridfile = "mom1deg.nc"
-# CHECK that supergrid matches
-supergrid_ds = open_dataset(joinpath(gadi_supergrid_dir, gridfile))
-superarea = readcubedata(supergrid_ds.area)
-lon = readcubedata(supergrid_ds.x)[2:2:end, 2:2:end]
-ilon = .!ismissing.(lon_OM2.data) # Can't check full globe as area_t has missing values over some land
-@assert lon_OM2[ilon] ≈ lon[ilon]
-lat = readcubedata(supergrid_ds.y)[2:2:end, 2:2:end]
-ilat = .!ismissing.(lat_OM2.data)
-@assert lat_OM2[ilat] ≈ lat[ilat]
-# I am using the supergrid area because I assume it is the ground truth here.
-# I am not sure why the areas in the OM2 outputs and the supergrid files are different, by up to 6%!
-# See outputs/plots/area_error.png
-# TODO send email to ask around?
-areacello = YAXArray(
-    dims(dht)[1:2],
-    [sum(superarea[i:(i + 1), j:(j + 1)]) for i in 1:2:size(superarea, 1) , j in 1:2:size(superarea, 2)],
-    Dict("name" => "areacello", "units" => "m^2"),
-)
-iarea = .!isnan.(areacello_OM2.data) # isnan because I replaced missings with NaNs earlier
-@show areacello_OM2[iarea] ≈ areacello[iarea]
-
-# Build vertices from supergrid
-# Dimensions of vertices ar (vertex, x, y)
-# Note to self: NCO shows it as (y, x, vertex)
-SW(x) = x[1:2:(end - 2), 1:2:(end - 2)]
-SE(x) = x[3:2:end, 1:2:(end - 2)]
-NE(x) = x[3:2:end, 3:2:end]
-NW(x) = x[1:2:(end - 2), 3:2:end]
-(nx, ny) = size(lon)
-vertices(x) = [
-    reshape(SW(x), (1, nx, ny))
-    reshape(SE(x), (1, nx, ny))
-    reshape(NE(x), (1, nx, ny))
-    reshape(NW(x), (1, nx, ny))
-]
-lon_vertices = vertices(supergrid_ds.x)
-lat_vertices = vertices(supergrid_ds.y)
+include("supergrid.jl")
+(; lon, lat, areacello, lon_vertices, lat_vertices) = supergrid(model; dims = dims(dht_ds.dht)[1:2])
 
 @show size(lon_vertices)
 

@@ -23,8 +23,10 @@ using LinearSolve
 import Pardiso # import Pardiso instead of using (to avoid name clash?)
 using NonlinearSolve
 using ProgressMeter
-
-@show inputdir = "/scratch/y99/TMIP/data/ACCESS-OM2-025/025deg_jra55_iaf_omip2_cycle6/Jan1960-Dec1979"
+model = "ACCESS-OM2-025"
+experiment = "025deg_jra55_iaf_omip2_cycle6"
+time_window = "Jan1960-Dec1979"
+@show inputdir = "/scratch/y99/TMIP/data/$model/$experiment/$time_window"
 
 # preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s

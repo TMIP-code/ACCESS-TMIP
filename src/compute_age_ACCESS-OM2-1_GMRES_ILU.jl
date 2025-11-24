@@ -20,7 +20,7 @@ using Format
 using Dates
 using FileIO
 using LinearSolve
-import Pardiso # import Pardiso instead of using (to avoid name clash?)
+using IncompleteLU
 using NonlinearSolve
 using ProgressMeter
 
@@ -50,7 +50,8 @@ areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
 dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
 # TODO: caputre correlations between transport and dht
 # z* coordinate varies with time in ACCESS-OM2
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2: must be built from dht * area
+# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dht * area
+
 
 # Load fixed variables in memory
 areacello_OM2 = replace(readcubedata(areacello_ds.area_t), missing => NaN) # This is required for later multiplication
@@ -84,43 +85,31 @@ issrf = let
     issrf3D[:, :, 1] .= true
     issrf3D[wet3D]
 end
+idx_surface = findall(issrf)
+idx_interior = findall(.!issrf)
+Nᵢ = length(idx_interior)
+Nₛ = length(idx_surface)
 
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
 @info "Matrix size: $(size(T)), nnz = $(nnz(T))"
+Tᵢᵢ = T[idx_interior, idx_interior]
 
-# Following Holzer et al. (2020) or Pasquier et al. (2024),
-#     Γꜛᵢ = Tᵃᵢᵢ⁻¹ 1ᵢ
-# is the adjoint water age, the mean time until next surface contact.
-# The adjoint transport matrix is just
-#     Tᵃ = V⁻¹ * Tᵀ * V
-
-idx_interior = findall(.!issrf)
-v = v3D[wet3D]
-V = sparse(Diagonal(v))
-V⁻¹ = sparse(Diagonal(1 ./ v))
-Tᵃ = V⁻¹ * transpose(T) * V
-Tᵃᵢᵢ = Tᵃ[idx_interior, idx_interior]
-Nᵢ = length(idx_interior)
-onesᵢ = ones(Nᵢ)
-
-@info "Solve full problem but with MLKPardisoIterate"
-matrix_type = Pardiso.REAL_SYM
-@show solver = MKLPardisoIterate(; nprocs, matrix_type)
-prob = init(LinearProblem(Tᵃᵢᵢ, onesᵢ), solver, rtol = 1.0e-10)
-@time "Pardiso solve" Γꜛᵢ = solve!(prob).u
+prob = LinearProblem(Tᵢᵢ, ones(Nᵢ))
+@time "ILU" Pl = IncompleteLU.ilu(Tᵢᵢ, τ = 1.0e-8) # arbitriry taken from OCCA test
+@time "GMRES" Γꜜᵢ = solve(prob, KrylovJL_GMRES(); Pl, maxiters = 500, restarts = 50, verbose = true, reltol = 1.0e-12)
 
 # Check error magnitude
-@show sol_error = norm(Tᵃᵢᵢ * Γꜛᵢ - onesᵢ) / norm(onesᵢ)
+@show sol_error = norm(Tᵢᵢ * Γꜜᵢ - ones(Nᵢ)) / norm(ones(Nᵢ))
 
 # turn the age solution vector back into a 3D yax
-Γꜛyax = YAXArray(
+Γꜜyax = YAXArray(
     dims(volcello),
-    ustrip.(yr, OceanTransportMatrixBuilder.as3D([zeros(Nₛ); Γꜛᵢ], wet3D) * s),
+    ustrip.(yr, OceanTransportMatrixBuilder.as3D([zeros(Nₛ); Γꜜᵢ], wet3D) * s),
     Dict(
-        "description" => "steady-state adjoint mean age (time until next surface contact)",
-        "solver" => "MKLPardisoIterate",
+        "description" => "steady-state mean age",
+        "solver" => "GMRES + ILU",
         "model" => model,
         "experiment" => experiment,
         "time window" => time_window,
@@ -128,48 +117,10 @@ prob = init(LinearProblem(Tᵃᵢᵢ, onesᵢ), solver, rtol = 1.0e-10)
         "units" => "yr",
     )
 )
-arrays = Dict(:Gammaup => Γꜛyax, :lat => lat, :lon => lon)
+arrays = Dict(:Gammadown => Γꜜyax, :lat => lat, :lon => lon)
 ds = Dataset(; properties = Dict(), arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_GMRES_ILU.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-
-# Following Holzer et al. (2020) or Pasquier et al. (2024) the volume 𝒱↓ is given by
-#     𝒱ꜜ = −Aₛ⁻¹ Vₛ Tᵃₛᵢ Tᵃᵢᵢ⁻¹ 1ᵢ
-# But this is the same as
-#     𝒱ꜜ = −Aₛ⁻¹ Vₛ Tᵃₛᵢ Γꜛᵢ
-# So I might as well compute 𝒱ꜜ now since I just computed Γꜛᵢ
-# Unit is m⁻² m³ s⁻¹ s = interior volume (m³) / surface area (m²)
-# Note: In Pasquier et al. (2024) I plot this as %(interior volume) / 10,000km²
-
-idx_surface = findall(issrf)
-Tᵃₛᵢ = Tᵃ[idx_surface, idx_interior]
-Vₛ = sparse(Diagonal(v3D[wet3D][idx_surface]))
-wet2D = wet3D[:, :, 1]
-isurface2D = findall(wet2D)
-Aₛ⁻¹ = sparse(Diagonal(1 ./ areacello.data[isurface2D]))
-
-𝒱ꜜ = -Aₛ⁻¹ * Vₛ * Tᵃₛᵢ * Γꜛᵢ
-
-# Save 𝒱↑ as netCDF file
-𝒱ꜜ2D = fill(NaN, size(wet2D))
-𝒱ꜜ2D[isurface2D] .= 𝒱ꜜ
-𝒱ꜜyax = YAXArray(
-    dims(areacello),
-    𝒱ꜜ2D,
-    Dict(
-        "description" => "steady-state ocean volume ventilated down by unit area",
-        "units" => "m^3/m^2",
-        "solver" => "MKLPardisoIterate",
-        "upwind" => upwind_str2,
-    )
-)
-arrays = Dict(:Vdown => 𝒱ꜜyax, :lat => lat, :lon => lon)
-ds = Dataset(; properties = Dict(), arrays...)
-# Save to netCDF file
-outputfile = joinpath(inputdir, "steady_Vdown_$(κVdeep_str)_$(κH_str)_$(κVML_str)_MKLPardisoIterate.nc")
-@info "Saving Vdown as netCDF file:\n  $(outputfile)"
-savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
-
 
