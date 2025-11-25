@@ -24,7 +24,6 @@ using MPI
 using PETSc
 
 MPI.Initialized() || MPI.Init()
-PETSc.initialize()
 
 # script options
 @show model = "ACCESS-OM2-025"
