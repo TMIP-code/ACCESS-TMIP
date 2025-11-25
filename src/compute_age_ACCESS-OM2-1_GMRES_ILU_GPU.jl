@@ -1,4 +1,4 @@
-# qsub -I -P y99 -q normal -l mem=190GB -l storage=scratch/y99+gdata/xp65 -l walltime=02:00:00 -l ncpus=48
+# qsub -I -P y99 -q gpuvolta -l mem=190GB -l storage=scratch/y99+gdata/xp65 -l walltime=02:00:00 -l ngpus=2 -l ncpus=24
 
 using Pkg
 Pkg.activate(".")
@@ -18,14 +18,14 @@ using Statistics
 using Format
 using Dates
 using FileIO
-# using LinearSolve
-# using IncompleteLU
-# using NonlinearSolve
 using ProgressMeter
 using Krylov
 using KrylovPreconditioners
-using MKLSparse
-using InteractiveUtils: @which
+using LinearOperators
+using CUDA
+CUDA.set_runtime_version!(v"12.9.1")
+@show CUDA.versioninfo()
+using CUDA.CUSPARSE, CUDA.CUSOLVER
 
 model = "ACCESS-OM2-1"
 experiment = "1deg_jra55_iaf_omip2_cycle6"
@@ -98,40 +98,55 @@ TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str
 T = load(TMfile, "T")
 @info "Matrix size: $(size(T)), nnz = $(nnz(T))"
 Tᵢᵢ = T[idx_interior, idx_interior]
-@info "Matrix type: $(typeof(Tᵢᵢ))"
-b2 = ones(Nᵢ)
-println(@which mul!(b2, Tᵢᵢ, ones(Nᵢ)))
 
-@time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(Tᵢᵢ; τ = 1e-8)  # Block-Jacobi preconditioner
-# @time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
-#     M = Pl, # linear operator that models a nonsingular matrix of size n used for left preconditioning;
-#     memory = 40, # if restart = true, the restarted version GMRES(k) is used with k = memory. If restart = false, the parameter memory should be used as a hint of the number of iterations to limit dynamic memory allocations. Additional storage will be allocated if the number of iterations exceeds memory;
-#     # N = # linear operator that models a nonsingular matrix of size n used for right preconditioning;
-#     ldiv = true, # define whether the preconditioners use ldiv! or mul!;
-#     restart = true, # restart the method after memory iterations;
-#     reorthogonalization = true, # reorthogonalize the new vectors of the Krylov basis against all previous vectors;
-#     # atol = # absolute stopping tolerance based on the residual norm;
-#     rtol = 1e-10, # relative stopping tolerance based on the residual norm;
-#     itmax = 500, # the maximum number of iterations. If itmax=0, the default number of iterations is set to 2n;
-#     timemax = 360.0, # the time limit in seconds;
-#     verbose = 10, # additional details can be displayed if verbose mode is enabled (verbose > 0). Information will be displayed every verbose iterations;
-#     # history = # collect additional statistics on the run such as residual norms, or Aᴴ-residual norms;
-#     # callback = # function or functor called as callback(workspace) that returns true if the Krylov method should terminate, and false otherwise;
-#     # iostream = # stream to which output is logged.
-# )
-@info "U size: $(size(Pl.U)), nnz = $(nnz(Pl.U))"
-@info "L size: $(size(Pl.L)), nnz = $(nnz(Pl.L))"
+# Transfer the linear system from the CPU to the GPU
+A_gpu = CuSparseMatrixCSR(Tᵢᵢ)  # A_gpu = CuSparseMatrixCSC(A_cpu)
+b_gpu = CuVector(ones(Nᵢ))
 
-@time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
-    M = Pl,
-    memory = 40,
-    ldiv = true,
-    restart = true,
-    reorthogonalization = true,
-    rtol = 1e-10,
-    itmax = 500,
-    timemax = 360.0,
-    verbose = 10,
+@time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(Tᵢᵢ; τ = 1e-10)
+U_gpu = CuSparseMatrixCSR(Pl.U)
+L_gpu = CuSparseMatrixCSR(Pl.L)
+# @time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(A_gpu; τ = 1e-10)
+# @time "ILU preconditioner" Pl = ilu02(A_gpu)
+
+# Additional vector required for solving triangular systems
+Tb = eltype(b_gpu)
+nb = length(b_gpu)
+z = CUDA.zeros(Tb, nb)
+
+# Solve Py = x
+function ldiv_gpu!(L_gpu, U_gpu, x, y, z)
+    ldiv!(z, UnitLowerTriangular(L_gpu), x)  # Forward substitution with L
+    ldiv!(y, UpperTriangular(U_gpu), z)      # Backward substitution with U
+    return y
+end
+
+function ldiv_gpu!(L_gpu, U_gpu, x, y, z)
+    ldiv!(z, LowerTriangular(L_gpu), x)      # Forward substitution with L
+    ldiv!(y, UnitUpperTriangular(U_gpu), z)  # Backward substitution with U
+    return y
+end
+
+# Operator that model P⁻¹
+symmetric = hermitian = false
+opM = LinearOperator(Tb, nb, nb, symmetric, hermitian, (y, x) -> ldiv_gpu!(L_gpu, U_gpu, x, y, z))
+
+# Solve a non-Hermitian system with an ILU(0) preconditioner on GPU
+Γꜜᵢ, stats = gmres(A_gpu, b_gpu;
+    M = opM, # linear operator that models a nonsingular matrix of size n used for left preconditioning;
+    memory = 40, # if restart = true, the restarted version GMRES(k) is used with k = memory. If restart = false, the parameter memory should be used as a hint of the number of iterations to limit dynamic memory allocations. Additional storage will be allocated if the number of iterations exceeds memory;
+    # N = # linear operator that models a nonsingular matrix of size n used for right preconditioning;
+    ldiv = false, # define whether the preconditioners use ldiv! or mul!;
+    restart = true, # restart the method after memory iterations;
+    reorthogonalization = true, # reorthogonalize the new vectors of the Krylov basis against all previous vectors;
+    # atol = # absolute stopping tolerance based on the residual norm;
+    rtol = 1e-8, # relative stopping tolerance based on the residual norm;
+    itmax = 500, # the maximum number of iterations. If itmax=0, the default number of iterations is set to 2n;
+    timemax = 60.0, # the time limit in seconds;
+    verbose = 10, # additional details can be displayed if verbose mode is enabled (verbose > 0). Information will be displayed every verbose iterations;
+    # history = # collect additional statistics on the run such as residual norms, or Aᴴ-residual norms;
+    # callback = # function or functor called as callback(workspace) that returns true if the Krylov method should terminate, and false otherwise;
+    # iostream = # stream to which output is logged.
 )
 
 @show stats

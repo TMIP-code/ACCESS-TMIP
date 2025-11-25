@@ -15,6 +15,7 @@
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
+export MKL_PARDISO_OOC_PATH = /scratch/y99/TMIP/data/ACCESS-OM2-1/1deg_jra55_iaf_omip2_cycle6/Jan1960-Dec1979/
 export MKL_PARDISO_OOC_KEEP_FILE = 1
 
 echo "Running script"
