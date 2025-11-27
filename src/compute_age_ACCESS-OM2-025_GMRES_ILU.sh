@@ -13,8 +13,8 @@
 #PBS -j oe
 
 # export OPENBLAS_NUM_THREADS=1 # or set the number of OpenBLAS threads?
-export JULIA_NUM_THREADS=48   # Set the number of Julia threads?
-export MKL_NUM_THREADS=48   # or set the number of MKL threads?
+export JULIA_NUM_THREADS=$PBS_NCPUS    # Set the number of Julia threads?
+export MKL_NUM_THREADS=$PBS_NCPUS    # or set the number of MKL threads?
 
 export ILUTAU=1e-5 # drop tolerance for ILU preconditioner
 

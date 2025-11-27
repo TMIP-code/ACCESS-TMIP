@@ -23,8 +23,11 @@ using FileIO
 using ProgressMeter
 using Krylov
 using KrylovPreconditioners
-using MKLSparse
+using SparseMatricesCSR
+using ThreadedSparseCSR
 using InteractiveUtils: @which
+
+ThreadedSparseCSR.multithread_matmul(BaseThreads())
 
 model = "ACCESS-OM2-025"
 experiment = "025deg_jra55_iaf_omip2_cycle6"
@@ -105,9 +108,6 @@ showsparsitypattern("Transport matrix T =", T)
 Tᵢᵢ = T[idx_interior, idx_interior]
 showsparsitypattern("Tᵢᵢ =", Tᵢᵢ)
 
-b2 = ones(Nᵢ)
-println(@which mul!(b2, Tᵢᵢ, ones(Nᵢ)))
-
 println("queue: ", ENV["PBS_O_QUEUE"])
 println("VMEM: ", parse(Int, ENV["PBS_VMEM"]) ÷ 10^9, "GB")
 println("NCPUS: ", parse(Int, ENV["PBS_NCPUS"]))
@@ -132,6 +132,8 @@ println("NCPUS: ", parse(Int, ENV["PBS_NCPUS"]))
 # )
 showsparsitypattern("Incomplete U =", Pl.U)
 showsparsitypattern("Incomplete L =", Pl.L)
+
+Tᵢᵢ = sparsecsr(findnz(Tᵢᵢ)..., size(Tᵢᵢ)...)
 
 @time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
     M = Pl,

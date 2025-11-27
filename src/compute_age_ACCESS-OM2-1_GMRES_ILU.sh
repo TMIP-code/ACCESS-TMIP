@@ -12,9 +12,9 @@
 #PBS -o output/PBS/
 #PBS -j oe
 
-# export JULIA_NUM_THREADS=24   # Set the number of Julia threads?
+# export JULIA_NUM_THREADS=$PBS_NCPUS    # Set the number of Julia threads?
 # export OPENBLAS_NUM_THREADS=1 # or set the number of OpenBLAS threads?
-export MKL_NUM_THREADS=24   # or set the number of MKL threads?
+export MKL_NUM_THREADS=$PBS_NCPUS    # or set the number of MKL threads?
 
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
