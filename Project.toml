@@ -1,4 +1,5 @@
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
@@ -41,14 +42,17 @@ RollingWindowArrays = "d191faf8-5603-4116-bb4f-9585dee8559b"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Shapefile = "8e980c4a-a4fe-5da2-b3a7-4b4b0353a2f4"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SparseMatricesCSR = "a0a7dd2c-ebf4-11e9-1f05-cf50bc540ca1"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+ThreadedSparseCSR = "39591389-4884-462a-89e7-9edfce40b6eb"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 YAXArrayBase = "90b8fcef-0c2d-428d-9c56-5f86629e9d14"
 YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
 
 [sources]
 OceanTransportMatrixBuilder = {rev = "main", url = "https://github.com/TMIP-code/OceanTransportMatrixBuilder.jl.git"}
+ThreadedSparseCSR = {rev = "main", url = "https://github.com/PetrKryslUCSD/ThreadedSparseCSR.jl"}
 
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
