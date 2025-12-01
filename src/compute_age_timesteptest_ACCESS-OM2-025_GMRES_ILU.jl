@@ -95,7 +95,8 @@ idx_interior = findall(.!issrf)
 Nᵢ = length(idx_interior)
 Nₛ = length(idx_surface)
 
-TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
+m = 1 # January test
+TMfile = joinpath(inputdir, "monthly_matrix$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(m).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
 function showsparsitypattern(str, A)
@@ -106,14 +107,20 @@ end
 showsparsitypattern("Transport matrix T =", T)
 
 Tᵢᵢ = T[idx_interior, idx_interior]
-showsparsitypattern("Tᵢᵢ =", Tᵢᵢ)
+
+dht_periodic_ds = open_dataset(joinpath(inputdir, "dht_periodic.nc")) # <- (new) cell thickness?
+mean_days_in_month = dht_periodic_ds.mean_days_in_month[1]
+δt = ustrip(s, mean_days_in_month * d)
+A = I + δt * Tᵢᵢ
+showsparsitypattern("A =", A)
+
 
 println("queue: ", ENV["PBS_O_QUEUE"])
 println("VMEM: ", parse(Int, ENV["PBS_VMEM"]) ÷ 10^9, "GB")
 println("NCPUS: ", parse(Int, ENV["PBS_NCPUS"]))
 
 @show τ = parse(Float64, ENV["ILUTAU"]) # drop tolerance for ILU
-@time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(Tᵢᵢ; τ)  # Block-Jacobi preconditioner
+@time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(A; τ)  # Block-Jacobi preconditioner
 # @time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
 #     M = Pl, # linear operator that models a nonsingular matrix of size n used for left preconditioning;
 #     memory = 40, # if restart = true, the restarted version GMRES(k) is used with k = memory. If restart = false, the parameter memory should be used as a hint of the number of iterations to limit dynamic memory allocations. Additional storage will be allocated if the number of iterations exceeds memory;
@@ -133,11 +140,12 @@ println("NCPUS: ", parse(Int, ENV["PBS_NCPUS"]))
 showsparsitypattern("Incomplete U =", Pl.U)
 showsparsitypattern("Incomplete L =", Pl.L)
 
-Tᵢᵢ = sparsecsr(findnz(Tᵢᵢ)..., size(Tᵢᵢ)...)
+A = sparsecsr(findnz(A)..., size(A)...)
+Γꜜᵢstart = 500 * ones(Nᵢ)  # initial age
 
-@time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
+@time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(A, Γꜜᵢstart .+ δt;
     M = Pl,
-    memory = 40,
+    memory = 100,
     ldiv = true,
     restart = true,
     reorthogonalization = true,
@@ -150,26 +158,5 @@ Tᵢᵢ = sparsecsr(findnz(Tᵢᵢ)..., size(Tᵢᵢ)...)
 @show stats
 
 # Check error magnitude
-@show sol_error = norm(Tᵢᵢ * Γꜜᵢ - ones(Nᵢ)) / norm(ones(Nᵢ))
-
-# turn the age solution vector back into a 3D yax
-Γꜜyax = YAXArray(
-    dims(volcello),
-    ustrip.(yr, OceanTransportMatrixBuilder.as3D([zeros(Nₛ); Γꜜᵢ], wet3D) * s),
-    Dict(
-        "description" => "steady-state mean age",
-        "solver" => "GMRES + ILU",
-        "model" => model,
-        "experiment" => experiment,
-        "time window" => time_window,
-        "upwind" => upwind_str2,
-        "units" => "yr",
-    )
-)
-arrays = Dict(:Gammadown => Γꜜyax, :lat => lat, :lon => lon)
-ds = Dataset(; properties = Dict(), arrays...)
-# Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_KrylovGMRES_ILU.nc")
-@info "Saving age as netCDF file:\n  $(outputfile)"
-savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+@show sol_error = norm(A * Γꜜᵢ - (Γꜜᵢstart .+ δt)) / norm(ones(Nᵢ))
 

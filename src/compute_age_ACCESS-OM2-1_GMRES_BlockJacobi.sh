@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P y99
-#PBS -N age_OM2-1_GMRES_ILU
+#PBS -N age_OM2-1_GMRES_BlockJacobi
 #PBS -l ncpus=24
 #PBS -q normal
 #PBS -l mem=24GB
@@ -20,4 +20,4 @@ echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/compute_age_ACCESS-OM2-1_GMRES_ILU.jl &> output/compute_age_ACCESS-OM2-1_GMRES_ILU.$PBS_JOBID.out
+julia src/compute_age_ACCESS-OM2-1_GMRES_BlockJacobi.jl &> output/compute_age_ACCESS-OM2-1_GMRES_BlockJacobi.$PBS_JOBID.out

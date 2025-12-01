@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #PBS -P y99
-#PBS -N age_OM2-1_GMRES_ILU
-#PBS -l ncpus=24
-#PBS -q normal
-#PBS -l mem=24GB
+#PBS -N age_OM2-025_GMRES_ILU
+#PBS -l ncpus=48
+#PBS -q megamem
+#PBS -l mem=2900GB
 #PBS -l jobfs=4GB
-#PBS -l walltime=01:00:00
+#PBS -l walltime=48:00:00
 #PBS -l storage=scratch/gh0+scratch/y99+gdata/xp65
 #PBS -l wd
 #PBS -o output/PBS/
@@ -16,8 +16,10 @@
 export JULIA_NUM_THREADS=$PBS_NCPUS    # Set the number of Julia threads?
 export MKL_NUM_THREADS=$PBS_NCPUS    # or set the number of MKL threads?
 
+export ILUTAU=1e-9 # drop tolerance for ILU preconditioner
+
 echo "Going into ACCESS-TMIP"
 cd ~/Projects/TMIP/ACCESS-TMIP
 
 echo "Running script"
-julia src/compute_age_ACCESS-OM2-1_GMRES_ILU.jl &> output/compute_age_ACCESS-OM2-1_GMRES_ILU.$PBS_JOBID.out
+julia src/compute_age_ACCESS-OM2-01_GMRES_ILU.jl &> output/compute_age_ACCESS-OM2-01_GMRES_ILU.$PBS_JOBID.$ILUTAU.out

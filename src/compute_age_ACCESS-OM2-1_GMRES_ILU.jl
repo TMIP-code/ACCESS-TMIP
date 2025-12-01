@@ -24,8 +24,11 @@ using FileIO
 using ProgressMeter
 using Krylov
 using KrylovPreconditioners
-using MKLSparse
+using SparseMatricesCSR
+using ThreadedSparseCSR
 using InteractiveUtils: @which
+
+ThreadedSparseCSR.multithread_matmul(BaseThreads())
 
 model = "ACCESS-OM2-1"
 experiment = "1deg_jra55_iaf_omip2_cycle6"
@@ -96,13 +99,23 @@ Nₛ = length(idx_surface)
 TMfile = joinpath(inputdir, "yearly_matrix_$(κVdeep_str)_$(κH_str)_$(κVML_str).jld2")
 @info "Loading matrix from $TMfile"
 T = load(TMfile, "T")
-@info "Matrix size: $(size(T)), nnz = $(nnz(T))"
-Tᵢᵢ = T[idx_interior, idx_interior]
-@info "Matrix type: $(typeof(Tᵢᵢ))"
-b2 = ones(Nᵢ)
-println(@which mul!(b2, Tᵢᵢ, ones(Nᵢ)))
+function showsparsitypattern(str, A)
+    println(str)
+    display(A)
+    println()
+end
+showsparsitypattern("Transport matrix T =", T)
 
-@time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(Tᵢᵢ; τ = 1e-8)  # Block-Jacobi preconditioner
+Tᵢᵢ = T[idx_interior, idx_interior]
+showsparsitypattern("Tᵢᵢ =", Tᵢᵢ)
+
+println("queue: ", ENV["PBS_O_QUEUE"])
+println("VMEM: ", parse(Int, ENV["PBS_VMEM"]) ÷ 10^9, "GB")
+println("NCPUS: ", parse(Int, ENV["PBS_NCPUS"]))
+
+@show τ = parse(Float64, ENV["ILUTAU"]) # drop tolerance for ILU
+# @time "ILU preconditioner" Pl = KrylovPreconditioners.ilu(Tᵢᵢ; τ)
+@time "BlockJacobiPreconditioner preconditioner" Pl = BlockJacobiPreconditioner(Tᵢᵢ)
 # @time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
 #     M = Pl, # linear operator that models a nonsingular matrix of size n used for left preconditioning;
 #     memory = 40, # if restart = true, the restarted version GMRES(k) is used with k = memory. If restart = false, the parameter memory should be used as a hint of the number of iterations to limit dynamic memory allocations. Additional storage will be allocated if the number of iterations exceeds memory;
@@ -119,17 +132,19 @@ println(@which mul!(b2, Tᵢᵢ, ones(Nᵢ)))
 #     # callback = # function or functor called as callback(workspace) that returns true if the Krylov method should terminate, and false otherwise;
 #     # iostream = # stream to which output is logged.
 # )
-@info "U size: $(size(Pl.U)), nnz = $(nnz(Pl.U))"
-@info "L size: $(size(Pl.L)), nnz = $(nnz(Pl.L))"
+showsparsitypattern("Incomplete U =", Pl.U)
+showsparsitypattern("Incomplete L =", Pl.L)
+
+Tᵢᵢ = sparsecsr(findnz(Tᵢᵢ)..., size(Tᵢᵢ)...)
 
 @time "GMRES + ILU" Γꜜᵢ, stats = Krylov.gmres(Tᵢᵢ, ones(Nᵢ);
     M = Pl,
     memory = 40,
-    ldiv = true,
+    # ldiv = true, # no ldiv for BlockJacobiPreconditioner
     restart = true,
     reorthogonalization = true,
     rtol = 1e-10,
-    itmax = 500,
+    itmax = 2000,
     timemax = 360.0,
     verbose = 10,
 )
@@ -156,7 +171,7 @@ println(@which mul!(b2, Tᵢᵢ, ones(Nᵢ)))
 arrays = Dict(:Gammadown => Γꜜyax, :lat => lat, :lon => lon)
 ds = Dataset(; properties = Dict(), arrays...)
 # Save to netCDF file
-outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_KrylovGMRES_ILU.nc")
+outputfile = joinpath(inputdir, "steady_age_$(κVdeep_str)_$(κH_str)_$(κVML_str)_KrylovGMRES_BlockJacobi.nc")
 @info "Saving age as netCDF file:\n  $(outputfile)"
 savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
 

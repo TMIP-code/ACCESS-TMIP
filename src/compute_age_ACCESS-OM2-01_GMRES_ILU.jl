@@ -29,8 +29,8 @@ using InteractiveUtils: @which
 
 ThreadedSparseCSR.multithread_matmul(BaseThreads())
 
-model = "ACCESS-OM2-025"
-experiment = "025deg_jra55_iaf_omip2_cycle6"
+model = "ACCESS-OM2-01"
+experiment = "01deg_jra55v140_iaf_cycle4"
 time_window = "Jan1960-Dec1979"
 @show inputdir = "/scratch/y99/TMIP/data/$model/$experiment/$time_window"
 
