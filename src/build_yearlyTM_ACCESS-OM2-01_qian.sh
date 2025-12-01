@@ -3,8 +3,8 @@
 #PBS -P y99
 #PBS -N yrlyTM_OM2-01-qian
 #PBS -q hugemem
-#PBS -l ncpus=24
-#PBS -l mem=735GB
+#PBS -l ncpus=16
+#PBS -l mem=490GB
 #PBS -l jobfs=4GB
 #PBS -l walltime=3:00:00
 #PBS -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/cj50+gdata/ik11

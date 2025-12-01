@@ -52,27 +52,20 @@ upwind_str2 = upwind ? "upwind" : "centered"
 
 # Load areacello and volcello for grid geometry
 areacello_ds = open_dataset(joinpath(inputdir, "area_t.nc"))
-dht_ds = open_dataset(joinpath(inputdir, "dht.nc")) # <- (new) cell thickness?
-# TODO: caputre correlations between transport and dht
-# z* coordinate varies with time in ACCESS-OM2
-# volcello_ds = open_dataset(joinpath(fixedvarsinputdir, "volcello.nc")) # <- not in ACCESS-OM2; must be built from dht * area
-
+dzt_ds = open_dataset(joinpath(inputdir, "dzt.nc")) # <- (new) cell thickness?
 
 # Load fixed variables in memory
-areacello_OM2 = replace(readcubedata(areacello_ds.area_t), missing => NaN) # This is required for later multiplication
-dht = readcubedata(dht_ds.dht)
-lon_OM2 = readcubedata(areacello_ds.geolon_t)
-lat_OM2 = readcubedata(areacello_ds.geolat_t)
-lev = dht_ds.st_ocean
+dzt = readcubedata(dzt_ds.dzt)
+lev = dzt_ds.st_ocean
 
 # Unfortunately ACCESS-OM2 raw data does not have coordinates of cell vertices
 # So instead I go back to the source: the supergrids
 include("supergrid.jl")
-(; lon, lat, areacello, lon_vertices, lat_vertices) = supergrid(model; dims = dims(dht_ds.dht)[1:2])
+(; lon, lat, areacello, lon_vertices, lat_vertices) = supergrid(model; dims = dims(dzt_ds.dzt)[1:2])
 
 @show size(lon_vertices)
 
-volcello = readcubedata(dht .* areacello)
+volcello = readcubedata(dzt .* areacello)
 
 # Make makegridmetrics
 gridmetrics = makegridmetrics(; areacello, volcello, lon, lat, lev, lon_vertices, lat_vertices)
