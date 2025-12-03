@@ -37,7 +37,7 @@ time_window = "Jan1960-Dec1979"
 # preferred diffusivities
 κVdeep = 3.0e-5 # m^2/s
 κVML = 1.0      # m^2/s
-κH = 300.0 / 4  # m^2/s (grid-scaling by sqrt(area))
+κH = 300.0 / 10 # m^2/s (grid-scaling by sqrt(area))
 @show κVdeep
 @show κVML
 @show κH

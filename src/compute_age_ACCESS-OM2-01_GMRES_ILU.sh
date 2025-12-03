@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -P y99
-#PBS -N age_OM2-025_GMRES_ILU
+#PBS -N age_OM2-01_GMRES_ILU
 #PBS -l ncpus=48
 #PBS -q megamem
 #PBS -l mem=2900GB
