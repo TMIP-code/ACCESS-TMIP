@@ -158,7 +158,7 @@ for month in months
     κVdeep = 3.0e-5 # m^2/s
     κVML = 1.0      # m^2/s
     κH = 300.0      # m^2/s
-    (; T) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
+    (; T, Tadv, TκH, TκVML, TκVdeep) = transportmatrix(; ϕ, mlotst, gridmetrics, indices, ρ, κH, κVML, κVdeep, upwind)
 
     # Save cyclo matrix only (don't save all the metadata in case IO is a bottleneck)
     κVdeep_str = "kVdeep" * format(κVdeep, conversion = "e")
@@ -178,4 +178,21 @@ for month in months
         )
     )
 
+    # Save advection, vertical diffusion, and horizontal diffusion separately
+    # to be used in the implicit/explicit time stepping scheme
+    outputfile = joinpath(inputdir, "OM2-1_TM_split_$(upwind_str)_$(κVdeep_str)_$(κH_str)_$(κVML_str)_$(month).jld2")
+    @info "Saving advection matrix as $outputfile"
+    save(
+        outputfile,
+        Dict(
+            "A" => Tadv,
+            "D" => TκVdeep + TκVML,
+            "H" => TκH,
+            "mean_days_in_month" => mean_days_in_month,
+            "note" => """
+                T is decomposed into advection, vertical diffusion, and horizontal diffusion, as
+                T = A + D + H. It's almost like in Bardin et al. (2014) but the signs are different.
+            """,
+        )
+    )
 end
