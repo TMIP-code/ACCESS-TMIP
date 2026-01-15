@@ -802,42 +802,74 @@ outputfile = joinpath(outputdir, "TTD_seqeff_timeseries_1loc_GigablueCloud.pdf")
 @info "Saving injection location as image file:\n  $(outputfile)"
 save(outputfile, fig)
 
+# Save the data for Gigablue
+metadata = Dict(
+    "description" => """
+        Sequestration efficiency and TTD as plotted in the figure requested by Gigablue.
+        Note that the `location_index` corresponds to the index of the particle bins.
+        That is, the particle injection locations have been binned onto the model grid,
+        and each `location_index` corresponds to one of these grid cells where at least
+        one particle was binned.
+        In the figure, the fraction of particles binned in each grid cell was used
+        as an opacity weight for each curve.
+        Made by Benoît Pasquier Thursday 15 Jan 2026.
+    """,
+    "model" => model,
+    "experiment" => experiment,
+    "Ti unit" => "yr",
+    "Sequestration efficiency unit" => "%",
+    "Transit time distribution unit" => "kyr^-1",
+    "Dimensions" => "(time, member, location_index)",
+)
+axlist = (
+    dims(DimArray(ones(size(TTD_time)), Ti(TTD_time)))[1],
+    dims(DimArray(ones(size(members)), Dim{:member}(members)))[1],
+    dims(DimArray(ones(size(clouddf, 1)), Dim{:location_index}(1:size(clouddf, 1))))[1],
+)
+TTDproperties = Dict(
+    "description" => "Transit time distribution",
+    "unit" => "kyr^-1",
+)
+seqeffproperties = Dict(
+    "description" => "Sequestration efficiency",
+    "unit" => "%",
+)
+TTDcube = YAXArray(axlist, ustrip.(kyr^-1, 𝒢s1cloud * s^-1), TTDproperties)
+seqeffcube = YAXArray(axlist, 100 * ℰs1cloud, seqeffproperties)
 
-# # Save the data to be uploaded with paper
-# metadata = Dict(
-#     "description" => "Sequestration efficiency and TTD as plotted in Fig. 3 in Pasquier et al. (2025)",
-#     "model" => model,
-#     "experiment" => experiment,
-#     "Ti unit" => "yr",
-#     "injection location" => "(115.49,-16.56), North West of Australia",
-# )
-# axlist = (
-#     dims(DimArray(ones(size(TTD_time)), Ti(TTD_time)))[1],
-#     dims(DimArray(ones(size(members)), Dim{:member}(members)))[1],
-#     dims(DimArray(ones(2), Dim{:climatology}(["2030s", "2090s"])))[1],
-# )
-# properties = Dict(
-#     "description" => "Transit time distribution as plotted in Fig. 3b in Pasquier et al. (2025)",
-#     "unit" => "yr^-1",
-# )
-# TTDcube = YAXArray(axlist, [𝒢s1[1];;; 𝒢s2[1]], properties)
-# properties = Dict(
-#     "description" => "Sequestration efficiency as plotted in Fig. 3c,d in Pasquier et al. (2025)",
-#     "unit" => "",
-# )
-# seqeffcube = YAXArray(axlist, [ℰs1cloud[1];;; ℰs2[1]], properties)
-# properties = Dict(
-#     "description" => "Mean reemergence time as plotted in Fig. 3b,c,d in Pasquier et al. (2025)",
-#     "unit" => "years",
-# )
-# meantimecube = YAXArray(axlist[[2,3]], [Γouts1[1];; Γouts2[1]], properties)
+lonproperties = Dict(
+    "description" => "Longitude of injection location grid cell center",
+    "unit" => "degrees_east",
+)
+loncube = YAXArray(axlist[[3]], clouddf.lon, lonproperties)
+latproperties = Dict(
+    "description" => "Latitude of injection location grid cell center",
+    "unit" => "degrees_north",
+)
+latcube = YAXArray(axlist[[3]], clouddf.lat, latproperties)
+depthproperties = Dict(
+    "description" => "Depth of injection location grid cell center",
+    "unit" => "m",
+)
+depthcube = YAXArray(axlist[[3]], clouddf.depth, depthproperties)
+fractionproperties = Dict(
+    "description" => "Fraction of particles binned in grid cell",
+    "unit" => "%",
+)
+fractioncube = YAXArray(axlist[[3]], 100 * clouddf.fraction, fractionproperties)
 
+arrays = Dict(
+    :TTD => TTDcube,
+    :seqeff => seqeffcube,
+    :lon => loncube,
+    :lat => latcube,
+    :depth => depthcube,
+    :fraction => fractioncube,
+)
+ds = Dataset(; properties = metadata, arrays...)
 
-# arrays = Dict(:TTD => TTDcube, :seqeff => seqeffcube, :meantime => meantimecube)
-# ds = Dataset(; properties = metadata, arrays...)
-
-# # Save to netCDF file
-# outputfile = joinpath(outputdir, "Pasquier_etal_GRL_2025_Fig3_data_GigaBlueCloud.nc")
-# @info "Saving TTD and sequestration efficiency time series as netCDF file:\n  $(outputfile)"
-# # ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
-# savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+# Save to netCDF file
+outputfile = joinpath(outputdir, "Pasquier_data_for_GigaBlueCloud.nc")
+@info "Saving TTD and sequestration efficiency time series as netCDF file:\n  $(outputfile)"
+# ds_chunked = setchunks(ds, (x = 60, y = 60, Ti = length(ds.Ti)))
+savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
