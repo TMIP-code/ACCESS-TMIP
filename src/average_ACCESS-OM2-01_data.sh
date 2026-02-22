@@ -1,5 +1,5 @@
 # command used to get the job resources
-# qsub -I -P y99 -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/y99+gdata/cj50 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P y99 -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/y99+gdata/y99+gdata/cj50 -l walltime=01:00:00 -l ncpus=12
 
 module load netcdf
 module load nco

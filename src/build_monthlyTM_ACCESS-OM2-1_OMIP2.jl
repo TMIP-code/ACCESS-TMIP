@@ -19,6 +19,11 @@ using Dates
 using Statistics
 using StatsBase
 using FileIO
+try
+    using CairoMakie
+catch
+    using CairoMakie
+end
 
 # Making monthly matrices for ACCESS-OM2-1
 
@@ -98,6 +103,107 @@ mlotst_ds = open_dataset(joinpath(inputdir, "mld_periodic.nc"))
 
 months = 1:12
 
+function set_month_slice!(A, slice, month, month_dim)
+    inds = ntuple(i -> i == month_dim ? month : Colon(), ndims(A))
+    A[inds...] = slice
+    return nothing
+end
+
+function save_reconstructed_velocity(uo_monthly_data, vo_monthly_data, umo_var, vmo_var, outputdir)
+    uo_cube = YAXArray(
+        dims(umo_var),
+        uo_monthly_data,
+        Dict(
+            "description" => "reconstructed zonal velocity from transport",
+            "units" => "m s-1",
+        ),
+    )
+    vo_cube = YAXArray(
+        dims(vmo_var),
+        vo_monthly_data,
+        Dict(
+            "description" => "reconstructed meridional velocity from transport",
+            "units" => "m s-1",
+        ),
+    )
+
+    uo_ds = Dataset(; properties = Dict(), uo = uo_cube)
+    vo_ds = Dataset(; properties = Dict(), vo = vo_cube)
+
+    uo_outputfile = joinpath(outputdir, "uo_reconstructed.nc")
+    vo_outputfile = joinpath(outputdir, "vo_reconstructed.nc")
+    @info "Saving reconstructed zonal velocity as netCDF file:\n  $(uo_outputfile)"
+    savedataset(uo_ds, path = uo_outputfile, driver = :netcdf, overwrite = true)
+    @info "Saving reconstructed meridional velocity as netCDF file:\n  $(vo_outputfile)"
+    savedataset(vo_ds, path = vo_outputfile, driver = :netcdf, overwrite = true)
+end
+
+function save_monthly_3d_field(field_monthly_data, template_var, varname::Symbol, description, units, outputfile)
+    cube = YAXArray(
+        dims(template_var),
+        field_monthly_data,
+        Dict(
+            "description" => description,
+            "units" => units,
+        ),
+    )
+    ds = Dataset(; properties = Dict(), varname => cube)
+    @info "Saving $(varname) as netCDF file:\n  $(outputfile)"
+    savedataset(ds, path = outputfile, driver = :netcdf, overwrite = true)
+end
+
+function plot_w_heatmap(w, month_idx, plot_dir)
+    k_level = max(1, size(w, 3) - 25)
+    w2D = w[:, :, k_level]
+    valid_values = w2D[.!isnan.(w2D)]
+    max_velocity = isempty(valid_values) ? 1.0 : quantile(abs.(valid_values), 0.99)
+    max_velocity = max(max_velocity, eps(Float64))
+
+    fig = Figure(size = (1200, 600))
+    ax = Axis(fig[1, 1], title = "w [k=$(k_level), month=$(month_idx)]")
+    hm = heatmap!(ax, w2D; colormap = :balance, colorrange = (-max_velocity, max_velocity), nan_color = :black)
+    Colorbar(fig[1, 2], hm)
+
+    plot_file = joinpath(plot_dir, "w_from_mass_transports_month_$(month_idx).png")
+    save(plot_file, fig)
+    println(plot_file)
+    return nothing
+end
+
+function plot_tz_heatmap(tz, month_idx, plot_dir; suffix = "")
+    k_level = max(1, size(tz, 3) - 25)
+    tz2D = tz[:, :, k_level]
+    valid_values = tz2D[.!isnan.(tz2D)]
+    max_transport = isempty(valid_values) ? 1.0 : quantile(abs.(valid_values), 0.99)
+    max_transport = max(max_transport, eps(Float64))
+
+    fig = Figure(size = (1200, 600))
+    ax = Axis(fig[1, 1], title = "tz [k=$(k_level), month=$(month_idx)]")
+    hm = heatmap!(ax, tz2D; colormap = :balance, colorrange = (-max_transport, max_transport), nan_color = :black)
+    Colorbar(fig[1, 2], hm)
+
+    plot_file = joinpath(plot_dir, "tz_from_mass_transports_month_$(month_idx)$(suffix).png")
+    save(plot_file, fig)
+    println(plot_file)
+    return nothing
+end
+
+umo_month_dim = findfirst(ax -> Symbol(name(ax)) == :month, dims(umo_ds.tx_trans))
+vmo_month_dim = findfirst(ax -> Symbol(name(ax)) == :month, dims(vmo_ds.ty_trans))
+@assert !isnothing(umo_month_dim)
+@assert !isnothing(vmo_month_dim)
+
+uo_monthly_data = fill(NaN, size(umo_ds.tx_trans))
+vo_monthly_data = fill(NaN, size(vmo_ds.ty_trans))
+
+top_month_dim = findfirst(ax -> Symbol(name(ax)) == :month, dims(dht_ds.dht))
+@assert !isnothing(top_month_dim)
+ϕtop_monthly_data = fill(NaN, size(dht_ds.dht))
+w_monthly_data = fill(NaN, size(dht_ds.dht))
+
+plot_dir = joinpath(inputdir, "plots")
+isdir(plot_dir) || mkpath(plot_dir)
+
 for month in months
 
     # Build monthly volcello from monthly dht
@@ -129,6 +235,12 @@ for month in months
     # I think latest YAXArrays converts _FillValues to missing
     umo = replace(umo, missing => 0)
     vmo = replace(vmo, missing => 0)
+
+    ρ = 1035.0    # kg/m^3
+    uo, vo = fluxes2velocity(umo, vmo, gridmetrics, ρ)
+    set_month_slice!(uo_monthly_data, Array(uo), month, umo_month_dim)
+    set_month_slice!(vo_monthly_data, Array(vo), month, vmo_month_dim)
+
     ψᵢGM = replace(ψᵢGM |> Array, missing => 0) .|> Float64
     ψⱼGM = replace(ψⱼGM |> Array, missing => 0) .|> Float64
     # ψᵢsubmeso = replace(ψᵢsubmeso |> Array, missing => 0) .|> Float64
@@ -143,7 +255,7 @@ for month in months
 
     # TODO fix incompatible dimensions betwewen umo and ϕᵢGM/ϕᵢsubmeso Dim{:i} and Dim{:xu_ocean}
     # ϕ = let umo = umo + ϕᵢGM + ϕᵢsubmeso, vmo = vmo + ϕⱼGM + ϕⱼsubmeso
-    """
+    """``
     sum YAXArrays a and b, preserving metadata from a
     """
     yaxasum(a, b; axlist = dims(a), metadata = a.properties) = YAXArray(axlist, a.data + b.data, metadata)
@@ -151,8 +263,18 @@ for month in months
         facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices)
     end
 
+    ϕtop = Array(ϕ.top)
+    area2D = Array(gridmetrics.area2D)
+    w = ϕtop ./ (ρ .* reshape(area2D, size(area2D)..., 1))
+    set_month_slice!(ϕtop_monthly_data, ϕtop, month, top_month_dim)
+    set_month_slice!(w_monthly_data, w, month, top_month_dim)
+    # plot tz without GM terms for comparisonn with Oceananigans
+    plot_tz_heatmap(ϕtop, month, plot_dir; suffix = "_with_GM")
+    plot_tz_heatmap(Array(facefluxesfrommasstransport(; umo, vmo, gridmetrics, indices).top), month, plot_dir)
+    plot_w_heatmap(w, month, plot_dir)
+
     # Some parameter values
-    ρ = 1035.0    # kg/m^3
+
     # ACCESS-ESM1.5 preferred values
     upwind = false
     κVdeep = 3.0e-5 # m^2/s
@@ -195,4 +317,24 @@ for month in months
             """,
         )
     )
+
+
 end
+
+save_reconstructed_velocity(uo_monthly_data, vo_monthly_data, umo_ds.tx_trans, vmo_ds.ty_trans, inputdir)
+save_monthly_3d_field(
+    ϕtop_monthly_data,
+    dht_ds.dht,
+    :phitop,
+    "monthly top-face mass transport reconstructed from face fluxes",
+    "kg s-1",
+    joinpath(inputdir, "phitop_reconstructed.nc"),
+)
+save_monthly_3d_field(
+    w_monthly_data,
+    dht_ds.dht,
+    :w,
+    "monthly vertical velocity reconstructed from top-face mass transport",
+    "m s-1",
+    joinpath(inputdir, "w_reconstructed.nc"),
+)

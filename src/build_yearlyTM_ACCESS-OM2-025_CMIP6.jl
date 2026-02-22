@@ -1,4 +1,4 @@
-# qsub -I -P y99 -N yearlyTM_OM2-1 -l ncpus=28 -l mem=120GB -l jobfs=4GB -l walltime=3:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
+# qsub -I -P y99 -N yearlyTM_OM2-1 -l ncpus=28 -l mem=120GB -l jobfs=4GB -l walltime=3:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
 # For debugging no need to request that much resources!
 
 using Pkg

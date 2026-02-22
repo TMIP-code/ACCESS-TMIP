@@ -1,5 +1,5 @@
 # command used to get the job resources
-# qsub -I -P y99 -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/y99+gdata/cj50+gdata/ik11 -l walltime=01:00:00 -l ncpus=12
+# qsub -I -P y99 -l mem=47GB -l storage=scratch/gh0+scratch/xv83+scratch/y99+gdata/y99+gdata/cj50+gdata/ik11 -l walltime=01:00:00 -l ncpus=12
 
 # I have built matrices for 1° simulations before,
 # from ACCESS1.0, ACCESS1.3, ACCESSACCESS-ESM1.5, and ACCESS-CM2

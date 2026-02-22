@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#PBS -N instantiate_CPU
+#PBS -P y99
+#PBS -l mem=190GB
+#PBS -q express
+#PBS -l walltime=01:00:00
+#PBS -l ncpus=48
+#PBS -l storage=scratch/y99+gdata/y99
+#PBS -l jobfs=4GB
+#PBS -o output/PBS/
+#PBS -e output/PBS/
+#PBS -l wd
+
+repo_root=/home/561/bp3051/Projects/TMIP/ACCESS-TMIP
+echo "REPO_ROOT=$repo_root"
+
+echo "Instantiating packages on compute node on CPU"
+julia --project -e 'using Pkg; Pkg.instantiate()'
+echo "Done instantiating packages on compute node on CPU"

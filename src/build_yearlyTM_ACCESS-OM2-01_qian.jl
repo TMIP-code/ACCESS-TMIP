@@ -1,4 +1,4 @@
-# qsub -I -P y99 -N yrlyTM_OM2-01-qian -q hugemem -l ncpus=24 -l mem=735GB -l jobfs=4GB -l walltime=3:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
+# qsub -I -P y99 -N yrlyTM_OM2-01-qian -q hugemem -l ncpus=24 -l mem=735GB -l jobfs=4GB -l walltime=3:00:00 -l storage=scratch/gh0+gdata/xv83+scratch/xv83+scratch/p66+scratch/y99+gdata/y99+gdata/cj50+gdata/ik11 -l wd -o output/PBS/ -j oe
 
 using Pkg
 Pkg.activate(".")
