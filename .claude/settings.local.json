@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"OUR\" /home/561/bp3051/Projects/TMIP/ACCESS-TMIP/src/*.jl)",
+      "Bash(grep -ri \"OUR\" /home/561/bp3051/Projects/TMIP/ACCESS-TMIP/src/*.jl)"
+    ]
+  }
+}

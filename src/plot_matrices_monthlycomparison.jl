@@ -63,6 +63,8 @@ fig = Figure(size = (1000, 2000))
 ga = fig[1, 1] = GridLayout()
 gb = fig[2, 1] = GridLayout()
 
+# Adds some tiny values to the sparse matrices to make sure they have the same sparsity pattern,
+# so that we can compare their nonzero entries directly.
 function makesparseentriescomparable(Tx, Ty, nskip)
     ix, jx, vx = findnz(Tx)
     Tx0 = sparse(ix, jx, 1.0e-30, size(Tx)...)
